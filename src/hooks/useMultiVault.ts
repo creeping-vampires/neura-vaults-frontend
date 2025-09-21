@@ -246,7 +246,7 @@ export const useMultiVault = () => {
             address: vaultAddress as `0x${string}`,
             abi: YieldAllocatorVaultABI,
             functionName: "totalAumUsd",
-            args: [BigInt(3600)], // maxPriceAge: 1 hour (3600 seconds)
+            args: [BigInt(3600)],
           });
           
           // Convert from 1e18 to regular number
