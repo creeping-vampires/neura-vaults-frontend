@@ -9,6 +9,7 @@ import { VaultData, VaultMetrics } from '@/types/vault';
 import YieldAllocatorVaultABI from '@/utils/abis/YieldAllocatorVault.json';
 import { toast } from '@/hooks/use-toast';
 import { switchToChain } from '@/lib/utils';
+import { useActiveWallet } from '@/hooks/useActiveWallet';
 
 // Multi-vault cache to prevent unnecessary re-fetching
 let multiVaultCache: { data: Record<VaultType, VaultData>; timestamp: number } | null = null;
@@ -16,7 +17,6 @@ let multiVaultCache: { data: Record<VaultType, VaultData>; timestamp: number } |
 export const useMultiVault = () => {
   const publicClient = usePublicClient();
   const { data: wagmiWalletClient } = useWalletClient();
-  const { user: privyUser } = usePrivy();
   const { wallets } = useWallets();
 
   // Get cached data if available and not expired (5 minutes)
@@ -87,27 +87,14 @@ export const useMultiVault = () => {
     return cachedData ? false : true;
   });
   const [error, setError] = useState<string | null>(null);
-  
+
   // Transaction state management
   const [isTransacting, setIsTransacting] = useState(false);
   const [isDepositTransacting, setIsDepositTransacting] = useState(false);
   const [isWithdrawTransacting, setIsWithdrawTransacting] = useState(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
 
-  // Get active wallet based on login method
-  const hasEmailLogin = privyUser?.linkedAccounts?.some(
-    (account) => account.type === "email"
-  );
-  const hasWalletLogin = privyUser?.linkedAccounts?.some(
-    (account) => account.type === "wallet"
-  );
-
-  // Prioritize embedded wallet for email login, external wallet for wallet login
-  const wallet = hasEmailLogin
-    ? wallets.find((w) => w.walletClientType === "privy")
-    : wallets.find((w) => w.walletClientType !== "privy");
-
-  const userAddress = wallet?.address;
+  const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } = useActiveWallet();
 
   const fetchAllVaultData = useCallback(async () => {
     if (!publicClient) return;
@@ -248,7 +235,7 @@ export const useMultiVault = () => {
             functionName: "totalAumUsd",
             args: [BigInt(3600)],
           });
-          
+
           // Convert from 1e18 to regular number
           return Number(formatUnits(totalAumUsd as bigint, 18));
         } catch (error) {
@@ -294,9 +281,9 @@ export const useMultiVault = () => {
     if (wagmiWalletClient) {
       return wagmiWalletClient;
     }
-    
+
     // Fallback to privy wallet if wagmi client not available
-    const privyWallet = wallets.find((w) => w.walletClientType === "privy");
+    const privyWallet = isPrivyWallet ? wallet : wallets.find((w) => w.walletClientType === "privy");
     if (privyWallet) {
       const { createWalletClient, custom } = await import("viem");
       return createWalletClient({
@@ -304,351 +291,388 @@ export const useMultiVault = () => {
         transport: custom(await privyWallet.getEthereumProvider()),
       });
     }
-    
+
     throw new Error("No wallet client available");
-  }, [wagmiWalletClient, wallets]);
+  }, [wagmiWalletClient, wallets, wallet, isPrivyWallet]);
 
   // Transaction functions
-  const deposit = useCallback(async (vaultAddress: string, amount: string, vaultType: VaultType) => {
-    const walletClient = await getWalletClient();
-    if (!walletClient || !userAddress) {
-      throw new Error("Wallet not connected");
-    }
-
-    try {
-      const chainSwitched = await switchToChain();
-      if (!chainSwitched) {
-        throw new Error("Failed to switch to Hyper EVM chain");
+  const deposit = useCallback(
+    async (vaultAddress: string, amount: string, vaultType: VaultType) => {
+      const walletClient = await getWalletClient();
+      if (!walletClient || !userAddress) {
+        throw new Error("Wallet not connected");
       }
-      setIsDepositTransacting(true);
-      setTransactionHash(null);
 
-      // Validate vault interface before proceeding
-      let assetAddress: `0x${string}`;
       try {
-        assetAddress = (await publicClient.readContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "asset",
-        })) as `0x${string}`;
-      } catch (e) {
-        throw new Error(
-          "Invalid vault address - does not implement vault interface"
-        );
-      }
-      const assetDecimals = await publicClient.readContract({
-        address: assetAddress as `0x${string}`,
-        abi: parseAbi(["function decimals() view returns (uint8)"]),
-        functionName: "decimals",
-      });
-      const amountBigInt = parseUnits(amount, Number(assetDecimals as number));
+        const chainSwitched = await switchToChain();
+        if (!chainSwitched) {
+          throw new Error("Failed to switch to Hyper EVM chain");
+        }
+        setIsDepositTransacting(true);
+        setTransactionHash(null);
 
-      const currentAllowance = await publicClient.readContract({
-        address: assetAddress as `0x${string}`,
-        abi: parseAbi([
-          "function allowance(address, address) view returns (uint256)",
-        ]),
-        functionName: "allowance",
-        args: [userAddress as `0x${string}`, vaultAddress as `0x${string}`],
-      });
-
-      if ((currentAllowance as bigint) < amountBigInt) {
-        const approveGas = await publicClient.estimateContractGas({
-          address: assetAddress as `0x${string}`,
-          abi: parseAbi(["function approve(address, uint256) returns (bool)"]),
-          functionName: "approve",
-          args: [vaultAddress as `0x${string}`, maxUint256],
-          account: userAddress as `0x${string}`,
-        });
-
-        const approveTx = await walletClient.writeContract({
-          address: assetAddress as `0x${string}`,
-          abi: parseAbi(["function approve(address, uint256) returns (bool)"]),
-          functionName: "approve",
-          args: [vaultAddress as `0x${string}`, maxUint256],
-          chain: hyperliquid,
-          account: userAddress as `0x${string}`,
-          gas: (approveGas * 200n) / 100n,
-        });
-        await publicClient.waitForTransactionReceipt({ hash: approveTx });
-      }
-
-      // Use requestDeposit for ERC-7540 async deposits
-      const depositGas = await publicClient.estimateContractGas({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "requestDeposit",
-        args: [amountBigInt, userAddress as `0x${string}`],
-        account: userAddress as `0x${string}`,
-      });
-
-      const depositTx = await walletClient.writeContract({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "requestDeposit",
-        args: [amountBigInt, userAddress as `0x${string}`],
-        chain: hyperliquid,
-        account: userAddress as `0x${string}`,
-        gas: (depositGas * 200n) / 100n,
-      });
-
-      setTransactionHash(depositTx);
-
-      await publicClient.waitForTransactionReceipt({ hash: depositTx });
-
-      toast({
-        variant: "success",
-        title: "✅ Deposit Request Submitted",
-        description: `Successfully requested deposit of ${amount} ${vaultType}. Your deposit will be processed in the next settlement.`,
-      });
-
-      await refreshAllData();
-
-      return depositTx;
-    } catch (error) {
-      console.error("Deposit failed:", error);
-
-      toast({
-        variant: "destructive",
-        title: "❌ Deposit Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred during deposit.",
-      });
-
-      throw error;
-    } finally {
-      setIsDepositTransacting(false);
-    }
-  }, [getWalletClient, userAddress, refreshAllData]);
-
-  const withdraw = useCallback(async (vaultAddress: string, amount: string, vaultType: VaultType) => {
-    const walletClient = await getWalletClient();
-    if (!walletClient || !userAddress) {
-      throw new Error("Wallet not connected");
-    }
-    try {
-      const chainSwitched = await switchToChain();
-      if (!chainSwitched) {
-        throw new Error("Failed to switch to Hyper EVM chain");
-      }
-      setIsWithdrawTransacting(true);
-      setTransactionHash(null);
-
-      // Validate vault interface before proceeding
-      let assetAddress: `0x${string}`;
-      try {
-        assetAddress = (await publicClient.readContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "asset",
-        })) as `0x${string}`;
-      } catch (e) {
-        throw new Error(
-          "Invalid vault address - does not implement vault interface"
-        );
-      }
-      const assetDecimals = await publicClient.readContract({
-        address: assetAddress as `0x${string}`,
-        abi: parseAbi(["function decimals() view returns (uint8)"]),
-        functionName: "decimals",
-      });
-      const amountBigInt = parseUnits(amount, Number(assetDecimals as number));
-
-      // Get user's current share balance
-      const userShares = await publicClient.readContract({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "balanceOf",
-        args: [userAddress as `0x${string}`],
-      });
-
-      // Get user's current asset balance (deposits)
-      const userAssets = await publicClient.readContract({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "convertToAssets",
-        args: [userShares],
-      });
-
-      console.log("userShares",userShares)
-      console.log("userAssets",userAssets)
-
-      // For 100% withdrawals (or very close to it), use actual user shares to avoid precision issues
-      const isFullWithdrawal = amountBigInt >= (userAssets as bigint) * 99n / 100n; // 99% threshold
-      
-      const shares = isFullWithdrawal 
-        ? userShares
-        : await publicClient.readContract({
+        // Validate vault interface before proceeding
+        let assetAddress: `0x${string}`;
+        try {
+          assetAddress = (await publicClient.readContract({
             address: vaultAddress as `0x${string}`,
             abi: YieldAllocatorVaultABI,
-            functionName: "convertToShares",
-            args: [amountBigInt],
+            functionName: "asset",
+          })) as `0x${string}`;
+        } catch (e) {
+          throw new Error(
+            "Invalid vault address - does not implement vault interface"
+          );
+        }
+        const assetDecimals = await publicClient.readContract({
+          address: assetAddress as `0x${string}`,
+          abi: parseAbi(["function decimals() view returns (uint8)"]),
+          functionName: "decimals",
+        });
+        const amountBigInt = parseUnits(
+          amount,
+          Number(assetDecimals as number)
+        );
+
+        const currentAllowance = await publicClient.readContract({
+          address: assetAddress as `0x${string}`,
+          abi: parseAbi([
+            "function allowance(address, address) view returns (uint256)",
+          ]),
+          functionName: "allowance",
+          args: [userAddress as `0x${string}`, vaultAddress as `0x${string}`],
+        });
+
+        if ((currentAllowance as bigint) < amountBigInt) {
+          const approveGas = await publicClient.estimateContractGas({
+            address: assetAddress as `0x${string}`,
+            abi: parseAbi([
+              "function approve(address, uint256) returns (bool)",
+            ]),
+            functionName: "approve",
+            args: [vaultAddress as `0x${string}`, maxUint256],
+            account: userAddress as `0x${string}`,
           });
 
-      const requestRedeemGas = await publicClient.estimateContractGas({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "requestRedeem",
-        args: [
-          shares,
-          userAddress as `0x${string}`,
-          userAddress as `0x${string}`,
-        ],
-        account: userAddress as `0x${string}`,
-      });
-      const withdrawTx = await walletClient.writeContract({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "requestRedeem",
-        args: [
-          shares,
-          userAddress as `0x${string}`,
-          userAddress as `0x${string}`,
-        ],
-        chain: hyperliquid,
-        account: userAddress as `0x${string}`,
-        gas: (requestRedeemGas * 200n) / 100n,
-      });
+          const approveTx = await walletClient.writeContract({
+            address: assetAddress as `0x${string}`,
+            abi: parseAbi([
+              "function approve(address, uint256) returns (bool)",
+            ]),
+            functionName: "approve",
+            args: [vaultAddress as `0x${string}`, maxUint256],
+            chain: hyperliquid,
+            account: userAddress as `0x${string}`,
+            gas: (approveGas * 200n) / 100n,
+          });
+          await publicClient.waitForTransactionReceipt({ hash: approveTx });
+        }
 
-      setTransactionHash(withdrawTx);
+        // Use requestDeposit for ERC-7540 async deposits
+        const depositGas = await publicClient.estimateContractGas({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "requestDeposit",
+          args: [amountBigInt, userAddress as `0x${string}`],
+          account: userAddress as `0x${string}`,
+        });
 
-      await publicClient.waitForTransactionReceipt({ hash: withdrawTx });
+        const depositTx = await walletClient.writeContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "requestDeposit",
+          args: [amountBigInt, userAddress as `0x${string}`],
+          chain: hyperliquid,
+          account: userAddress as `0x${string}`,
+          gas: (depositGas * 200n) / 100n,
+        });
 
-      toast({
-        variant: "success",
-        title: "✅ Withdrawal Request Submitted",
-        description: `Successfully requested withdrawal of ${amount} ${vaultType}. You can claim your withdrawal once it's processed.`,
-      });
+        setTransactionHash(depositTx);
 
-      await refreshAllData();
+        await publicClient.waitForTransactionReceipt({ hash: depositTx });
 
-      return withdrawTx;
-    } catch (error) {
-      console.error("Withdrawal failed:", error);
+        toast({
+          variant: "success",
+          title: "✅ Deposit Request Submitted",
+          description: `Successfully requested deposit of ${amount} ${vaultType}. Your deposit will be processed in the next settlement.`,
+        });
 
-      toast({
-        variant: "destructive",
-        title: "❌ Withdrawal Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred during withdrawal.",
-      });
+        await refreshAllData();
 
-      throw error;
-    } finally {
-      setIsWithdrawTransacting(false);
-    }
-  }, [getWalletClient, userAddress, refreshAllData]);
+        return depositTx;
+      } catch (error) {
+        console.error("Deposit failed:", error);
 
-  const withdrawPendingDeposit = useCallback(async (vaultAddress: string) => {
-    const walletClient = await getWalletClient();
-    if (!walletClient || !userAddress) {
-      throw new Error("Wallet not connected");
-    }
+        toast({
+          variant: "destructive",
+          title: "❌ Deposit Failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred during deposit.",
+        });
 
-    try {
-      const chainSwitched = await switchToChain();
-      if (!chainSwitched) {
-        throw new Error("Failed to switch to Hyper EVM chain");
+        throw error;
+      } finally {
+        setIsDepositTransacting(false);
+      }
+    },
+    [getWalletClient, userAddress, refreshAllData]
+  );
+
+  const withdraw = useCallback(
+    async (vaultAddress: string, amount: string, vaultType: VaultType) => {
+      const walletClient = await getWalletClient();
+      if (!walletClient || !userAddress) {
+        throw new Error("Wallet not connected");
+      }
+      try {
+        const chainSwitched = await switchToChain();
+        if (!chainSwitched) {
+          throw new Error("Failed to switch to Hyper EVM chain");
+        }
+        setIsWithdrawTransacting(true);
+        setTransactionHash(null);
+
+        // Validate vault interface before proceeding
+        let assetAddress: `0x${string}`;
+        try {
+          assetAddress = (await publicClient.readContract({
+            address: vaultAddress as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "asset",
+          })) as `0x${string}`;
+        } catch (e) {
+          throw new Error(
+            "Invalid vault address - does not implement vault interface"
+          );
+        }
+        const assetDecimals = await publicClient.readContract({
+          address: assetAddress as `0x${string}`,
+          abi: parseAbi(["function decimals() view returns (uint8)"]),
+          functionName: "decimals",
+        });
+        const amountBigInt = parseUnits(
+          amount,
+          Number(assetDecimals as number)
+        );
+
+        // Get user's current share balance
+        const userShares = await publicClient.readContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "balanceOf",
+          args: [userAddress as `0x${string}`],
+        });
+
+        // Get user's current asset balance (deposits)
+        const userAssets = await publicClient.readContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "convertToAssets",
+          args: [userShares],
+        });
+
+        console.log("userShares", userShares);
+        console.log("userAssets", userAssets);
+
+        // For 100% withdrawals (or very close to it), use actual user shares to avoid precision issues
+        const isFullWithdrawal =
+          amountBigInt >= ((userAssets as bigint) * 99n) / 100n; // 99% threshold
+
+        const shares = isFullWithdrawal
+          ? userShares
+          : await publicClient.readContract({
+              address: vaultAddress as `0x${string}`,
+              abi: YieldAllocatorVaultABI,
+              functionName: "convertToShares",
+              args: [amountBigInt],
+            });
+
+        const requestRedeemGas = await publicClient.estimateContractGas({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "requestRedeem",
+          args: [
+            shares,
+            userAddress as `0x${string}`,
+            userAddress as `0x${string}`,
+          ],
+          account: userAddress as `0x${string}`,
+        });
+        const withdrawTx = await walletClient.writeContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "requestRedeem",
+          args: [
+            shares,
+            userAddress as `0x${string}`,
+            userAddress as `0x${string}`,
+          ],
+          chain: hyperliquid,
+          account: userAddress as `0x${string}`,
+          gas: (requestRedeemGas * 200n) / 100n,
+        });
+
+        setTransactionHash(withdrawTx);
+
+        await publicClient.waitForTransactionReceipt({ hash: withdrawTx });
+
+        toast({
+          variant: "success",
+          title: "✅ Withdrawal Request Submitted",
+          description: `Successfully requested withdrawal of ${amount} ${vaultType}. You can claim your withdrawal once it's processed.`,
+        });
+
+        await refreshAllData();
+
+        return withdrawTx;
+      } catch (error) {
+        console.error("Withdrawal failed:", error);
+
+        toast({
+          variant: "destructive",
+          title: "❌ Withdrawal Failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred during withdrawal.",
+        });
+
+        throw error;
+      } finally {
+        setIsWithdrawTransacting(false);
+      }
+    },
+    [getWalletClient, userAddress, refreshAllData]
+  );
+
+  const withdrawPendingDeposit = useCallback(
+    async (vaultAddress: string) => {
+      const walletClient = await getWalletClient();
+      if (!walletClient || !userAddress) {
+        throw new Error("Wallet not connected");
       }
 
-      setIsTransacting(true);
-      setTransactionHash(null);
+      try {
+        const chainSwitched = await switchToChain();
+        if (!chainSwitched) {
+          throw new Error("Failed to switch to Hyper EVM chain");
+        }
 
-      const withdrawTx = await walletClient.writeContract({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "withdrawPendingDeposit",
-        args: [userAddress as `0x${string}`],
-        chain: hyperliquid,
-        account: userAddress as `0x${string}`,
-      });
+        setIsTransacting(true);
+        setTransactionHash(null);
 
-      setTransactionHash(withdrawTx);
+        const withdrawTx = await walletClient.writeContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "withdrawPendingDeposit",
+          args: [userAddress as `0x${string}`],
+          chain: hyperliquid,
+          account: userAddress as `0x${string}`,
+        });
 
-      await publicClient.waitForTransactionReceipt({ hash: withdrawTx });
+        setTransactionHash(withdrawTx);
 
-      toast({
-        variant: "success",
-        title: "✅ Pending Deposit Withdrawn",
-        description: "Successfully withdrew your pending deposit.",
-      });
+        await publicClient.waitForTransactionReceipt({ hash: withdrawTx });
 
-      await refreshAllData();
+        toast({
+          variant: "success",
+          title: "✅ Pending Deposit Withdrawn",
+          description: "Successfully withdrew your pending deposit.",
+        });
 
-      return withdrawTx;
-    } catch (error) {
-      console.error("Withdraw pending deposit failed:", error);
+        await refreshAllData();
 
-      toast({
-        variant: "destructive",
-        title: "❌ Withdraw Pending Deposit Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred.",
-      });
+        return withdrawTx;
+      } catch (error) {
+        console.error("Withdraw pending deposit failed:", error);
 
-      throw error;
-    } finally {
-      setIsTransacting(false);
-    }
-  }, [getWalletClient, userAddress, refreshAllData]);
+        toast({
+          variant: "destructive",
+          title: "❌ Withdraw Pending Deposit Failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unexpected error occurred.",
+        });
+
+        throw error;
+      } finally {
+        setIsTransacting(false);
+      }
+    },
+    [getWalletClient, userAddress, refreshAllData]
+  );
 
   // Check withdrawal request function
-  const checkWithdrawalRequest = useCallback(async (vaultAddress: string) => {
-    if (!userAddress) return null;
+  const checkWithdrawalRequest = useCallback(
+    async (vaultAddress: string) => {
+      if (!userAddress) return null;
 
-    try {
-      const withdrawalRequest = await publicClient.readContract({
-        address: vaultAddress as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "withdrawalRequests",
-        args: [userAddress as `0x${string}`],
-      });
+      try {
+        const withdrawalRequest = await publicClient.readContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "withdrawalRequests",
+          args: [userAddress as `0x${string}`],
+        });
 
-      return withdrawalRequest;
-    } catch (error) {
-      console.error("Error checking withdrawal request:", error);
-      return null;
-    }
-  }, [userAddress]);
+        return withdrawalRequest;
+      } catch (error) {
+        console.error("Error checking withdrawal request:", error);
+        return null;
+      }
+    },
+    [userAddress]
+  );
 
   // Create individual vault hooks for backward compatibility
   const usdeVault = useMemo(
     () => ({
       ...vaultData.USDE,
       refreshData: refreshAllData,
-      deposit: (amount: string) => deposit(VAULTS.USDE.yieldAllocatorVaultAddress, amount, "USDE"),
-      withdraw: (amount: string) => withdraw(VAULTS.USDE.yieldAllocatorVaultAddress, amount, "USDE"),
-      withdrawPendingDeposit: () => withdrawPendingDeposit(VAULTS.USDE.yieldAllocatorVaultAddress),
-      checkWithdrawalRequest: () => checkWithdrawalRequest(VAULTS.USDE.yieldAllocatorVaultAddress),
-      isDepositTransacting,
-      isWithdrawTransacting,
-      transactionHash,
-    }),
-    [vaultData.USDE, refreshAllData, deposit, withdraw, withdrawPendingDeposit, checkWithdrawalRequest, isDepositTransacting, isWithdrawTransacting, transactionHash]
-  );
-  
-  const usdt0Vault = useMemo(
-    () => ({
-      // ...vaultData.USDT0,
-      // refreshData: refreshAllData,
-      // deposit: (amount: string) => deposit(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
-      // withdraw: (amount: string) => withdraw(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
-      // withdrawPendingDeposit: () => withdrawPendingDeposit(VAULTS.USDT0.yieldAllocatorVaultAddress),
-      // checkWithdrawalRequest: () => checkWithdrawalRequest(VAULTS.USDT0.yieldAllocatorVaultAddress),
+      deposit: (amount: string) =>
+        deposit(VAULTS.USDE.yieldAllocatorVaultAddress, amount, "USDE"),
+      withdraw: (amount: string) =>
+        withdraw(VAULTS.USDE.yieldAllocatorVaultAddress, amount, "USDE"),
+      withdrawPendingDeposit: () =>
+        withdrawPendingDeposit(VAULTS.USDE.yieldAllocatorVaultAddress),
+      checkWithdrawalRequest: () =>
+        checkWithdrawalRequest(VAULTS.USDE.yieldAllocatorVaultAddress),
       isDepositTransacting,
       isWithdrawTransacting,
       transactionHash,
     }),
     [
-      // vaultData.USDT0, 
-      refreshAllData, deposit, withdraw, withdrawPendingDeposit, checkWithdrawalRequest, isDepositTransacting, isWithdrawTransacting, transactionHash]
+      vaultData.USDE,
+      refreshAllData,
+      deposit,
+      withdraw,
+      withdrawPendingDeposit,
+      checkWithdrawalRequest,
+      isDepositTransacting,
+      isWithdrawTransacting,
+      transactionHash,
+    ]
   );
+
+  // const usdt0Vault = useMemo(
+  //   () => ({
+  //     ...vaultData.USDT0,
+  //     refreshData: refreshAllData,
+  //     deposit: (amount: string) => deposit(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
+  //     withdraw: (amount: string) => withdraw(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
+  //     withdrawPendingDeposit: () => withdrawPendingDeposit(VAULTS.USDT0.yieldAllocatorVaultAddress),
+  //     checkWithdrawalRequest: () => checkWithdrawalRequest(VAULTS.USDT0.yieldAllocatorVaultAddress),
+  //     isDepositTransacting,
+  //     isWithdrawTransacting,
+  //     transactionHash,
+  //   }),
+  //   [
+  //     vaultData.USDT0,
+  //     refreshAllData, deposit, withdraw, withdrawPendingDeposit, checkWithdrawalRequest, isDepositTransacting, isWithdrawTransacting, transactionHash]
+  // );
 
   return {
     vaultData,
@@ -672,6 +696,6 @@ export const useMultiVault = () => {
     transactionHash,
     // Individual vault access for backward compatibility
     usdeVault,
-    usdt0Vault,
+    // usdt0Vault,
   };
 };

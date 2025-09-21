@@ -2,27 +2,20 @@ import { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   Wallet,
-  TrendingUp,
-  DollarSign,
-  Search,
-  Bell,
-  User,
-  ChevronDown,
   LogIn,
   Copy,
   Check,
   Triangle,
-  CreditCard,
   LogOut,
   Upload,
   Menu,
 } from "lucide-react";
 import { Button } from '@/components/ui/button';
-import { usePrivy, useWallets, useLogin, useLogout } from '@privy-io/react-auth';
+import { usePrivy, useLogout } from '@privy-io/react-auth';
 import { formatAddress, switchToChain } from '@/lib/utils';
 import { AddressDisplay } from '@/components/shared/AddressDisplay';
-import { Address } from 'viem';
 import { ethers } from 'ethers';
+import { useActiveWallet } from '@/hooks/useActiveWallet';
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -31,23 +24,10 @@ interface NavbarProps {
 
 const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const location = useLocation();
-  const { login, authenticated, user, exportWallet } = usePrivy();
-  const { wallets } = useWallets();
+  const { login, authenticated, exportWallet } = usePrivy();
   const { logout } = useLogout();
 
-  // Get active wallet based on login method
-  const hasEmailLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "email"
-  );
-  const hasWalletLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "wallet"
-  );
-
-  const wallet = hasEmailLogin
-    ? wallets.find((w) => w.walletClientType === "privy")
-    : wallets.find((w) => w.walletClientType !== "privy");
-
-  const userAddress = wallet?.address as Address | undefined;
+  const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } = useActiveWallet();
 
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -71,7 +51,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const isWrongNetwork =
     authenticated &&
     wallet &&
-    wallet.walletClientType !== "privy" &&
+    !isPrivyWallet &&
     currentChainId !== "0x3e7";
 
   // Get chain label from chain ID
@@ -102,7 +82,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
 
   // Check network on wallet connection and listen for network changes
   useEffect(() => {
-    if (window.ethereum && wallet && wallet.walletClientType !== "privy") {
+    if (window.ethereum && wallet && !isPrivyWallet) {
       checkCurrentNetwork();
 
       // Listen for network changes using ethers.js
@@ -222,7 +202,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
             >
               <div className="relative group">
                 <img
-                  src="/logo.png"
+                  src="/logo.webp"
                   className="w-[45px] h-[45px] rounded-xl transition-all duration-300"
                 />
               </div>
@@ -325,7 +305,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
 
           <div className="space-y-3">
             {/* Network Status and Switch Button */}
-            {wallet && wallet.walletClientType !== "privy" && (
+            {wallet && !isPrivyWallet && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-libertinus text-muted-foreground">

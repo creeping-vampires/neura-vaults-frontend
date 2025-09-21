@@ -1,10 +1,11 @@
 import { useState, useCallback, useMemo } from 'react';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy } from '@privy-io/react-auth';
 import { useWalletClient } from 'wagmi';
 import { hyperliquid, publicClient } from '@/lib/privyConfig';
 import { WHITELIST_REGISTERY_ADDRESS } from "@/utils/constant";
 import WhitelistRegistryABI from "@/utils/abis/WhitelistRegistery.json";
 import { switchToChain } from "@/lib/utils";
+import { useActiveWallet } from '@/hooks/useActiveWallet';
 
 export const useWhitelist = () => {
   const { authenticated, user } = usePrivy();
@@ -14,31 +15,9 @@ export const useWhitelist = () => {
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { wallets } = useWallets();
-  // Get active wallet based on login method
-  const hasEmailLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "email"
-  );
-  const hasWalletLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "wallet"
-  );
-
-  // Prioritize embedded wallet for email login, external wallet for wallet login
-  const wallet = hasEmailLogin
-    ? wallets.find((w) => w.walletClientType === "privy")
-    : wallets.find((w) => w.walletClientType !== "privy");
-
-  const userAddress = wallet?.address;
+  const { wallet, userAddress, hasEmailLogin, hasWalletLogin } = useActiveWallet();
 
   const getWalletClient = async () => {
-    // Check user's login method to prioritize wallet type
-    const hasEmailLogin = user?.linkedAccounts?.some(
-      (account) => account.type === "email"
-    );
-    const hasWalletLogin = user?.linkedAccounts?.some(
-      (account) => account.type === "wallet"
-    );
-
     // If user logged in with email, prioritize embedded wallet (Privy)
     if (hasEmailLogin && wallet) {
       const provider = await wallet.getEthereumProvider();

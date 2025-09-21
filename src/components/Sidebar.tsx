@@ -48,7 +48,7 @@ const Sidebar = ({ isOpen = false, onClose, isMobile = false }: SidebarProps) =>
         <div className={`flex items-center transition-all duration-1000`}>
           <div className="relative group">
             <img
-              src="/logo.png"
+              src="/logo.webp"
               className="w-[52px] h-[52px] rounded-xl transition-all duration-300"
             />
           </div>
