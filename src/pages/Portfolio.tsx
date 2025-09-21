@@ -17,7 +17,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useMultiVault } from "@/hooks/useMultiVault";
+import { useMultiVault } from '@/hooks/useMultiVault';
+import { useActiveWallet } from '@/hooks/useActiveWallet';
 import { usePrice } from "@/hooks/usePrice";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import { getExplorerTxUrl } from "@/lib/utils";
@@ -82,14 +83,8 @@ const Portfolio = () => {
     return `$${value.toFixed(2)}`;
   };
 
-  const {
-    getAllVaults,
-    getTotalTVL,
-    getTotalUserDeposits,
-    usdeVault,
-    usdt0Vault,
-    refreshAllData,
-  } = useMultiVault();
+  const { getAllVaults, getTotalTVL, getTotalUserDeposits, refreshAllData } =
+    useMultiVault();
 
   const { priceData, getHighest7APY, get24APY, get7APY } = usePrice();
   const {
@@ -311,17 +306,8 @@ const Portfolio = () => {
     return generatePerformanceData(selectedTimeframe);
   }, [selectedTimeframe, portfolioData.totalDeposits]);
 
-  const { authenticated, login, ready, user } = usePrivy();
-  const { wallets } = useWallets();
-  const hasEmailLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "email"
-  );
-
-  const wallet = hasEmailLogin
-    ? wallets.find((w) => w.walletClientType === "privy")
-    : wallets.find((w) => w.walletClientType !== "privy");
-
-  const userAddress = wallet?.address;
+  const { authenticated, login } = usePrivy();
+  const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
 
   useEffect(() => {
     if (authenticated && userAddress) {

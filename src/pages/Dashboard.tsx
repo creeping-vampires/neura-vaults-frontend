@@ -10,31 +10,21 @@ import { parseAbi } from "viem";
 import { fetchHypeBalance } from "@/lib/utils";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { VAULTS, VAULT_TYPES, VaultType } from "@/utils/constant";
-import { useMultiVault } from "@/hooks/useMultiVault";
+import { useMultiVault } from '@/hooks/useMultiVault';
+import { useActiveWallet } from '@/hooks/useActiveWallet';
 import PythAttribution from "@/components/shared/PythAttribution";
 
 const Dashboard = () => {
   const {
     getAllVaults,
     getTotalTVL,
-    getTotalUserDeposits,
-    getAverageAPR,
     usdeVault,
-    usdt0Vault,
+    // usdt0Vault,
     refreshAllData,
   } = useMultiVault();
 
-  const { user, authenticated, login } = usePrivy();
-  const { wallets } = useWallets();
-  const hasEmailLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "email"
-  );
-
-  const wallet = hasEmailLogin
-    ? wallets.find((w) => w.walletClientType === "privy")
-    : wallets.find((w) => w.walletClientType !== "privy");
-
-  const userAddress = wallet?.address;
+  const { authenticated, login } = usePrivy();
+  const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
 
   const { get24APY, getHighest7APY } = usePrice();
 
@@ -56,52 +46,61 @@ const Dashboard = () => {
     refreshAllData();
   }, [fetchBalances]);
 
-  const dashboardData = useMemo(() => {
-    try {
-      const allVaults = getAllVaults();
+  const [dashboardData, setDashboardData] = useState({
+    tvl: 0,
+    currentAPY: 0,
+    interestEarned: 0,
+    totalSupply: 0,
+  });
 
-      // Calculate total TVL from vault data
-      const tvl = allVaults.reduce((sum, vault) => {
-        return sum + (vault.data?.tvl || 0);
-      }, 0);
+  useEffect(() => {
+    const calculateDashboardData = async () => {
+      try {
+        const allVaults = getAllVaults();
 
-      // Calculate weighted average APY
-      let totalWeightedAPY = 0;
-      let totalTVL = 0;
-      allVaults.forEach((vault) => {
-        const vaultTVL = vault.data?.tvl || 0;
-        const vaultAPY = vault.data?.currentNetAPR || 0;
-        totalWeightedAPY += vaultTVL * vaultAPY;
-        totalTVL += vaultTVL;
-      });
-      const weightedAverageAPY = totalTVL > 0 ? totalWeightedAPY / totalTVL : 0;
+        const tvl = await getTotalTVL();
 
-      // Calculate total interest earned across all vaults
-      const totalInterestEarned = allVaults.reduce((sum, vault) => {
-        return sum + (vault.data?.compoundedYield || 0);
-      }, 0);
+        // Calculate weighted average APY
+        let totalWeightedAPY = 0;
+        let totalTVL = 0;
+        allVaults.forEach((vault) => {
+          const vaultTVL = vault.data?.tvl || 0;
+          const vaultAPY = vault.data?.currentNetAPR || 0;
+          totalWeightedAPY += vaultTVL * vaultAPY;
+          totalTVL += vaultTVL;
+        });
+        const weightedAverageAPY =
+          totalTVL > 0 ? totalWeightedAPY / totalTVL : 0;
 
-      // Calculate total agent volume (total supply across all vaults)
-      const totalAgentVolume = allVaults.reduce((sum, vault) => {
-        return sum + (vault.data?.totalSupply || 0);
-      }, 0);
+        // Calculate total interest earned across all vaults
+        const totalInterestEarned = allVaults.reduce((sum, vault) => {
+          return sum + (vault.data?.compoundedYield || 0);
+        }, 0);
 
-      return {
-        tvl,
-        currentAPY: weightedAverageAPY,
-        interestEarned: totalInterestEarned,
-        totalSupply: totalAgentVolume,
-      };
-    } catch (error) {
-      console.error("Error calculating dashboard data:", error);
-      return {
-        tvl: 0,
-        currentAPY: 0,
-        interestEarned: 0,
-        totalSupply: 0,
-      };
-    }
-  }, [getAllVaults]);
+        // Calculate total agent volume (total supply across all vaults)
+        const totalAgentVolume = allVaults.reduce((sum, vault) => {
+          return sum + (vault.data?.totalSupply || 0);
+        }, 0);
+
+        setDashboardData({
+          tvl,
+          currentAPY: weightedAverageAPY,
+          interestEarned: totalInterestEarned,
+          totalSupply: totalAgentVolume,
+        });
+      } catch (error) {
+        console.error("Error calculating dashboard data:", error);
+        setDashboardData({
+          tvl: 0,
+          currentAPY: 0,
+          interestEarned: 0,
+          totalSupply: 0,
+        });
+      }
+    };
+
+    calculateDashboardData();
+  }, [getAllVaults, getTotalTVL]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen relative">

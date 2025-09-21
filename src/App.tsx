@@ -56,20 +56,20 @@ const Loader = () => (
   </div>
 );
 const AppRoutes = () => {
-  const { usdeVault, usdt0Vault } = useMultiVault();
+  const { usdeVault } = useMultiVault();
   const { isPriceLoading, priceError } = usePrice();
   const { authenticated } = usePrivy();
   const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
 
   const isLoading =
     usdeVault?.isLoading ||
-    usdt0Vault?.isLoading ||
+    // usdt0Vault?.isLoading ||
     isPriceLoading ||
     (authenticated && isTxLoading);
 
   const hasError = Boolean(
     usdeVault?.error ||
-      usdt0Vault?.error ||
+      // usdt0Vault?.error ||
       priceError ||
       (authenticated && txError)
   );

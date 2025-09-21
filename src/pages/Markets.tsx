@@ -31,68 +31,67 @@ interface MarketItem {
 const Markets = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [activeFilter, setActiveFilter] = useState("all");
+  // const [selectedCategory, setSelectedCategory] = useState("all");
+  // const [activeFilter, setActiveFilter] = useState("all");
 
   const {
     getAllVaults,
     getTotalTVL,
-    getAverageAPR,
-    usdeVault,
-    // usdt0Vault,
-    refreshAllData,
+    // getAverageAPR,
+    // usdeVault,
+    // refreshAllData,
   } = useMultiVault();
   const {
-    priceData,
-    isPriceLoading,
-    getAverageAPY,
-    getHighest24APY,
+    // priceData,
+    // isPriceLoading,
+    // getAverageAPY,
+    // getHighest24APY,
     getHighest7APY,
-    getVaultDataByToken,
+    // getVaultDataByToken,
     get24APY,
     get7APY,
   } = usePrice();
   const [loading, setLoading] = useState<boolean>(false);
-  const [txError, setTxError] = useState<string | null>(null);
-  const [assetSymbol, setAssetSymbol] = useState<string>("USDe");
-  const [assetDecimals, setAssetDecimals] = useState<number>(18);
+  // const [txError, setTxError] = useState<string | null>(null);
+  // const [assetSymbol, setAssetSymbol] = useState<string>("USDe");
+  // const [assetDecimals, setAssetDecimals] = useState<number>(18);
 
-  useEffect(() => {
-    const run = async () => {
-      try {
-        const assetAddress = await publicClient.readContract({
-          address: VAULTS.USDE.yieldAllocatorVaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI as any,
-          functionName: "asset",
-          args: [],
-        });
-        const [symbol, decimals] = await Promise.all([
-          publicClient
-            .readContract({
-              address: assetAddress as `0x${string}`,
-              abi: parseAbi(["function symbol() view returns (string)"]),
-              functionName: "symbol",
-            })
-            .catch(() => "ASSET"),
-          publicClient
-            .readContract({
-              address: assetAddress as `0x${string}`,
-              abi: parseAbi(["function decimals() view returns (uint8)"]),
-              functionName: "decimals",
-            })
-            .catch(() => 18),
-        ]);
-        setAssetSymbol(typeof symbol === "string" ? symbol : "ASSET");
-        setAssetDecimals(
-          typeof decimals === "number" ? decimals : Number(decimals)
-        );
-      } catch {
-        setAssetSymbol("USDe");
-        setAssetDecimals(18);
-      }
-    };
-    run();
-  }, []);
+  // useEffect(() => {
+  //   const run = async () => {
+  //     try {
+  //       const assetAddress = await publicClient.readContract({
+  //         address: VAULTS.USDE.yieldAllocatorVaultAddress as `0x${string}`,
+  //         abi: YieldAllocatorVaultABI as any,
+  //         functionName: "asset",
+  //         args: [],
+  //       });
+  //       const [symbol, decimals] = await Promise.all([
+  //         publicClient
+  //           .readContract({
+  //             address: assetAddress as `0x${string}`,
+  //             abi: parseAbi(["function symbol() view returns (string)"]),
+  //             functionName: "symbol",
+  //           })
+  //           .catch(() => "ASSET"),
+  //         publicClient
+  //           .readContract({
+  //             address: assetAddress as `0x${string}`,
+  //             abi: parseAbi(["function decimals() view returns (uint8)"]),
+  //             functionName: "decimals",
+  //           })
+  //           .catch(() => 18),
+  //       ]);
+  //       setAssetSymbol(typeof symbol === "string" ? symbol : "ASSET");
+  //       setAssetDecimals(
+  //         typeof decimals === "number" ? decimals : Number(decimals)
+  //       );
+  //     } catch {
+  //       setAssetSymbol("USDe");
+  //       setAssetDecimals(18);
+  //     }
+  //   };
+  //   run();
+  // }, []);
 
   const marketData: MarketItem[] = useMemo(() => {
     const allVaults = getAllVaults();
@@ -133,17 +132,22 @@ const Markets = () => {
     return matchesSearch;
   });
 
-  const totalDeposits = useMemo(() => {
-    try {
-      const allVaults = getAllVaults();
-      return allVaults.reduce((sum, vault) => {
-        return sum + (vault.data?.tvl || 0);
-      }, 0);
-    } catch (error) {
-      console.error("Error calculating total deposits:", error);
-      return 0;
-    }
-  }, [getAllVaults]);
+  const [totalDeposits, setTotalDeposits] = useState(0);
+
+  useEffect(() => {
+    const calculateTotalDeposits = async () => {
+      try {
+        // Use getTotalTVL function for accurate AUM calculation
+        const total = await getTotalTVL();
+        setTotalDeposits(total);
+      } catch (error) {
+        console.error("Error calculating total deposits:", error);
+        setTotalDeposits(0);
+      }
+    };
+
+    calculateTotalDeposits();
+  }, [getTotalTVL]);
 
   const handleVaultClick = (market: MarketItem) => {
     // Only allow clicking on USDe vault

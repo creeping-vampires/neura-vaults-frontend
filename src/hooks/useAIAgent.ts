@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useState, useCallback, useEffect } from "react";
+import { usePrivy } from "@privy-io/react-auth";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useWalletClient } from "wagmi";
 import { parseUnits, formatUnits, parseAbi } from "viem";
 import { hyperliquid, publicClient } from "@/lib/privyConfig";
@@ -8,7 +9,6 @@ import AIAgentABI from "@/utils/abis/AIAgent.json";
 import { switchToChain } from "@/lib/utils";
 
 export const useAIAgent = () => {
-  const { authenticated, user } = usePrivy();
   const { data: wagmiWalletClient } = useWalletClient();
 
   const [isExecuting, setIsExecuting] = useState(false);
@@ -19,31 +19,9 @@ export const useAIAgent = () => {
     error: null as string | null,
   });
 
-  const { wallets } = useWallets();
-  // Get active wallet based on login method
-  const hasEmailLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "email"
-  );
-  const hasWalletLogin = user?.linkedAccounts?.some(
-    (account) => account.type === "wallet"
-  );
-
-  // Prioritize embedded wallet for email login, external wallet for wallet login
-  const wallet = hasEmailLogin
-    ? wallets.find((w) => w.walletClientType === "privy")
-    : wallets.find((w) => w.walletClientType !== "privy");
-
-  const userAddress = wallet?.address;
+  const { hasEmailLogin, hasWalletLogin, wallet, userAddress, isPrivyWallet } = useActiveWallet();
 
   const getWalletClient = async () => {
-    // Check user's login method to prioritize wallet type
-    const hasEmailLogin = user?.linkedAccounts?.some(
-      (account) => account.type === "email"
-    );
-    const hasWalletLogin = user?.linkedAccounts?.some(
-      (account) => account.type === "wallet"
-    );
-
     // If user logged in with email, prioritize embedded wallet (Privy)
     if (hasEmailLogin && wallet) {
       const provider = await wallet.getEthereumProvider();
