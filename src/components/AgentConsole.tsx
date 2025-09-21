@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { agentService } from "@/services/agentService";
@@ -37,9 +37,17 @@ import { agentService } from "@/services/agentService";
     const [isOpen, setIsOpen] = useState(false);
     const [agentData, setAgentData] = useState<AgentData | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     // Only show on aiUSDe vault page - simplified check
     const isAiUSDeVault = location.pathname.includes("/vaults/");
+
+    // Function to scroll to bottom
+    const scrollToBottom = () => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      }
+    };
 
     const fetchAgentData = async () => {
       try {
@@ -113,6 +121,14 @@ import { agentService } from "@/services/agentService";
       }
     }, [isOpen, isAiUSDeVault]);
 
+    // Scroll to bottom when console opens or when data changes
+    useEffect(() => {
+      if (isOpen) {
+        // Small delay to ensure DOM is updated
+        setTimeout(scrollToBottom, 100);
+      }
+    }, [isOpen, agentData]);
+
     // Don't render if not on aiUSDe vault page
     if (!isAiUSDeVault) {
       return null;
@@ -165,7 +181,7 @@ import { agentService } from "@/services/agentService";
         <div className="fixed bottom-6 right-6 z-50">
           <button
             onClick={() => setIsOpen(true)}
-            className="bg-[#0A0A0A] border border-[#00D4AA] p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+            className="bg-[#0A0A0A] border border-primary p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110"
           >
             <NeuraLogo />
           </button>
@@ -195,7 +211,7 @@ import { agentService } from "@/services/agentService";
           </div>
 
           {/* Content */}
-          <div className="p-4">
+          <div ref={scrollContainerRef} className="pt-4 px-4 mb-4 max-h-[360px] overflow-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-[#A1A1A1] text-sm">

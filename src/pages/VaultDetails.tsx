@@ -694,7 +694,7 @@ const VaultDetails = () => {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
-                    Total Value Locked
+                    Total AUM in USD
                   </h3>
                   <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                 </div>
@@ -707,7 +707,9 @@ const VaultDetails = () => {
                 ) : (
                   <>
                     <p className="text-xl sm:text-2xl font-bold text-foreground">
-                      ${(vaultData?.tvl || 0).toLocaleString()}
+                      ${(vaultData?.tvl || 0).toLocaleString(undefined, {
+                        maximumFractionDigits: 4,
+                      })}
                     </p>
 
                     <PythAttribution variant="compact" className="mt-1" />
