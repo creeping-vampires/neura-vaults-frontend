@@ -16,6 +16,7 @@ import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
 import { parseAbi } from "viem";
+import PythAttribution from "@/components/shared/PythAttribution";
 
 interface MarketItem {
   address: `0x${string}`;
@@ -38,7 +39,7 @@ const Markets = () => {
     getTotalTVL,
     getAverageAPR,
     usdeVault,
-    usdt0Vault,
+    // usdt0Vault,
     refreshAllData,
   } = useMultiVault();
   const {
@@ -95,13 +96,33 @@ const Markets = () => {
 
   const marketData: MarketItem[] = useMemo(() => {
     const allVaults = getAllVaults();
-    return allVaults.map(({ type, config, data }) => ({
+    const vaultItems = allVaults.map(({ type, config, data }) => ({
       address: config.yieldAllocatorVaultAddress as `0x${string}`,
       depositAPY: data?.currentNetAPR || 0,
       totalDeposits: data?.tvl || 0,
       name: `ai${config.symbol}`,
       symbol: config.symbol,
+      status: config.symbol === "USDe" ? "active" : "coming-soon",
     }));
+
+    const usdt0Item: MarketItem = {
+      address: "0x0000000000000000000000000000000000000001" as `0x${string}`,
+      depositAPY: 0,
+      totalDeposits: 0,
+      name: "aiUSDT0",
+      symbol: "USDT0",
+      status: "coming-soon",
+    };
+    const hypeItem: MarketItem = {
+      address: "0x0000000000000000000000000000000000000000" as `0x${string}`,
+      depositAPY: 0,
+      totalDeposits: 0,
+      name: "aiHYPE",
+      symbol: "HYPE",
+      status: "coming-soon",
+    };
+
+    return [...vaultItems, usdt0Item, hypeItem];
   }, [getAllVaults]);
 
   const filteredMarkets = marketData.filter((market) => {
@@ -112,10 +133,23 @@ const Markets = () => {
     return matchesSearch;
   });
 
-  const totalDeposits = getTotalTVL();
+  const totalDeposits = useMemo(() => {
+    try {
+      const allVaults = getAllVaults();
+      return allVaults.reduce((sum, vault) => {
+        return sum + (vault.data?.tvl || 0);
+      }, 0);
+    } catch (error) {
+      console.error("Error calculating total deposits:", error);
+      return 0;
+    }
+  }, [getAllVaults]);
 
   const handleVaultClick = (market: MarketItem) => {
-    navigate(`/vaults/${market.address}`);
+    // Only allow clicking on USDe vault
+    if (market.symbol === "USDe" && market.status === "active") {
+      navigate(`/vaults/${market.address}`);
+    }
   };
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen">
@@ -135,6 +169,8 @@ const Markets = () => {
                 maximumFractionDigits: 2,
               })}
             </p>
+
+              <PythAttribution variant="compact" className="mt-2" />
           </CardContent>
         </Card>
 
@@ -147,14 +183,17 @@ const Markets = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-              {getHighest24APY().toFixed(2)}%
+              {get24APY("0x259Ae78e99405393bc398EeC9fc6d00c5b1694a9").toFixed(
+                2
+              )}
+              %
               <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                 <div className="font-medium text-muted-foreground">
                   7-Day APY
                 </div>
                 <div className="font-medium text-foreground">:</div>
                 <div className="font-medium ml-1 text-foreground">
-                  {getHighest7APY() ? `${getHighest7APY().toFixed(2)}%` : '-'}
+                  {getHighest7APY() ? `${getHighest7APY().toFixed(2)}%` : "-"}
                 </div>
                 <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
               </div>
@@ -171,10 +210,11 @@ const Markets = () => {
               <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <p className="text-xl sm:text-2xl font-bold text-foreground">
-              {
+              {/* {
                 marketData.filter((market) => market.status !== "Coming Soon")
                   .length
-              }
+              } */}
+              1
             </p>
           </CardContent>
         </Card>
@@ -237,17 +277,30 @@ const Markets = () => {
                 </thead>
                 <tbody>
                   {filteredMarkets.map((market, i) => {
+                    const isClickable =
+                      market.symbol === "USDe" && market.status === "active";
+                    const isComingSoon = market.status === "coming-soon";
                     return (
                       <tr
                         key={market.address}
-                        className={`border-b border-border hover:bg-accent/30 cursor-pointer`}
+                        className={`border-b border-border ${
+                          isClickable
+                            ? "hover:bg-accent/30 cursor-pointer"
+                            : isComingSoon
+                            ? "opacity-60 cursor-not-allowed"
+                            : "cursor-default"
+                        }`}
                         onClick={() => handleVaultClick(market)}
                       >
                         <td className="py-4">
                           <div className="flex items-center">
                             <div>
                               <div
-                                className={`font-medium text-muted-foreground`}
+                                className={`font-medium ${
+                                  isClickable
+                                    ? "text-muted-foreground"
+                                    : "text-muted-foreground/70"
+                                }`}
                               >
                                 {market.name}
                               </div>
@@ -258,7 +311,11 @@ const Markets = () => {
                           <div className="flex items-center">
                             <div>
                               <div
-                                className={`font-medium text-muted-foreground`}
+                                className={`font-medium ${
+                                  isClickable
+                                    ? "text-muted-foreground"
+                                    : "text-muted-foreground/70"
+                                }`}
                               >
                                 {market.symbol}
                               </div>
@@ -266,41 +323,72 @@ const Markets = () => {
                           </div>
                         </td>
                         <td className="text-center py-4">
-                          $
-                          {market.totalDeposits.toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })}
+                          {isComingSoon ? (
+                            <span className={isClickable ? "" : "opacity-70"}>
+                              $0
+                            </span>
+                          ) : (
+                            <span className={isClickable ? "" : "opacity-70"}>
+                              $
+                              {market.totalDeposits.toLocaleString(undefined, {
+                                maximumFractionDigits: 2,
+                              })}
+                            </span>
+                          )}
                         </td>
-                        <td className="text-primary font-semibold py-6 flex items-center justify-center gap-1 relative group">
-                          {get24APY(market.symbol).toFixed(2)}%
-                          <div className="flex items-center gap-1 absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                            <div className="font-medium text-muted-foreground">
-                              7-Day APY
+                        <td
+                          className={`text-primary font-semibold py-6 flex items-center justify-center gap-1 relative group ${
+                            isClickable ? "" : "opacity-70"
+                          }`}
+                        >
+                          {isComingSoon
+                            ? "0"
+                            : get24APY(market.symbol).toFixed(2)}
+                          %
+                          {!isComingSoon && (
+                            <div className="flex items-center gap-1 absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                              <div className="font-medium text-muted-foreground">
+                                7-Day APY
+                              </div>
+                              <div className="font-medium text-foreground">
+                                :
+                              </div>
+                              <div className="font-medium ml-1 text-foreground">
+                                {get7APY(market.symbol)
+                                  ? get7APY(market.symbol).toFixed(2)
+                                  : "-"}
+                              </div>
+                              <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                             </div>
-                            <div className="font-medium text-foreground">:</div>
-                            <div className="font-medium ml-1 text-foreground">
-                              {get7APY(market.symbol) ? get7APY(market.symbol).toFixed(2) : "-"}
-                            </div>
-                            <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
-                          </div>
+                          )}
                         </td>
                         <td className="text-center py-4">
-                          <div className="flex items-center justify-center gap-1">
-                            {["hypurrfi", "hyperlend", "felix"].map(
-                              (reward, idx) => (
-                                <div key={idx} className="relative group">
-                                  <img
-                                    src={`/pools/${reward}.svg`}
-                                    alt={reward}
-                                    className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
-                                  />
-                                  <div className="absolute border border-white/30 top-8 uppercase left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                    {reward}
+                          {isComingSoon ? (
+                            <span className="text-xs bg-primary/20 text-primary border border-primary px-2 py-1 rounded-full font-medium mt-1 inline-block">
+                              Coming Soon
+                            </span>
+                          ) : (
+                            <div
+                              className={`flex items-center justify-center gap-1 ${
+                                isClickable ? "" : "opacity-70"
+                              }`}
+                            >
+                              {["hypurrfi", "hyperlend", "felix"].map(
+                                (reward, idx) => (
+                                  <div key={idx} className="relative group">
+                                    <img
+                                      src={`/pools/${reward}.svg`}
+                                      alt={reward}
+                                      className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                    />
+                                    <div className="absolute border border-white/30 top-8 uppercase left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                      {reward}
+                                    </div>
                                   </div>
-                                </div>
-                              )
-                            )}
-                          </div>
+                                )
+                              )}
+                            </div>
+                          )}
                         </td>
                         {/* <td className="text-right sm:w-28">
                           {isComingSoon && (

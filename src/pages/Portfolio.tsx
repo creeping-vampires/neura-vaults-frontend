@@ -91,8 +91,7 @@ const Portfolio = () => {
     refreshAllData,
   } = useMultiVault();
 
-  const { priceData, getHighest24APY, getHighest7APY, get24APY, get7APY } =
-    usePrice();
+  const { priceData, getHighest7APY, get24APY, get7APY } = usePrice();
   const {
     transactions,
     isLoading: isLoadingTransactions,
@@ -123,16 +122,44 @@ const Portfolio = () => {
   //   }
   // }, [activeTab, hasFetched, refreshHistory]);
 
-  const portfolioData = {
-    totalBalance: getTotalTVL(),
-    totalDeposits: getTotalUserDeposits(),
-    totalEarnings: getAllVaults().reduce((sum, vault) => {
-      return sum + (vault.data?.compoundedYield || 0);
-    }, 0),
-    currentAPY: priceData.currentNetAPR || 0,
+  const [portfolioData, setPortfolioData] = useState({
+    totalBalance: 0,
+    totalDeposits: 0,
+    totalEarnings: 0,
+    currentAPY: 0,
     change24h: 0,
     change7d: 0,
-  };
+  });
+
+  useEffect(() => {
+    const calculatePortfolioData = async () => {
+      try {
+        const totalBalance = await getTotalTVL();
+        const totalDeposits = getTotalUserDeposits();
+        const totalEarnings = getAllVaults().reduce((sum, vault) => {
+          return sum + (vault.data?.compoundedYield || 0);
+        }, 0);
+
+        setPortfolioData({
+          totalBalance,
+          totalDeposits,
+          totalEarnings,
+          currentAPY: priceData.currentNetAPR || 0,
+          change24h: 0,
+          change7d: 0,
+        });
+      } catch (error) {
+        console.error("Error calculating portfolio data:", error);
+      }
+    };
+
+    calculatePortfolioData();
+  }, [
+    getTotalTVL,
+    getTotalUserDeposits,
+    getAllVaults,
+    priceData.currentNetAPR,
+  ]);
 
   const positions = useMemo(() => {
     const allVaults = getAllVaults();
@@ -506,7 +533,10 @@ const Portfolio = () => {
               <div className="flex flex-col items-center">
                 <div className="text-muted-foreground text-xs">Current APY</div>
                 <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
-                  {getHighest24APY().toFixed(2)}%
+                  {get24APY(
+                    "0x259Ae78e99405393bc398EeC9fc6d00c5b1694a9"
+                  ).toFixed(2)}
+                  %
                   <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                     <div className="font-medium text-muted-foreground">
                       7-Day APY
