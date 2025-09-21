@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Inter:ital,wght@0,100..900;1,100..900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+*:focus {
+  outline: none;
+
+}
+
+@layer base {
+  :root {
+    /* Dark Background #0A0A0A */
+    --background: 0 0% 0%;
+    /* Light Gray Primary Text #FAFAFA */
+    --foreground: 0 0% 98%;
+
+    /* Dark Card Background #1A1A1A */
+    --card: 0 0% 10%;
+    /* Light Gray Text #FAFAFA */
+    --card-foreground: 0 0% 98%;
+
+    /* Dark Popover #1A1A1A */
+    --popover: 0 0% 10%;
+    /* Light Gray Text #FAFAFA */
+    --popover-foreground: 0 0% 98%;
+
+    /* Bright Teal Primary Accent #00D4AA */
+    --primary: 174 100% 42%;
+    --primary-foreground: 0 0% 4%;
+
+    /* Dark Gray for secondary elements #262626 */
+    --secondary: 0 2% 10%;
+    /* Light Gray #FAFAFA */
+    --secondary-foreground: 0 0% 98%;
+
+    /* Dark Gray muted background #262626 */
+    --muted: 0 0% 15%;
+    /* Medium Gray Secondary Text #A1A1A1 */
+    --muted-foreground: 0 0% 63%;
+
+    /* Dark Gray accent #262626 */
+    --accent: 0 0% 15%;
+    /* Light Gray #FAFAFA */
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Dark Gray Divider/Stroke #404040 */
+    --border: 0 2% 10%;
+    /* Dark Gray Input Border #404040 */
+    --input: 0 2% 10%;
+    --ring: 174 100% 42%;
+
+    --radius: 0.5rem;
+
+    /* Bright Coral Highlight Accent #FF8A80 */
+    --highlight: 8 100% 75%;
+    --highlight-foreground: 0 0% 4%;
+
+    /* Teal Gradient Colors */
+    --gradient-start: 174 100% 42%; /* #00D4AA */
+    --gradient-end: 174 100% 38%;   /* #00C299 */
+
+    /* Dark Sidebar #0F0F0F */
+    --sidebar-background: 0 0% 6%;
+    /* Light Gray Sidebar Text #FAFAFA */
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 174 100% 42%;
+    --sidebar-primary-foreground: 0 0% 4%;
+    /* Dark Gray Sidebar Accent #262626 */
+    --sidebar-accent: 0 0% 15%;
+    /* Light Gray #FAFAFA */
+    --sidebar-accent-foreground: 0 0% 98%;
+    /* Dark Gray Sidebar Border #404040 */
+    --sidebar-border: 0 0% 25%;
+    --sidebar-ring: 174 100% 42%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: #525252 transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: #525252;
+    border-radius: 3px;
+    transition: background-color 0.2s ease;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: #737373;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Font declarations - Applied after Tailwind to ensure proper override */
+html,
+body,
+* {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Ensure all text elements use Inter */
+h1, h2, h3, h4, h5, h6,
+p, span, div, a, button,
+input, textarea, select,
+label, li, td, th {
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif !important;
+}
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
