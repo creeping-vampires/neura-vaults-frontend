@@ -42,6 +42,7 @@ import {
   fetchVaultActivities,
   VaultActivity,
 } from "@/services/vaultActivityService";
+import PythAttribution from "@/components/shared/PythAttribution";
 
 const chartConfig = {
   value: {
@@ -126,20 +127,23 @@ const VaultDetails = () => {
     : { type: "USDE" as VaultType, config: VAULTS.USDE };
 
   const multiVaultData = useMultiVault();
-  
+
   // Get the specific vault data based on vaultId
   const getVaultDataByAddress = (address: string) => {
     if (address === VAULTS.USDE.yieldAllocatorVaultAddress) {
       return multiVaultData.usdeVault;
-    } else if (address === VAULTS.USDT0.yieldAllocatorVaultAddress) {
-      return multiVaultData.usdt0Vault;
     }
+    // else if (address === VAULTS.USDT0.yieldAllocatorVaultAddress) {
+    //   return multiVaultData.usdt0Vault;
+    // }
     // Default to USDE vault if address not found
     return multiVaultData.usdeVault;
   };
-  
-  const vaultDataObject = vaultId ? getVaultDataByAddress(vaultId) : multiVaultData.usdeVault;
-  
+
+  const vaultDataObject = vaultId
+    ? getVaultDataByAddress(vaultId)
+    : multiVaultData.usdeVault;
+
   const {
     deposit,
     withdraw,
@@ -241,7 +245,6 @@ const VaultDetails = () => {
     );
 
     relevantTokenData.forEach((tokenData) => {
-
       const tokenTransformed = tokenData.data
         ?.map((point) => {
           const tsRaw = point.timestamp as number | string;
@@ -474,12 +477,12 @@ const VaultDetails = () => {
     const fetchWhitelistedPools = async () => {
       try {
         const pools = await getWhitelistedPools();
-        const filteredPools = pools.filter((pool, i) =>
-          vaultConfig.config.symbol === "USDT0"
-            ? i !== 2
-            : i !== pools.length - 1
-        );
-        setWhitelistedPools(filteredPools);
+        // const filteredPools = pools.filter((pool, i) =>
+        //   vaultConfig.config.symbol === "USDT0"
+        //     ? i !== 2
+        //     : i !== pools.length - 1
+        // );
+        setWhitelistedPools(pools);
       } catch (error) {
         console.error("Error fetching whitelisted pools:", error);
       }
@@ -706,6 +709,8 @@ const VaultDetails = () => {
                     <p className="text-xl sm:text-2xl font-bold text-foreground">
                       ${(vaultData?.tvl || 0).toLocaleString()}
                     </p>
+
+                    <PythAttribution variant="compact" className="mt-1" />
                     <div className="flex items-center mt-1">
                       <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
                       <span className="text-primary text-xs sm:text-sm font-medium">

@@ -11,6 +11,7 @@ import { fetchHypeBalance } from "@/lib/utils";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { VAULTS, VAULT_TYPES, VaultType } from "@/utils/constant";
 import { useMultiVault } from "@/hooks/useMultiVault";
+import PythAttribution from "@/components/shared/PythAttribution";
 
 const Dashboard = () => {
   const {
@@ -19,7 +20,8 @@ const Dashboard = () => {
     getTotalUserDeposits,
     getAverageAPR,
     usdeVault,
-    usdt0Vault,refreshAllData
+    usdt0Vault,
+    refreshAllData,
   } = useMultiVault();
 
   const { user, authenticated, login } = usePrivy();
@@ -34,7 +36,7 @@ const Dashboard = () => {
 
   const userAddress = wallet?.address;
 
-  const { getHighest24APY, getHighest7APY } = usePrice();
+  const { get24APY, getHighest7APY } = usePrice();
 
   const [hypeBalance, setHypeBalance] = useState<number>(0);
 
@@ -51,31 +53,55 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchBalances();
-    refreshAllData()
+    refreshAllData();
   }, [fetchBalances]);
 
   const dashboardData = useMemo(() => {
-    const tvl = getTotalTVL();
-    const weightedAverageAPY = getAverageAPR();
+    try {
+      const allVaults = getAllVaults();
 
-    // Calculate total interest earned across all vaults
-    const allVaults = getAllVaults();
-    const totalInterestEarned = allVaults.reduce((sum, vault) => {
-      return sum + (vault.data?.compoundedYield || 0);
-    }, 0);
+      // Calculate total TVL from vault data
+      const tvl = allVaults.reduce((sum, vault) => {
+        return sum + (vault.data?.tvl || 0);
+      }, 0);
 
-    // Calculate total agent volume (total supply across all vaults)
-    const totalAgentVolume = allVaults.reduce((sum, vault) => {
-      return sum + (vault.data?.totalSupply || 0);
-    }, 0);
+      // Calculate weighted average APY
+      let totalWeightedAPY = 0;
+      let totalTVL = 0;
+      allVaults.forEach((vault) => {
+        const vaultTVL = vault.data?.tvl || 0;
+        const vaultAPY = vault.data?.currentNetAPR || 0;
+        totalWeightedAPY += vaultTVL * vaultAPY;
+        totalTVL += vaultTVL;
+      });
+      const weightedAverageAPY = totalTVL > 0 ? totalWeightedAPY / totalTVL : 0;
 
-    return {
-      tvl,
-      currentAPY: weightedAverageAPY,
-      interestEarned: totalInterestEarned,
-      totalSupply: totalAgentVolume,
-    };
-  }, [getTotalTVL, getTotalUserDeposits, getAverageAPR, getAllVaults]);
+      // Calculate total interest earned across all vaults
+      const totalInterestEarned = allVaults.reduce((sum, vault) => {
+        return sum + (vault.data?.compoundedYield || 0);
+      }, 0);
+
+      // Calculate total agent volume (total supply across all vaults)
+      const totalAgentVolume = allVaults.reduce((sum, vault) => {
+        return sum + (vault.data?.totalSupply || 0);
+      }, 0);
+
+      return {
+        tvl,
+        currentAPY: weightedAverageAPY,
+        interestEarned: totalInterestEarned,
+        totalSupply: totalAgentVolume,
+      };
+    } catch (error) {
+      console.error("Error calculating dashboard data:", error);
+      return {
+        tvl: 0,
+        currentAPY: 0,
+        interestEarned: 0,
+        totalSupply: 0,
+      };
+    }
+  }, [getAllVaults]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen relative">
@@ -99,6 +125,8 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
+
+          <PythAttribution variant="compact" className="mt-2" />
           </CardContent>
         </Card>
 
@@ -132,7 +160,10 @@ const Dashboard = () => {
             </div>
             <div className="space-y-1 sm:space-y-2">
               <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-                {getHighest24APY().toFixed(2)}%
+                {get24APY("0x259Ae78e99405393bc398EeC9fc6d00c5b1694a9").toFixed(
+                  2
+                )}
+                %
                 <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                   <div className="font-medium text-muted-foreground">
                     7-Day APY
@@ -195,7 +226,7 @@ const Dashboard = () => {
                   </p>
                 </div>
 
-                <div className="w-full p-3 sm:p-4 rounded-xl border border-border">
+                {/* <div className="w-full p-3 sm:p-4 rounded-xl border border-border">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                       USDT0 Balance
@@ -210,7 +241,7 @@ const Dashboard = () => {
                   <p className="text-foreground font-bold text-xl sm:text-2xl">
                     {usdt0Vault?.assetBalance?.toFixed(4) || "0.0000"} USDT0
                   </p>
-                </div>
+                </div> */}
 
                 <div className="w-full p-3 sm:p-4 rounded-xl border border-border">
                   <div className="flex items-center justify-between mb-2">

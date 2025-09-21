@@ -234,11 +234,40 @@ export const useMultiVault = () => {
     }));
   }, [vaultData]);
 
-  const getTotalTVL = useCallback(() => {
-    return Object.values(vaultData).reduce((total, vault) => {
-      return total + (vault?.tvl || 0);
-    }, 0);
-  }, [vaultData]);
+  const getTotalTVL = useCallback(async () => {
+    if (!publicClient) return 0;
+
+    try {
+      // Get total AUM in USD from all vaults using totalAumUsd function
+      const totalAumPromises = VAULT_TYPES.map(async (vaultType) => {
+        const vaultAddress = VAULTS[vaultType].yieldAllocatorVaultAddress;
+        try {
+          const totalAumUsd = await publicClient.readContract({
+            address: vaultAddress as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "totalAumUsd",
+            args: [BigInt(3600)], // maxPriceAge: 1 hour (3600 seconds)
+          });
+          
+          // Convert from 1e18 to regular number
+          return Number(formatUnits(totalAumUsd as bigint, 18));
+        } catch (error) {
+          console.warn(`Failed to get totalAumUsd for ${vaultType}:`, error);
+          // Fallback to individual vault TVL if totalAumUsd fails
+          return vaultData[vaultType]?.tvl || 0;
+        }
+      });
+
+      const totalAumValues = await Promise.all(totalAumPromises);
+      return totalAumValues.reduce((total, aum) => total + aum, 0);
+    } catch (error) {
+      console.error("Error getting total TVL from totalAumUsd:", error);
+      // Fallback to original calculation if everything fails
+      return Object.values(vaultData).reduce((total, vault) => {
+        return total + (vault?.tvl || 0);
+      }, 0);
+    }
+  }, [vaultData, publicClient]);
 
   const getTotalUserDeposits = useCallback(() => {
     return Object.values(vaultData).reduce((total, vault) => {
@@ -246,7 +275,7 @@ export const useMultiVault = () => {
     }, 0);
   }, [vaultData]);
 
-  const getAverageAPR = useCallback(() => {
+  const getAverageAPR = useCallback(async () => {
     const vaults = Object.values(vaultData).filter((vault) => vault?.tvl > 0);
     if (vaults.length === 0) return 0;
 
@@ -256,7 +285,7 @@ export const useMultiVault = () => {
       return sum + apr * tvl;
     }, 0);
 
-    const totalTVL = getTotalTVL();
+    const totalTVL = await getTotalTVL();
     return totalTVL > 0 ? totalWeightedAPR / totalTVL : 0;
   }, [vaultData, getTotalTVL]);
 
@@ -606,17 +635,19 @@ export const useMultiVault = () => {
   
   const usdt0Vault = useMemo(
     () => ({
-      ...vaultData.USDT0,
-      refreshData: refreshAllData,
-      deposit: (amount: string) => deposit(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
-      withdraw: (amount: string) => withdraw(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
-      withdrawPendingDeposit: () => withdrawPendingDeposit(VAULTS.USDT0.yieldAllocatorVaultAddress),
-      checkWithdrawalRequest: () => checkWithdrawalRequest(VAULTS.USDT0.yieldAllocatorVaultAddress),
+      // ...vaultData.USDT0,
+      // refreshData: refreshAllData,
+      // deposit: (amount: string) => deposit(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
+      // withdraw: (amount: string) => withdraw(VAULTS.USDT0.yieldAllocatorVaultAddress, amount, "USDT0"),
+      // withdrawPendingDeposit: () => withdrawPendingDeposit(VAULTS.USDT0.yieldAllocatorVaultAddress),
+      // checkWithdrawalRequest: () => checkWithdrawalRequest(VAULTS.USDT0.yieldAllocatorVaultAddress),
       isDepositTransacting,
       isWithdrawTransacting,
       transactionHash,
     }),
-    [vaultData.USDT0, refreshAllData, deposit, withdraw, withdrawPendingDeposit, checkWithdrawalRequest, isDepositTransacting, isWithdrawTransacting, transactionHash]
+    [
+      // vaultData.USDT0, 
+      refreshAllData, deposit, withdraw, withdrawPendingDeposit, checkWithdrawalRequest, isDepositTransacting, isWithdrawTransacting, transactionHash]
   );
 
   return {
