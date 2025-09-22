@@ -159,9 +159,7 @@ const Dashboard = () => {
             </div>
             <div className="space-y-1 sm:space-y-2">
               <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-                {get24APY("0x259Ae78e99405393bc398EeC9fc6d00c5b1694a9").toFixed(
-                  2
-                )}
+                12.75
                 %
                 <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                   <div className="font-medium text-muted-foreground">

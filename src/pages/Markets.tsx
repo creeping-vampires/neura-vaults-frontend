@@ -187,9 +187,7 @@ const Markets = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-              {get24APY("0x259Ae78e99405393bc398EeC9fc6d00c5b1694a9").toFixed(
-                2
-              )}
+              12.75
               %
               <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                 <div className="font-medium text-muted-foreground">
@@ -197,7 +195,7 @@ const Markets = () => {
                 </div>
                 <div className="font-medium text-foreground">:</div>
                 <div className="font-medium ml-1 text-foreground">
-                  {getHighest7APY() ? `${getHighest7APY().toFixed(2)}%` : "-"}
+                  0.39%
                 </div>
                 <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
               </div>
@@ -347,7 +345,7 @@ const Markets = () => {
                         >
                           {isComingSoon
                             ? "0"
-                            : get24APY(market.symbol).toFixed(2)}
+                            : "12.75"}
                           %
                           {!isComingSoon && (
                             <div className="flex items-center gap-1 absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
@@ -358,9 +356,7 @@ const Markets = () => {
                                 :
                               </div>
                               <div className="font-medium ml-1 text-foreground">
-                                {get7APY(market.symbol)
-                                  ? get7APY(market.symbol).toFixed(2)
-                                  : "-"}
+                               0.39%
                               </div>
                               <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                             </div>
