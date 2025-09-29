@@ -45,6 +45,7 @@ import { Input } from "@/components/ui/input";
 import { explorerUrl, VAULTS, VaultType } from "@/utils/constant";
 import AgentConsole from "@/components/AgentConsole";
 import PythAttribution from "@/components/shared/PythAttribution";
+import AccessCodeModal from "@/components/AccessCodeModal";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 
@@ -293,6 +294,7 @@ const VaultDetails = () => {
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [inputAmount, setInputAmount] = useState<string>("");
   const [whitelistedPools, setWhitelistedPools] = useState<string[]>([]);
+  const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
 
   // Pending transactions state
   interface PendingTransaction {
@@ -602,7 +604,8 @@ const VaultDetails = () => {
 
     try {
       if (activeTab === "deposit") {
-        await handleDeposit(inputAmount);
+        // Show access code modal for deposits
+        setShowAccessCodeModal(true);
       } else {
         await handleWithdraw(inputAmount);
       }
@@ -1433,6 +1436,17 @@ const VaultDetails = () => {
       </div>
 
       <AgentConsole vaultId={vaultId} currentVault={currentVault} />
+      
+      <AccessCodeModal
+        isOpen={showAccessCodeModal}
+        onClose={() => setShowAccessCodeModal(false)}
+        onSubmit={async (code) => {
+          // For now, just proceed with the deposit
+          // In the future, this would validate the access code with the backend
+          setShowAccessCodeModal(false);
+          await handleDeposit(inputAmount);
+        }}
+      />
     </div>
   );
 };
