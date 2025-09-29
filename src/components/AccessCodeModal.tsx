@@ -81,7 +81,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
             <div className="space-y-2">
               <Input
                 type="text"
-                placeholder="ACCESS CODE"
+                placeholder="CODE"
                 value={code}
                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                 className="h-12 text-center text-lg font-mono tracking-widest bg-muted/30 border-borderfocus:border-primary focus:bg-muted/70 transition-all duration-200"

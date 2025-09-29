@@ -26,6 +26,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Markets = lazy(() => import("./pages/Markets"));
 const Portfolio = lazy(() => import("./pages/Portfolio"));
 const VaultDetails = lazy(() => import("./pages/VaultDetails"));
+const Admin = lazy(() => import("./pages/Admin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +87,7 @@ const AppRoutes = () => {
           <Route path="/markets" element={<Markets />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/vaults/:vaultId" element={<VaultDetails />} />
+          <Route path="/admin" element={<Admin />} />
         </Routes>
       </AppContainer>
     </Suspense>

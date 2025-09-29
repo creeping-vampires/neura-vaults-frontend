@@ -9,6 +9,7 @@ import {
   BarChart3,
   Bot,
   User,
+  Shield,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,6 +27,7 @@ const Sidebar = ({ isOpen = false, onClose, isMobile = false }: SidebarProps) =>
     { icon: Home, path: '/', tooltip: 'Dashboard' },
     { icon: BarChart3, path: '/markets', tooltip: 'Vaults' },
     { icon: Target, path: '/portfolio', tooltip: 'Portfolio' },
+    { icon: Shield, path: '/admin', tooltip: 'Admin' },
     // { icon: HelpCircle, path: '/help', tooltip: 'How it works' }
   ];
 
