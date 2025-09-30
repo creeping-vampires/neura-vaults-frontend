@@ -24,6 +24,8 @@ import {
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useWhitelist } from "@/hooks/useWhitelist";
 import { usePrice } from "@/hooks/usePrice";
+import { usePrivy } from "@privy-io/react-auth";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { getExplorerTxUrl, formatAddress } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -133,6 +135,9 @@ const VaultDetails = () => {
 
   const multiVaultData = useMultiVault();
   const { getTotalTVL } = multiVaultData;
+
+  const { authenticated, login } = usePrivy();
+  const { hasAccess } = useUserAccess();
 
   const [totalAUM, setTotalAUM] = useState(0);
 
@@ -604,8 +609,19 @@ const VaultDetails = () => {
 
     try {
       if (activeTab === "deposit") {
-        // Show access code modal for deposits
-        setShowAccessCodeModal(true);
+        // Check authentication and access for deposits
+        if (!authenticated) {
+          // Show login if not authenticated
+          login();
+          return;
+        } else if (!hasAccess) {
+          // Show access modal if authenticated but no access
+          setShowAccessCodeModal(true);
+          return;
+        } else {
+          // Proceed with deposit if authenticated and has access
+          await handleDeposit(inputAmount);
+        }
       } else {
         await handleWithdraw(inputAmount);
       }
@@ -1436,16 +1452,11 @@ const VaultDetails = () => {
       </div>
 
       <AgentConsole vaultId={vaultId} currentVault={currentVault} />
-      
+
       <AccessCodeModal
         isOpen={showAccessCodeModal}
         onClose={() => setShowAccessCodeModal(false)}
-        onSubmit={async (code) => {
-          // For now, just proceed with the deposit
-          // In the future, this would validate the access code with the backend
-          setShowAccessCodeModal(false);
-          await handleDeposit(inputAmount);
-        }}
+        hasAccess={hasAccess}
       />
     </div>
   );

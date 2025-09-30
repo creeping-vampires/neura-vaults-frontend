@@ -17,7 +17,9 @@ import { formatAddress, switchToChain } from "@/lib/utils";
 import { AddressDisplay } from "@/components/shared/AddressDisplay";
 import { ethers } from "ethers";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
+import { useToast } from "@/hooks/use-toast";
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -28,9 +30,12 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const location = useLocation();
   const { login, authenticated, exportWallet } = usePrivy();
   const { logout } = useLogout();
+  const { toast } = useToast();
 
   const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } =
     useActiveWallet();
+
+  const { hasAccess } = useUserAccess();
 
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -248,16 +253,18 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
             <div className="flex items-center space-x-3">
               {authenticated ? (
                 <>
-                  <Button
-                    onClick={() => setShowAccessCodeModal(true)}
-                    variant="outline"
-                    className="space-x-2"
-                  >
-                    <Key className="h-4 w-4" />
-                    <span className="font-medium font-libertinus">
-                      Get Access
-                    </span>
-                  </Button>
+                  {!hasAccess && (
+                    <Button
+                      onClick={() => setShowAccessCodeModal(true)}
+                      variant="outline"
+                      className="space-x-2"
+                    >
+                      <Key className="h-4 w-4" />
+                      <span className="font-medium font-libertinus">
+                        Get Access
+                      </span>
+                    </Button>
+                  )}
 
                   <Button
                     ref={buttonRef}
@@ -379,12 +386,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
       <AccessCodeModal
         isOpen={showAccessCodeModal}
         onClose={() => setShowAccessCodeModal(false)}
-        onSubmit={async (code) => {
-          // Handle access code submission
-          console.log("Access code submitted:", code);
-          setShowAccessCodeModal(false);
-          // TODO: Add backend integration for access code validation
-        }}
+        hasAccess={hasAccess}
       />
     </>
   );

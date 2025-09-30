@@ -19,14 +19,13 @@ import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import SkeletonLoader from "@/components/skeleton";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
-import UnicornStudioEmbed from "@/components/ChromaBGs-Vyun";
-import { VAULTS } from "./utils/constant";
 const AppContainer = lazy(() => import("./pages/AppContainer"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Markets = lazy(() => import("./pages/Markets"));
 const Portfolio = lazy(() => import("./pages/Portfolio"));
 const VaultDetails = lazy(() => import("./pages/VaultDetails"));
 const Admin = lazy(() => import("./pages/Admin"));
+const AdminRoute = lazy(() => import("./components/AdminRoute"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -87,7 +86,14 @@ const AppRoutes = () => {
           <Route path="/markets" element={<Markets />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/vaults/:vaultId" element={<VaultDetails />} />
-          <Route path="/admin" element={<Admin />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <Admin />
+              </AdminRoute>
+            }
+          />
         </Routes>
       </AppContainer>
     </Suspense>

@@ -6,91 +6,135 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Key, Users, Copy, Check, Trash2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from "@/components/ui/checkbox";
+import { Plus, Key, Users, Copy, Check, Trash2, RefreshCw } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { userService, InviteCode as ApiInviteCode } from "@/services/userService";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 
 interface InviteCode {
   id: string;
   code: string;
-  status: 'active' | 'used' | 'expired';
+  status: "active" | "used" | "expired";
   createdAt: string;
   usedAt?: string;
   usedBy?: string;
   expiresAt?: string;
+  assignKolRole?: boolean;
+  createdBy?: string;
+  redeemableCredits?: number;
+  redeemedBy?: string;
+  redeemedByPrivyId?: string;
 }
+
+// Convert API invite code to local format
+const convertApiInviteCode = (apiCode: ApiInviteCode): InviteCode => {
+  const now = new Date();
+  const expiresAt = new Date(apiCode.expires_at);
+  
+  let status: "active" | "used" | "expired" = "active";
+  if (apiCode.status === "used") {
+    status = "used";
+  } else if (expiresAt < now) {
+    status = "expired";
+  }
+
+  return {
+    id: apiCode.id.toString(),
+    code: apiCode.code,
+    status,
+    createdAt: apiCode.created_at,
+    expiresAt: apiCode.expires_at,
+    assignKolRole: apiCode.assign_kol_role,
+    createdBy: apiCode.created_by_privy_id,
+    redeemableCredits: apiCode.redeemable_credits,
+    usedAt: apiCode.redeemed_at || undefined,
+    redeemedBy: apiCode.redeemed_by?.toString() || undefined,
+    redeemedByPrivyId: apiCode.redeemed_by_privy_id || undefined,
+  };
+};
 
 const Admin: React.FC = () => {
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([]);
   const [newCodeData, setNewCodeData] = useState({
-    code: '',
-    expiresAt: '',
+    expiresAt: "",
+    assignKolRole: true,
   });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { userAddress } = useActiveWallet();
 
-  // Mock data for demonstration
-  useEffect(() => {
-    const mockCodes: InviteCode[] = [
-      {
-        id: '1',
-        code: 'GLIDER2024',
-        status: 'active',
-        createdAt: '2024-01-15T10:00:00Z',
-        expiresAt: '2024-12-31T23:59:59Z',
-      },
-      {
-        id: '2',
-        code: 'EARLY_ACCESS',
-        status: 'used',
-        createdAt: '2024-01-10T09:00:00Z',
-        usedAt: '2024-01-20T14:30:00Z',
-        usedBy: '0x1234...5678',
-      },
-      {
-        id: '3',
-        code: 'BETA_TESTER',
-        status: 'expired',
-        createdAt: '2024-01-01T00:00:00Z',
-        expiresAt: '2024-01-31T23:59:59Z',
-      },
-    ];
-    setInviteCodes(mockCodes);
-  }, []);
-
-  const generateRandomCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let result = '';
-    for (let i = 0; i < 8; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return result;
-  };
-
-  const handleCreateCode = () => {
-    if (!newCodeData.code.trim()) {
+  // Fetch invite codes from API
+  const fetchInviteCodes = async () => {
+    if (!userAddress) return;
+    
+    setIsLoading(true);
+    try {
+      const apiCodes = await userService.getInviteCodes(userAddress);
+      console.log("apiCodes",apiCodes)
+      const convertedCodes = apiCodes.map(convertApiInviteCode);
+      setInviteCodes(convertedCodes);
+    } catch (error) {
+      console.error('Error fetching invite codes:', error);
       toast({
         title: "Error",
-        description: "Please enter a code",
+        description: "Failed to fetch invite codes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load invite codes on component mount and when wallet changes
+  useEffect(() => {
+    fetchInviteCodes();
+  }, [userAddress]);
+
+  const handleCreateCode = async () => {
+    if (!userAddress) {
+      toast({
+        title: "Error",
+        description: "Please connect your wallet to create invite codes",
         variant: "destructive",
       });
       return;
     }
 
-    const newCode: InviteCode = {
-      id: Date.now().toString(),
-      code: newCodeData.code.toUpperCase(),
-      status: 'active',
-      createdAt: new Date().toISOString(),
-      expiresAt: newCodeData.expiresAt || undefined,
-    };
+    setIsCreating(true);
 
-    setInviteCodes(prev => [newCode, ...prev]);
-    setNewCodeData({ code: '', expiresAt: '' });
-    
-    toast({
-      title: "Success",
-      description: "Invite code created successfully",
-    });
+    try {
+      await userService.createInviteCode(
+        newCodeData.assignKolRole,
+        newCodeData.expiresAt || "",
+        userAddress
+      );
+
+      toast({
+        title: "Success",
+        description: "Invite code created successfully",
+      });
+
+      // Refresh the invite codes list
+      await fetchInviteCodes();
+
+      // Reset form
+      setNewCodeData({
+        expiresAt: "",
+        assignKolRole: true,
+      });
+    } catch (error) {
+      console.error("Error creating invite code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create invite code. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const handleCopyCode = async (code: string) => {
@@ -111,19 +155,11 @@ const Admin: React.FC = () => {
     }
   };
 
-  const handleDeleteCode = (id: string) => {
-    setInviteCodes(prev => prev.filter(code => code.id !== id));
-    toast({
-      title: "Success",
-      description: "Invite code deleted",
-    });
-  };
-
-  const getStatusBadge = (status: InviteCode['status']) => {
+  const getStatusBadge = (status: InviteCode["status"]) => {
     const variants = {
-      active: 'default',
-      used: 'secondary',
-      expired: 'destructive',
+      active: "default",
+      used: "secondary",
+      expired: "destructive",
     } as const;
 
     return (
@@ -134,20 +170,20 @@ const Admin: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const stats = {
     total: inviteCodes.length,
-    active: inviteCodes.filter(code => code.status === 'active').length,
-    used: inviteCodes.filter(code => code.status === 'used').length,
-    expired: inviteCodes.filter(code => code.status === 'expired').length,
+    active: inviteCodes.filter((code) => code.status === "active").length,
+    used: inviteCodes.filter((code) => code.status === "used").length,
+    expired: inviteCodes.filter((code) => code.status === "expired").length,
   };
 
   return (
@@ -155,7 +191,9 @@ const Admin: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage invite codes and access control</p>
+          <p className="text-muted-foreground">
+            Manage invite codes and access control
+          </p>
         </div>
       </div>
 
@@ -214,37 +252,47 @@ const Admin: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="code">Code</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="code"
-                      placeholder="Enter custom code or generate random"
-                      value={newCodeData.code}
-                      onChange={(e) => setNewCodeData(prev => ({ ...prev, code: e.target.value }))}
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => setNewCodeData(prev => ({ ...prev, code: generateRandomCode() }))}
-                    >
-                      Generate
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="expires">Expires At (Optional)</Label>
-                  <Input
-                    id="expires"
-                    type="datetime-local"
-                    value={newCodeData.expiresAt}
-                    onChange={(e) => setNewCodeData(prev => ({ ...prev, expiresAt: e.target.value }))}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="assignKolRole"
+                    checked={newCodeData.assignKolRole}
+                    onCheckedChange={(checked) =>
+                      setNewCodeData((prev) => ({
+                        ...prev,
+                        assignKolRole: checked as boolean,
+                      }))
+                    }
                   />
+                  <Label htmlFor="assignKolRole">Assign KOL Role</Label>
                 </div>
               </div>
-              <Button onClick={handleCreateCode} className="w-full md:w-auto">
+              <div className="space-y-2 max-w-80">
+                <Label htmlFor="expires">Expires At</Label>
+                <Input
+                  id="expires"
+                  type="datetime-local"
+                  value={newCodeData.expiresAt}
+                  onChange={(e) =>
+                    setNewCodeData((prev) => ({
+                      ...prev,
+                      expiresAt: e.target.value,
+                    }))
+                  }
+                  onClick={(e) => {
+                    const input = e.target as HTMLInputElement;
+                    input.showPicker();
+                  }}
+                />
+              </div>
+
+              <Button
+                onClick={handleCreateCode}
+                className="w-full md:w-auto"
+                disabled={isCreating}
+              >
                 <Plus className="h-4 w-4 mr-2" />
-                Create Invite Code
+                {isCreating ? "Creating..." : "Create Invite Code"}
               </Button>
             </CardContent>
           </Card>
@@ -253,10 +301,23 @@ const Admin: React.FC = () => {
         <TabsContent value="codes" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Invite Codes</CardTitle>
-              <CardDescription>
-                Manage and monitor all invite codes
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Invite Codes</CardTitle>
+                  <CardDescription>
+                    Manage and monitor all invite codes
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchInviteCodes}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -264,6 +325,7 @@ const Admin: React.FC = () => {
                   <TableRow>
                     <TableHead>Code</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Credits</TableHead>
                     <TableHead>Created</TableHead>
                     <TableHead>Expires</TableHead>
                     <TableHead>Used By</TableHead>
@@ -271,51 +333,65 @@ const Admin: React.FC = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {inviteCodes.map((code) => (
-                    <TableRow key={code.id}>
-                      <TableCell className="font-mono font-medium">
-                        {code.code}
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(code.status)}
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(code.createdAt)}
-                      </TableCell>
-                      <TableCell>
-                        {code.expiresAt ? formatDate(code.expiresAt) : 'Never'}
-                      </TableCell>
-                      <TableCell>
-                        {code.usedBy ? (
-                          <span className="font-mono text-sm">{code.usedBy}</span>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleCopyCode(code.code)}
-                          >
-                            {copiedCode === code.code ? (
-                              <Check className="h-3 w-3" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDeleteCode(code.id)}
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8">
+                        <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        Loading invite codes...
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : inviteCodes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No invite codes found. Create your first invite code above.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    inviteCodes.map((code) => (
+                      <TableRow key={code.id}>
+                        <TableCell className="font-mono font-medium">
+                          {code.code}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(code.status)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {code.redeemableCredits || 0}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{formatDate(code.createdAt)}</TableCell>
+                        <TableCell>
+                          {code.expiresAt ? formatDate(code.expiresAt) : "Never"}
+                        </TableCell>
+                        <TableCell>
+                          {code.redeemedBy ? (
+                            <span className="text-sm">
+                              {code.redeemedByPrivyId ? 
+                                `${code.redeemedByPrivyId.slice(0, 6)}...${code.redeemedByPrivyId.slice(-4)}` : 
+                                `User ${code.redeemedBy}`
+                              }
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCopyCode(code.code)}
+                            >
+                              {copiedCode === code.code ? (
+                                <Check className="h-3 w-3" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
