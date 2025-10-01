@@ -163,6 +163,12 @@ export const API_ROUTES = {
   GET_VAULT_WITHDRAWALS: `${API_URL}/vault/withdrawals/`,
   GET_VAULT_REBALANCES: `${API_URL}/vault/rebalances/combined/`,
   GET_AGENT_THOUGHTS: `${API_URL}/agent-thoughts/`,
+
+  // invite code & user access
+  CHECK_USER_ACCESS: `${API_URL}/invite-codes/check_access/`,
+  REDEEM_INVITE_CODE: `${API_URL}/invite-codes/redeem/`,
+  CREATE_INVITE_CODE: `${API_URL}/invite-codes/`,
+  GET_INVITE_CODES: `${API_URL}/invite-codes/`,
 } as const;
 
 // Axios instance

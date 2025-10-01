@@ -1,15 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Home, 
-  Target,
-  Settings,
-  HelpCircle,
-  Zap,
-  BarChart3,
-  Bot,
-  User,
-} from 'lucide-react';
+import { Home, Target, BarChart3, Shield } from "lucide-react";
+import { useUserAccess } from "../hooks/useUserAccess";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -17,15 +9,21 @@ interface SidebarProps {
   isMobile?: boolean;
 }
 
-const Sidebar = ({ isOpen = false, onClose, isMobile = false }: SidebarProps) => {
+const Sidebar = ({
+  isOpen = false,
+  onClose,
+  isMobile = false,
+}: SidebarProps) => {
   const location = useLocation();
   const [isLoaded, setIsLoaded] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const { isAdmin } = useUserAccess();
 
   const menuItems = [
-    { icon: Home, path: '/', tooltip: 'Dashboard' },
-    { icon: BarChart3, path: '/markets', tooltip: 'Vaults' },
-    { icon: Target, path: '/portfolio', tooltip: 'Portfolio' },
+    { icon: Home, path: "/", tooltip: "Dashboard" },
+    { icon: BarChart3, path: "/markets", tooltip: "Vaults" },
+    { icon: Target, path: "/portfolio", tooltip: "Portfolio" },
+    ...(isAdmin ? [{ icon: Shield, path: "/admin", tooltip: "Admin" }] : []),
     // { icon: HelpCircle, path: '/help', tooltip: 'How it works' }
   ];
 

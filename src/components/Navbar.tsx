@@ -9,13 +9,17 @@ import {
   LogOut,
   Upload,
   Menu,
+  Key,
 } from "lucide-react";
-import { Button } from '@/components/ui/button';
-import { usePrivy, useLogout } from '@privy-io/react-auth';
-import { formatAddress, switchToChain } from '@/lib/utils';
-import { AddressDisplay } from '@/components/shared/AddressDisplay';
-import { ethers } from 'ethers';
-import { useActiveWallet } from '@/hooks/useActiveWallet';
+import { Button } from "@/components/ui/button";
+import { usePrivy, useLogout } from "@privy-io/react-auth";
+import { formatAddress, switchToChain } from "@/lib/utils";
+import { AddressDisplay } from "@/components/shared/AddressDisplay";
+import { ethers } from "ethers";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useUserAccess } from "@/hooks/useUserAccess";
+import AccessCodeModal from "@/components/AccessCodeModal";
+import { useToast } from "@/hooks/use-toast";
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -26,11 +30,16 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const location = useLocation();
   const { login, authenticated, exportWallet } = usePrivy();
   const { logout } = useLogout();
+  const { toast } = useToast();
 
-  const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } = useActiveWallet();
+  const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } =
+    useActiveWallet();
+
+  const { hasAccess } = useUserAccess();
 
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
   const [currentChainId, setCurrentChainId] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -49,10 +58,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   };
 
   const isWrongNetwork =
-    authenticated &&
-    wallet &&
-    !isPrivyWallet &&
-    currentChainId !== "0x3e7";
+    authenticated && wallet && !isPrivyWallet && currentChainId !== "0x3e7";
 
   // Get chain label from chain ID
   const getChainLabel = (chainId: string | null) => {
@@ -246,19 +252,34 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
             {/* Wallet Connection */}
             <div className="flex items-center space-x-3">
               {authenticated ? (
-                <Button
-                  ref={buttonRef}
-                  onClick={() => setShowWalletModal(!showWalletModal)}
-                  variant="wallet"
-                  className="space-x-2"
-                >
-                  {/* <Wallet className="h-4 w-4" /> */}
-                  <AddressDisplay
-                    address={userAddress}
-                    className="font-medium font-libertinus"
-                    variant="prominent"
-                  />
-                </Button>
+                <>
+                  {!hasAccess && (
+                    <Button
+                      onClick={() => setShowAccessCodeModal(true)}
+                      variant="outline"
+                      className="space-x-2"
+                    >
+                      <Key className="h-4 w-4" />
+                      <span className="font-medium font-libertinus">
+                        Get Access
+                      </span>
+                    </Button>
+                  )}
+
+                  <Button
+                    ref={buttonRef}
+                    onClick={() => setShowWalletModal(!showWalletModal)}
+                    variant="wallet"
+                    className="space-x-2"
+                  >
+                    {/* <Wallet className="h-4 w-4" /> */}
+                    <AddressDisplay
+                      address={userAddress}
+                      className="font-medium font-libertinus"
+                      variant="prominent"
+                    />
+                  </Button>
+                </>
               ) : (
                 <Button
                   onClick={() => login()}
@@ -361,6 +382,12 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
           </div>
         </div>
       )}
+
+      <AccessCodeModal
+        isOpen={showAccessCodeModal}
+        onClose={() => setShowAccessCodeModal(false)}
+        hasAccess={hasAccess}
+      />
     </>
   );
 };

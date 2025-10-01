@@ -24,6 +24,8 @@ import {
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useWhitelist } from "@/hooks/useWhitelist";
 import { usePrice } from "@/hooks/usePrice";
+import { usePrivy } from "@privy-io/react-auth";
+import { useUserAccess } from "@/hooks/useUserAccess";
 import { getExplorerTxUrl, formatAddress } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -45,6 +47,7 @@ import { Input } from "@/components/ui/input";
 import { explorerUrl, VAULTS, VaultType } from "@/utils/constant";
 import AgentConsole from "@/components/AgentConsole";
 import PythAttribution from "@/components/shared/PythAttribution";
+import AccessCodeModal from "@/components/AccessCodeModal";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 
@@ -132,6 +135,9 @@ const VaultDetails = () => {
 
   const multiVaultData = useMultiVault();
   const { getTotalTVL } = multiVaultData;
+
+  const { authenticated, login } = usePrivy();
+  const { hasAccess } = useUserAccess();
 
   const [totalAUM, setTotalAUM] = useState(0);
 
@@ -293,6 +299,7 @@ const VaultDetails = () => {
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [inputAmount, setInputAmount] = useState<string>("");
   const [whitelistedPools, setWhitelistedPools] = useState<string[]>([]);
+  const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
 
   // Pending transactions state
   interface PendingTransaction {
@@ -602,7 +609,19 @@ const VaultDetails = () => {
 
     try {
       if (activeTab === "deposit") {
-        await handleDeposit(inputAmount);
+        // Check authentication and access for deposits
+        if (!authenticated) {
+          // Show login if not authenticated
+          login();
+          return;
+        } else if (!hasAccess) {
+          // Show access modal if authenticated but no access
+          setShowAccessCodeModal(true);
+          return;
+        } else {
+          // Proceed with deposit if authenticated and has access
+          await handleDeposit(inputAmount);
+        }
       } else {
         await handleWithdraw(inputAmount);
       }
@@ -1433,6 +1452,12 @@ const VaultDetails = () => {
       </div>
 
       <AgentConsole vaultId={vaultId} currentVault={currentVault} />
+
+      <AccessCodeModal
+        isOpen={showAccessCodeModal}
+        onClose={() => setShowAccessCodeModal(false)}
+        hasAccess={hasAccess}
+      />
     </div>
   );
 };
