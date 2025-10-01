@@ -28,7 +28,6 @@ export interface RedeemInviteCodeResponse {
 }
 
 export interface CreateInviteCodeRequest {
-  assign_kol_role: boolean;
   expires_at: string;
 }
 
@@ -107,10 +106,9 @@ export const userService = {
   /**
    * Create a new invite code using the authenticated user's wallet
    */
-  createInviteCode: async (assignKolRole: boolean, expiresAt: string, walletAddress: string): Promise<CreateInviteCodeResponse> => {
+  createInviteCode: async (expiresAt: string, walletAddress: string): Promise<CreateInviteCodeResponse> => {
     try {
       const requestBody: CreateInviteCodeRequest = {
-        assign_kol_role: assignKolRole,
         expires_at: expiresAt,
       };
 

@@ -58,7 +58,6 @@ const Admin: React.FC = () => {
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([]);
   const [newCodeData, setNewCodeData] = useState({
     expiresAt: "",
-    assignKolRole: true,
   });
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -69,15 +68,15 @@ const Admin: React.FC = () => {
   // Fetch invite codes from API
   const fetchInviteCodes = async () => {
     if (!userAddress) return;
-    
+
     setIsLoading(true);
     try {
       const apiCodes = await userService.getInviteCodes(userAddress);
-      console.log("apiCodes",apiCodes)
+      console.log("apiCodes", apiCodes);
       const convertedCodes = apiCodes.map(convertApiInviteCode);
       setInviteCodes(convertedCodes);
     } catch (error) {
-      console.error('Error fetching invite codes:', error);
+      console.error("Error fetching invite codes:", error);
       toast({
         title: "Error",
         description: "Failed to fetch invite codes. Please try again.",
@@ -107,7 +106,6 @@ const Admin: React.FC = () => {
 
     try {
       await userService.createInviteCode(
-        newCodeData.assignKolRole,
         newCodeData.expiresAt || "",
         userAddress
       );
@@ -123,7 +121,7 @@ const Admin: React.FC = () => {
       // Reset form
       setNewCodeData({
         expiresAt: "",
-        assignKolRole: true,
+        // assignKolRole: true,
       });
     } catch (error) {
       console.error("Error creating invite code:", error);
@@ -252,21 +250,6 @@ const Admin: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="assignKolRole"
-                    checked={newCodeData.assignKolRole}
-                    onCheckedChange={(checked) =>
-                      setNewCodeData((prev) => ({
-                        ...prev,
-                        assignKolRole: checked as boolean,
-                      }))
-                    }
-                  />
-                  <Label htmlFor="assignKolRole">Assign KOL Role</Label>
-                </div>
-              </div>
               <div className="space-y-2 max-w-80">
                 <Label htmlFor="expires">Expires At</Label>
                 <Input
@@ -314,7 +297,11 @@ const Admin: React.FC = () => {
                   onClick={fetchInviteCodes}
                   disabled={isLoading}
                 >
-                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 mr-2 ${
+                      isLoading ? "animate-spin" : ""
+                    }`}
+                  />
                   Refresh
                 </Button>
               </div>
@@ -342,8 +329,12 @@ const Admin: React.FC = () => {
                     </TableRow>
                   ) : inviteCodes.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No invite codes found. Create your first invite code above.
+                      <TableCell
+                        colSpan={7}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No invite codes found. Create your first invite code
+                        above.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -360,15 +351,19 @@ const Admin: React.FC = () => {
                         </TableCell>
                         <TableCell>{formatDate(code.createdAt)}</TableCell>
                         <TableCell>
-                          {code.expiresAt ? formatDate(code.expiresAt) : "Never"}
+                          {code.expiresAt
+                            ? formatDate(code.expiresAt)
+                            : "Never"}
                         </TableCell>
                         <TableCell>
                           {code.redeemedBy ? (
                             <span className="text-sm">
-                              {code.redeemedByPrivyId ? 
-                                `${code.redeemedByPrivyId.slice(0, 6)}...${code.redeemedByPrivyId.slice(-4)}` : 
-                                `User ${code.redeemedBy}`
-                              }
+                              {code.redeemedByPrivyId
+                                ? `${code.redeemedByPrivyId.slice(
+                                    0,
+                                    6
+                                  )}...${code.redeemedByPrivyId.slice(-4)}`
+                                : `User ${code.redeemedBy}`}
                             </span>
                           ) : (
                             "-"
