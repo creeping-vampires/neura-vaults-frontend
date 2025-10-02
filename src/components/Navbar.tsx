@@ -35,7 +35,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } =
     useActiveWallet();
 
-  const { hasAccess } = useUserAccess();
+  const { hasAccess, isLoading } = useUserAccess();
 
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -253,7 +253,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
             <div className="flex items-center space-x-3">
               {authenticated ? (
                 <>
-                  {!hasAccess && (
+                  {!isLoading && !hasAccess && (
                     <Button
                       onClick={() => setShowAccessCodeModal(true)}
                       variant="outline"
