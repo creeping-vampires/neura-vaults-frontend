@@ -1,5 +1,21 @@
 import { apiPost, apiGet, API_ROUTES } from './config';
 
+// Simple in-memory cache for user access responses per wallet
+const userAccessCache = new Map<string, UserAccessResponse>();
+
+async function fetchUserAccess(walletAddress: string): Promise<UserAccessResponse> {
+  const requestBody: UserAccessRequest = {
+    wallet_address: walletAddress,
+  };
+
+  const response = await apiPost<UserAccessResponse>(
+    API_ROUTES.CHECK_USER_ACCESS,
+    requestBody,
+    0 
+  );
+  return response;
+}
+
 export interface UserAccessRequest {
   wallet_address: string;
 }
@@ -63,19 +79,31 @@ export const userService = {
    */
   checkAccess: async (walletAddress: string): Promise<UserAccessResponse> => {
     try {
-      const requestBody: UserAccessRequest = {
-        wallet_address: walletAddress,
-      };
-
-      const response = await apiPost<UserAccessResponse>(
-        API_ROUTES.CHECK_USER_ACCESS,
-        requestBody,
-        0 // No caching 
-      );
-      
+      const response = await fetchUserAccess(walletAddress);
       return response;
     } catch (error) {
       console.error('Error checking user access:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Cached variant: returns cached response unless force=true; caches fresh responses.
+   */
+  checkAccessCached: async (
+    walletAddress: string,
+    force: boolean = false
+  ): Promise<UserAccessResponse> => {
+    try {
+      if (!force && userAccessCache.has(walletAddress)) {
+        return userAccessCache.get(walletAddress)!;
+      }
+
+      const response = await fetchUserAccess(walletAddress);
+      userAccessCache.set(walletAddress, response);
+      return response;
+    } catch (error) {
+      console.error('Error checking user access (cached):', error);
       throw error;
     }
   },
