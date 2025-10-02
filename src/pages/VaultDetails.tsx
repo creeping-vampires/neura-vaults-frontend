@@ -1330,10 +1330,14 @@ const VaultDetails = () => {
                   onClick={handleAction}
                   disabled={
                     activeTab === "deposit"
-                      ? isDepositTransacting
+                      ? isDepositTransacting ||
+                        !inputAmount ||
+                        parseFloat(inputAmount) <= 0 ||
+                        (vaultData?.assetBalance ?? 0) <= 0
                       : isWithdrawTransacting ||
                         !inputAmount ||
-                        parseFloat(inputAmount) <= 0
+                        parseFloat(inputAmount) <= 0 ||
+                        (vaultData?.userDeposits ?? 0) <= 0
                   }
                   className="w-full mt-4"
                   variant="wallet"

@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { useLocation } from "react-router-dom";
-import { agentService } from "@/services/agentService";
-  import {
-    fetchVaultActivities,
-    VaultActivity,
-  } from "@/services/vaultActivityService";
+  import { fetchVaultActivities } from "@/services/vaultActivityService";
 
   interface StrategySummaryItem {
     id: string;
@@ -39,13 +35,15 @@ import { agentService } from "@/services/agentService";
     const [isLoading, setIsLoading] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // Only show on aiUSDe vault page - simplified check
     const isAiUSDeVault = location.pathname.includes("/vaults/");
 
-    // Function to scroll to bottom
     const scrollToBottom = () => {
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+      const container = scrollContainerRef.current;
+      if (container) {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: "smooth",
+        });
       }
     };
 
@@ -77,6 +75,12 @@ import { agentService } from "@/services/agentService";
                 fromProtocol: activity.from_protocol || "",
                 toProtocol: activity.to_protocol || "",
               }));
+
+            strategySummaries.sort(
+              (a, b) =>
+                new Date(a.timestamp).getTime() -
+                new Date(b.timestamp).getTime()
+            );
           } catch (activityError) {
             console.warn("Could not fetch vault activities:", activityError);
           }
@@ -92,7 +96,8 @@ import { agentService } from "@/services/agentService";
         // } else
         if (strategySummaries.length > 0) {
           // Use latest rebalance strategy summary as primary content if no agent thought
-          const latestRebalance = strategySummaries[0];
+          const latestRebalance =
+            strategySummaries[strategySummaries.length - 1];
           setAgentData({
             id: `rebalance_${latestRebalance.id}`,
             content: latestRebalance.summary,
@@ -211,7 +216,7 @@ import { agentService } from "@/services/agentService";
           </div>
 
           {/* Content */}
-          <div ref={scrollContainerRef} className="pt-4 px-4 mb-4 max-h-[360px] overflow-auto">
+          <div ref={scrollContainerRef} className="pt-4 px-4 mb-4 max-h-[360px] overflow-auto scroll-smooth">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-[#A1A1A1] text-sm">
