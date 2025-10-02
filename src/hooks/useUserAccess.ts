@@ -20,11 +20,11 @@ export const useUserAccess = () => {
     adminData: null,
   });
 
-  const checkUserAccess = useCallback(async (walletAddress: string) => {
+  const checkUserAccess = useCallback(async (walletAddress: string, force = false) => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const response = await userService.checkAccess(walletAddress);
+      const response = await userService.checkAccessCached(walletAddress, force);
       
       
       const newState = {
@@ -59,10 +59,10 @@ export const useUserAccess = () => {
     }
   }, []);
 
-  // Check user access when wallet address changes
+  // Check user access when wallet address changes; caching prevents repeated calls
   useEffect(() => {
     if (userAddress) {
-      checkUserAccess(userAddress);
+      checkUserAccess(userAddress, false);
     } else {
       // Reset state when no wallet is connected
       setState({
@@ -78,7 +78,7 @@ export const useUserAccess = () => {
   // Refresh function to manually check user access
   const refreshUserAccess = useCallback(() => {
     if (userAddress) {
-      checkUserAccess(userAddress);
+      checkUserAccess(userAddress, true);
     }
   }, [userAddress, checkUserAccess]);
 

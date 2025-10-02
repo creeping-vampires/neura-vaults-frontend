@@ -253,7 +253,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
             <div className="flex items-center space-x-3">
               {authenticated ? (
                 <>
-                  {!isLoading && !hasAccess && (
+                  {!hasAccess && (
                     <Button
                       onClick={() => setShowAccessCodeModal(true)}
                       variant="outline"
