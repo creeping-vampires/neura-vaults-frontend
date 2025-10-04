@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Address } from 'viem';
 
@@ -11,8 +11,31 @@ export interface ActiveWalletInfo {
 }
 
 export const useActiveWallet = (): ActiveWalletInfo => {
-  const { user } = usePrivy();
+  const { user, authenticated } = usePrivy();
   const { wallets } = useWallets();
+
+
+  useEffect(() => {
+    console.log("Wallet Authenticated: ", {authenticated, user, wallets});
+    
+    // Additional check for MetaMask connection when user is authenticated
+    if (authenticated && user?.linkedAccounts?.some(account => account.type === "wallet")) {
+      const checkMetaMaskConnection = async () => {
+        if (window.ethereum) {
+          try {
+            const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+            if (accounts.length === 0) {
+              console.log("MetaMask not connected but user authenticated with wallet");
+            }
+          } catch (error) {
+            console.error("Error checking MetaMask accounts:", error);
+          }
+        }
+      };
+      
+      checkMetaMaskConnection();
+    }
+  }, [authenticated, user, wallets]);
 
   return useMemo(() => {
     // Check if user has email login
@@ -20,10 +43,7 @@ export const useActiveWallet = (): ActiveWalletInfo => {
       (account) => account.type === "email"
     ) ?? false;
 
-    // Check if user has wallet login
-    const hasWalletLogin = user?.linkedAccounts?.some(
-      (account) => account.type === "wallet"
-    ) ?? false;
+
 
     // Get active wallet based on login method
     const wallet = hasEmailLogin
@@ -32,6 +52,12 @@ export const useActiveWallet = (): ActiveWalletInfo => {
 
     // Get user address from active wallet
     const userAddress = wallet?.address as Address | undefined;
+
+
+        // Check if user has wallet login
+        const hasWalletLogin = !userAddress ? false : user?.linkedAccounts?.some(
+          (account) => account.type === "wallet"
+        ) ?? false;
 
     // Check if the active wallet is a Privy wallet
     const isPrivyWallet = wallet?.walletClientType === "privy";
