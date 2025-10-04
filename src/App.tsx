@@ -16,6 +16,7 @@ import { hyperliquid } from "@/lib/privyConfig";
 import { useMultiVault } from "./hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
+import { useMetaMaskMonitor } from "@/hooks/useMetaMaskMonitor";
 import SkeletonLoader from "@/components/skeleton";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
@@ -60,6 +61,9 @@ const AppRoutes = () => {
   const { isPriceLoading, priceError } = usePrice();
   const { authenticated } = usePrivy();
   const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
+  
+  // Monitor MetaMask connection and auto-logout when disconnected
+  useMetaMaskMonitor();
 
   const isLoading =
     usdeVault?.isLoading ||

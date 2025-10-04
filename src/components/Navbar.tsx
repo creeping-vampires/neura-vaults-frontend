@@ -28,14 +28,21 @@ interface NavbarProps {
 
 const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const location = useLocation();
-  const { login, authenticated, exportWallet } = usePrivy();
+  const { login, authenticated, exportWallet,ready,  user } = usePrivy();
   const { logout } = useLogout();
   const { toast } = useToast();
 
   const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } =
     useActiveWallet();
 
+
+
   const { hasAccess, isLoading } = useUserAccess();
+
+
+  useEffect(() => {
+    console.log("Wallet Test: ", {wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user});
+  },[wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user])
 
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -251,7 +258,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
 
             {/* Wallet Connection */}
             <div className="flex items-center space-x-3">
-              {authenticated ? (
+              {authenticated  ? (
                 <>
                   {!hasAccess && (
                     <Button
