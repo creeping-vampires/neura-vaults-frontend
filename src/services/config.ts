@@ -169,6 +169,7 @@ export const API_ROUTES = {
   REDEEM_INVITE_CODE: `${API_URL}/invite-codes/redeem/`,
   CREATE_INVITE_CODE: `${API_URL}/invite-codes/`,
   GET_INVITE_CODES: `${API_URL}/invite-codes/`,
+  ACCESS_REQUESTS: `${API_URL}/access-requests/`,
 } as const;
 
 // Axios instance

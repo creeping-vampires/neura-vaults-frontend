@@ -73,6 +73,21 @@ export interface InviteCode {
 
 export type GetInviteCodesResponse = InviteCode[];
 
+// Access Requests
+export interface AccessRequest {
+  id?: number;
+  wallet_address?: string;
+  twitter_handle?: string;
+  created_at?: string;
+  status?: string;
+  status_display?: string;
+  updated_at?: string;
+  processed_at?: string;
+  notes?: string;
+}
+
+export type GetAccessRequestsResponse = AccessRequest[];
+
 export const userService = {
   /**
    * Check wallet address access
@@ -171,6 +186,23 @@ export const userService = {
       return response;
     } catch (error) {
       console.error('Error fetching invite codes:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get all access requests (Admin only)
+   */
+  getAccessRequests: async (walletAddress: string): Promise<GetAccessRequestsResponse> => {
+    try {
+      const response = await apiGet<GetAccessRequestsResponse>(
+        API_ROUTES.ACCESS_REQUESTS,
+        { apiKey: walletAddress },
+        0 // No caching for admin data
+      );
+      return response;
+    } catch (error) {
+      console.error('Error fetching access requests:', error);
       throw error;
     }
   },

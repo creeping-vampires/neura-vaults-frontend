@@ -9,10 +9,12 @@ import {
 import { Input } from '@/components/ui/input';
 import { X, Lock } from 'lucide-react';
 import { Button } from './ui/button';
+import { isAddress } from 'viem';
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import { useUserAccess } from "@/hooks/useUserAccess";
+import { apiPost, API_ROUTES } from "@/services/config";
 
 interface AccessCodeModalProps {
   isOpen: boolean;
@@ -31,6 +33,11 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
 }) => {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [twitterHandle, setTwitterHandle] = useState("");
+  const [isWaitlistLoading, setIsWaitlistLoading] = useState(false);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
   const { userAddress } = useActiveWallet();
   const { toast } = useToast();
   const { refreshUserAccess } = useUserAccess();
@@ -88,7 +95,75 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
   const handleClose = () => {
     setCode("");
     setIsLoading(false);
+    setShowWaitlist(false);
+    setTwitterHandle("");
+    setIsWaitlistLoading(false);
+    setWaitlistError(null);
+    setWaitlistSuccess(false);
     onClose();
+  };
+
+  const normalizeTwitterHandle = (handle: string) => {
+    const trimmed = handle.trim();
+    const noAt = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+    return noAt;
+  };
+
+  const validateWaitlistForm = (): { ok: boolean; message?: string } => {
+
+    const handle = normalizeTwitterHandle(twitterHandle);
+    if (!handle) {
+      return { ok: false, message: 'Twitter handle is required.' };
+    }
+
+    const twitterRegex = /^[A-Za-z0-9_]{1,15}$/;
+    if (!twitterRegex.test(handle)) {
+      return { ok: false, message: 'Enter a valid Twitter handle.' };
+    }
+
+    return { ok: true };
+  };
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setWaitlistError(null);
+    setWaitlistSuccess(false);
+
+    const validation = validateWaitlistForm();
+    if (!validation.ok) {
+      setWaitlistError(validation.message || 'Invalid input.');
+      toast({
+        title: 'Invalid Waitlist Details',
+        description: validation.message || 'Please check your wallet connection and Twitter handle.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setIsWaitlistLoading(true);
+      const payload = {
+        wallet_address: userAddress as string,
+        twitter_handle: normalizeTwitterHandle(twitterHandle),
+      };
+      await apiPost(API_ROUTES.ACCESS_REQUESTS, payload, 0);
+
+      setWaitlistSuccess(true);
+      toast({
+        title: 'Request Submitted',
+        description: 'You have been added to the waitlist. We will reach out via Twitter.',
+      });
+    } catch (error: any) {
+      const message = 'Failed to submit waitlist request.';
+      setWaitlistError(message);
+      toast({
+        title: 'Submission Failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsWaitlistLoading(false);
+    }
   };
 
   return (
@@ -119,12 +194,12 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
             <DialogDescription className="text-muted-foreground text-base">
               {hasAccess
                 ? "You already have access to Neura Vaults. No need to redeem another invite code."
-                : description}
+                : !showWaitlist?description:"Enter Twitter handle to join the waitlist."}
             </DialogDescription>
           </DialogHeader>
 
           {/* Form - only show if user doesn't have access */}
-          {!hasAccess && (
+          {!hasAccess && !showWaitlist && (
             <form onSubmit={handleSubmit} className="w-full space-y-6">
               <div className="space-y-2">
                 <Input
@@ -132,7 +207,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
                   placeholder="CODE"
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  className="h-12 text-center text-lg font-mono tracking-widest bg-muted/30 border-borderfocus:border-primary focus:bg-muted/70 transition-all duration-200"
+                  className="h-12 text-center text-lg font-mono tracking-widest bg-muted/30 border-border transition-all duration-200"
                   disabled={isLoading}
                   maxLength={20}
                 />
@@ -141,7 +216,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
               <Button
                 variant="wallet"
                 disabled={!code.trim() || isLoading}
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-medium text-base transition-all duration-200 disabled:hover:scale-100"
+                className="w-full h-12 font-medium text-base transition-all border border-white/30 duration-200 disabled:hover:scale-100"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">
@@ -152,6 +227,63 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
                   "Continue"
                 )}
               </Button>
+            </form>
+          )}
+
+          {/* Waitlist form for users without access */}
+          {!hasAccess && showWaitlist && (
+            <form onSubmit={handleWaitlistSubmit} className="w-full space-y-4">
+              <div className="space-y-2">
+              <div className="relative">
+                <span className="absolute left-0 w-10 flex items-center justify-center h-full top-1/2 -translate-y-1/2 text-lg text-muted-foreground">@</span>
+                <Input
+                  type="text"
+                  placeholder="Enter Twitter handle"
+                  value={twitterHandle}
+                  onChange={(e) => setTwitterHandle(normalizeTwitterHandle(e.target.value))}
+                  className="h-12 text-base transition-all duration-200 pl-10"
+                  disabled={isWaitlistLoading}
+                  maxLength={15}
+                />
+                </div>
+                {waitlistError && (
+                  <p className="text-xs text-red-500 mt-1">{waitlistError}</p>
+                )}
+                {waitlistSuccess && (
+                  <p className="text-xs text-green-500 mt-1">Successfully joined the waitlist.</p>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  variant="wallet"
+                  disabled={isWaitlistLoading}
+                  className="flex-1 h-12 font-medium text-base transition-all border-white/30 duration-200"
+                >
+                  {isWaitlistLoading ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                      <span>Submitting...</span>
+                    </div>
+                  ) : (
+                    'Join Waitlist'
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="wallet"
+                  onClick={() => {
+                    setShowWaitlist(false);
+                    setTwitterHandle('');
+                    setWaitlistError(null);
+                    setWaitlistSuccess(false);
+                  }}
+                  className="h-12 border-white/30"
+                >
+                  Cancel
+                </Button>
+              </div>
             </form>
           )}
 
@@ -167,21 +299,29 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
           )}
 
           {/* Footer */}
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Don't have a code?{" "}
-              <button
-                type="button"
-                className="text-white hover:text-primary/80 underline underline-offset-4 transition-colors"
-                onClick={() => {
-                  // TODO: Implement waitlist functionality when backend is ready
-                  console.log("Join waitlist clicked");
-                }}
-              >
-                Join the waitlist
-              </button>
-            </p>
-          </div>
+          {!hasAccess && !showWaitlist && (
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Don't have a code?{" "}
+                <button
+                  type="button"
+                  className="text-white underline underline-offset-4 transition-colors"
+                  onClick={() => {
+                    if (!userAddress) {
+                      toast({
+                        title: 'Wallet Required',
+                        description: 'Please connect your wallet first to join the waitlist.',
+                        variant: 'destructive',
+                      });
+                    }
+                    setShowWaitlist(true);
+                  }}
+                >
+                  Join Waitlist
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

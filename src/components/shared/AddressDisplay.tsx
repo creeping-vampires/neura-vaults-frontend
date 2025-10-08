@@ -6,12 +6,6 @@ import { useHLName } from "@/hooks/useHLName";
 import { formatAddress } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronDown, Wallet } from "lucide-react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface AddressDisplayProps {
   address: Address | undefined | null;
@@ -30,7 +24,6 @@ export const AddressDisplay: React.FC<AddressDisplayProps> = ({
     return null;
   }
 
-  // Loading State using existing Skeleton component
   if (isLoading) {
     return <Skeleton className={`h-5 w-32 rounded-md ${className}`} />;
   }
@@ -44,7 +37,6 @@ export const AddressDisplay: React.FC<AddressDisplayProps> = ({
     </div>
   );
 
-  // Generate avatar colors matching the dark theme palette
   const generateAvatar = (name: string) => {
     const colors = [
       "from-teal-500 to-teal-600",
@@ -72,7 +64,6 @@ export const AddressDisplay: React.FC<AddressDisplayProps> = ({
     <>
       {hlName ? (
         <div className="flex items-center gap-2 px-2 py-3 rounded-2xl bg-transparent  transition-all duration-200">
-          {/* Clean Avatar */}
           <div
             className={`rounded-full bg-gradient-to-br ${avatarGradient} flex items-center justify-center ${
               isProminent ? "w-7 h-7" : "w-6 h-6"
