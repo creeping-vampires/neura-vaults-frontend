@@ -10,7 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Key, Users, Copy, Check, Trash2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { userService, InviteCode as ApiInviteCode } from "@/services/userService";
+import type { AccessRequest } from "@/services/userService";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { formatAddress } from "@/lib/utils";
 
 interface InviteCode {
   id: string;
@@ -27,11 +29,10 @@ interface InviteCode {
   redeemedByPrivyId?: string;
 }
 
-// Convert API invite code to local format
 const convertApiInviteCode = (apiCode: ApiInviteCode): InviteCode => {
   const now = new Date();
   const expiresAt = new Date(apiCode.expires_at);
-  
+
   let status: "active" | "used" | "expired" = "active";
   if (apiCode.status === "used") {
     status = "used";
@@ -64,8 +65,12 @@ const Admin: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { userAddress } = useActiveWallet();
+  const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
+  const [requestsSort, setRequestsSort] = useState<{
+    key: keyof AccessRequest;
+    dir: "asc" | "desc";
+  } | null>(null);
 
-  // Fetch invite codes from API
   const fetchInviteCodes = async () => {
     if (!userAddress) return;
 
@@ -87,10 +92,49 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Load invite codes on component mount and when wallet changes
   useEffect(() => {
     fetchInviteCodes();
+    const fetchAccessRequests = async () => {
+      if (!userAddress) return;
+      try {
+        const reqs = await userService.getAccessRequests(userAddress);
+        console.log("accessRequests", reqs);
+        setAccessRequests(reqs || []);
+      } catch (error) {
+        console.error("Error fetching access requests:", error);
+      }
+    };
+    fetchAccessRequests();
   }, [userAddress]);
+
+  const sortBy = (key: keyof AccessRequest) => {
+    setRequestsSort((prev) => {
+      const dir =
+        prev && prev.key === key && prev.dir === "asc" ? "desc" : "asc";
+      return { key, dir };
+    });
+  };
+
+  const sortedAccessRequests = (() => {
+    if (!requestsSort) return accessRequests;
+    const { key, dir } = requestsSort;
+    const arr = [...accessRequests];
+    arr.sort((a, b) => {
+      const va = a[key];
+      const vb = b[key];
+      if (va == null && vb == null) return 0;
+      if (va == null) return dir === "asc" ? -1 : 1;
+      if (vb == null) return dir === "asc" ? 1 : -1;
+      // Numeric vs string vs date
+      if (typeof va === "number" && typeof vb === "number") {
+        return dir === "asc" ? va - vb : vb - va;
+      }
+      const sa = String(va);
+      const sb = String(vb);
+      return dir === "asc" ? sa.localeCompare(sb) : sb.localeCompare(sa);
+    });
+    return arr;
+  })();
 
   const handleCreateCode = async () => {
     if (!userAddress) {
@@ -115,10 +159,8 @@ const Admin: React.FC = () => {
         description: "Invite code created successfully",
       });
 
-      // Refresh the invite codes list
       await fetchInviteCodes();
 
-      // Reset form
       setNewCodeData({
         expiresAt: "",
         // assignKolRole: true,
@@ -142,7 +184,7 @@ const Admin: React.FC = () => {
       setTimeout(() => setCopiedCode(null), 2000);
       toast({
         title: "Copied",
-        description: "Code copied to clipboard",
+        description: "Copied successfully",
       });
     } catch (err) {
       toast({
@@ -168,7 +210,10 @@ const Admin: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    if (!dateString) return "-";
+    const d = new Date(dateString);
+    if (Number.isNaN(d.getTime())) return dateString;
+    return d.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -195,7 +240,6 @@ const Admin: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -239,6 +283,7 @@ const Admin: React.FC = () => {
         <TabsList>
           <TabsTrigger value="codes">Invite Codes</TabsTrigger>
           <TabsTrigger value="create">Create Code</TabsTrigger>
+          <TabsTrigger value="access-requests">Access Requests</TabsTrigger>
         </TabsList>
 
         <TabsContent value="create" className="space-y-4">
@@ -316,7 +361,6 @@ const Admin: React.FC = () => {
                     <TableHead>Created</TableHead>
                     <TableHead>Expires</TableHead>
                     <TableHead>Used By</TableHead>
-                    <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -341,7 +385,20 @@ const Admin: React.FC = () => {
                     inviteCodes.map((code) => (
                       <TableRow key={code.id}>
                         <TableCell className="font-mono font-medium">
-                          {code.code}
+                          <div className="flex gap-2 items-center">
+                            {code.code}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleCopyCode(code.code)}
+                            >
+                              {copiedCode === code.code ? (
+                                <Check className="h-3 w-3" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell>{getStatusBadge(code.status)}</TableCell>
                         <TableCell>
@@ -369,14 +426,129 @@ const Admin: React.FC = () => {
                             "-"
                           )}
                         </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="access-requests" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Access Requests</CardTitle>
+                  <CardDescription>
+                    View and manage user access requests
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    if (!userAddress) return;
+                    try {
+                      const reqs = await userService.getAccessRequests(
+                        userAddress
+                      );
+                      setAccessRequests(reqs || []);
+                    } catch (error) {
+                      console.error("Error refreshing access requests:", error);
+                      toast({
+                        title: "Error",
+                        description: "Failed to refresh access requests",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead
+                      onClick={() => sortBy("id")}
+                      className="cursor-pointer"
+                    >
+                      ID
+                    </TableHead>
+                    <TableHead
+                      onClick={() => sortBy("wallet_address")}
+                      className="cursor-pointer"
+                    >
+                      Wallet Address
+                    </TableHead>
+                    <TableHead
+                      onClick={() => sortBy("twitter_handle")}
+                      className="cursor-pointer"
+                    >
+                      Twitter Handle
+                    </TableHead>
+                    <TableHead
+                      onClick={() => sortBy("status_display")}
+                      className="cursor-pointer"
+                    >
+                      Status
+                    </TableHead>
+                    <TableHead
+                      onClick={() => sortBy("created_at")}
+                      className="cursor-pointer"
+                    >
+                      Created At
+                    </TableHead>
+                    <TableHead
+                      onClick={() => sortBy("updated_at")}
+                      className="cursor-pointer"
+                    >
+                      Updated At
+                    </TableHead>
+                    <TableHead
+                      onClick={() => sortBy("processed_at")}
+                      className="cursor-pointer"
+                    >
+                      Processed At
+                    </TableHead>
+                    <TableHead
+                      onClick={() => sortBy("notes")}
+                      className="cursor-pointer"
+                    >
+                      Notes
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedAccessRequests.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={8}
+                        className="text-center py-8 text-muted-foreground"
+                      >
+                        No access requests found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sortedAccessRequests.map((req) => (
+                      <TableRow
+                        key={`${req.id}-${req.wallet_address}-${req.created_at}`}
+                      >
+                        <TableCell>{req.id ?? "-"}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 items-center">
+                            {formatAddress(req.wallet_address) ?? "-"}
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleCopyCode(code.code)}
+                              onClick={() => handleCopyCode(req.wallet_address)}
                             >
-                              {copiedCode === code.code ? (
+                              {copiedCode === req.wallet_address ? (
                                 <Check className="h-3 w-3" />
                               ) : (
                                 <Copy className="h-3 w-3" />
@@ -384,6 +556,27 @@ const Admin: React.FC = () => {
                             </Button>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          {req.twitter_handle ?? "-"}{" "}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleCopyCode(req.twitter_handle)}
+                          >
+                            {copiedCode === req.twitter_handle ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          {req.status_display ?? req.status ?? "-"}
+                        </TableCell>
+                        <TableCell>{formatDate(req.created_at)}</TableCell>
+                        <TableCell>{formatDate(req.updated_at)}</TableCell>
+                        <TableCell>{formatDate(req.processed_at)}</TableCell>
+                        <TableCell>{req.notes ?? "-"}</TableCell>
                       </TableRow>
                     ))
                   )}
