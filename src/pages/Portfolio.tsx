@@ -97,15 +97,15 @@ const Portfolio = () => {
   // Memoize asset metadata to avoid redundant fetching
   const { assetSymbol, assetDecimals } = useMemo(() => {
     // Use cached values from vault data if available
-    const usdeVaultData = getAllVaults().find((v) => v.type === "USDE");
-    if (usdeVaultData?.data?.assetDecimals) {
+    const usdcVaultData = getAllVaults().find((v) => v.type === "USDC");
+    if (usdcVaultData?.data?.assetDecimals) {
       return {
-        assetSymbol: "USDe",
-        assetDecimals: usdeVaultData.data.assetDecimals,
+        assetSymbol: "USDC",
+        assetDecimals: usdcVaultData.data.assetDecimals,
       };
     }
     return {
-      assetSymbol: "USDe",
+      assetSymbol: "USDC",
       assetDecimals: 18,
     };
   }, [getAllVaults]);
@@ -701,7 +701,7 @@ const Portfolio = () => {
                           </td>
                           <td className="py-4 sm:w-32">
                             <div className="flex space-x-2">
-                              {/* {position.asset === "USDe" ? ( */}
+                              {/* {position.asset === "USDC" ? ( */}
                               {["hypurrfi", "hyperlend", "felix"].map(
                                 (reward) => (
                                   <div key={reward} className="relative group">

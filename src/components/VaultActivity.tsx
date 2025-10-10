@@ -15,7 +15,7 @@ interface VaultActivityProps {
   currentVault: string;
   vaultConfig: {
     type: VaultType;
-    config: typeof VAULTS.USDE;
+    config: typeof VAULTS.USDC;
   };
 }
 

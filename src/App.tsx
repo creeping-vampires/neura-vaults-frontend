@@ -57,22 +57,22 @@ const Loader = () => (
   </div>
 );
 const AppRoutes = () => {
-  const { usdeVault } = useMultiVault();
+  const { usdcVault } = useMultiVault();
   const { isPriceLoading, priceError } = usePrice();
   const { authenticated } = usePrivy();
   const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
-  
+
   // Monitor MetaMask connection and auto-logout when disconnected
   useMetaMaskMonitor();
 
   const isLoading =
-    usdeVault?.isLoading ||
+    usdcVault?.isLoading ||
     // usdt0Vault?.isLoading ||
     isPriceLoading ||
     (authenticated && isTxLoading);
 
   const hasError = Boolean(
-    usdeVault?.error ||
+    usdcVault?.error ||
       // usdt0Vault?.error ||
       priceError ||
       (authenticated && txError)
