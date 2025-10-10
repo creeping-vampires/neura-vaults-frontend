@@ -35,7 +35,7 @@ import { useLocation } from "react-router-dom";
     const [isLoading, setIsLoading] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    const isAiUSDeVault = location.pathname.includes("/vaults/");
+    const isAiUsdcVault = location.pathname.includes("/vaults/");
 
     const scrollToBottom = () => {
       const container = scrollContainerRef.current;
@@ -93,7 +93,7 @@ import { useLocation } from "react-router-dom";
             timestamp: latestRebalance.timestamp,
             strategySummaries,
           });
-        } 
+        }
       } catch (error) {
         console.error("Error fetching agent data:", error);
         // Fallback
@@ -110,10 +110,10 @@ import { useLocation } from "react-router-dom";
 
     // Fetch on mount/open
     useEffect(() => {
-      if (isOpen && isAiUSDeVault) {
+      if (isOpen && isAiUsdcVault) {
         fetchAgentData();
       }
-    }, [isOpen, isAiUSDeVault]);
+    }, [isOpen, isAiUsdcVault]);
 
     // Scroll to bottom on open or data change
     useEffect(() => {
@@ -124,7 +124,7 @@ import { useLocation } from "react-router-dom";
     }, [isOpen, agentData]);
 
     // Only render on vault pages
-    if (!isAiUSDeVault) {
+    if (!isAiUsdcVault) {
       return null;
     }
 

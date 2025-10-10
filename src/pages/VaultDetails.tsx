@@ -86,8 +86,8 @@ const getVaultConfig = (vaultAddress: string) => {
       return { type: key as VaultType, config };
     }
   }
-  // Default to USDE if not found
-  return { type: "USDE" as VaultType, config: VAULTS.USDE };
+  // Default to USDC if not found
+  return { type: "USDC" as VaultType, config: VAULTS.USDC };
 };
 
 const useCountdown = () => {
@@ -131,7 +131,7 @@ const VaultDetails = () => {
   // Get vault configuration based on the vault address from URL
   const vaultConfig = vaultId
     ? getVaultConfig(vaultId)
-    : { type: "USDE" as VaultType, config: VAULTS.USDE };
+    : { type: "USDC" as VaultType, config: VAULTS.USDC };
 
   const multiVaultData = useMultiVault();
   const { getTotalTVL } = multiVaultData;
@@ -157,19 +157,19 @@ const VaultDetails = () => {
 
   // Get the specific vault data based on vaultId
   const getVaultDataByAddress = (address: string) => {
-    if (address === VAULTS.USDE.yieldAllocatorVaultAddress) {
-      return multiVaultData.usdeVault;
+    if (address === VAULTS.USDC.yieldAllocatorVaultAddress) {
+      return multiVaultData.usdcVault;
     }
     // else if (address === VAULTS.USDT0.yieldAllocatorVaultAddress) {
     //   return multiVaultData.usdt0Vault;
     // }
-    // Default to USDE vault if address not found
-    return multiVaultData.usdeVault;
+    // Default to USDC vault if address not found
+    return multiVaultData.usdcVault;
   };
 
   const vaultDataObject = vaultId
     ? getVaultDataByAddress(vaultId)
-    : multiVaultData.usdeVault;
+    : multiVaultData.usdcVault;
 
   const {
     deposit,
@@ -247,7 +247,7 @@ const VaultDetails = () => {
     const allTransformed = [];
 
     const relevantTokenData = priceChartData.filter(
-      (tokenData) => tokenData.token === currentVault
+      (tokenData) => tokenData.token === "USDe"
     );
 
     relevantTokenData.forEach((tokenData) => {
@@ -515,7 +515,7 @@ const VaultDetails = () => {
       try {
         const pools = await getWhitelistedPools();
         const filteredPools = pools.filter((pool, i) =>
-          vaultConfig.config.symbol === "USDe"
+          vaultConfig.config.symbol === "USDC"
             ? i !== pools.length - 1
             : i !== 2
         );
@@ -543,7 +543,7 @@ const VaultDetails = () => {
         ([_, config]) =>
           config.yieldAllocatorVaultAddress.toLowerCase() ===
           vaultId?.toLowerCase()
-      )?.[0] || "USDE";
+      )?.[0] || "USDC";
 
     const validPools = vaultData.poolAddresses
       .map((address, index) => {
@@ -802,7 +802,7 @@ const VaultDetails = () => {
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
-                    Total AUM in USD
+                    Total Value Locked
                   </h3>
                   <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                 </div>

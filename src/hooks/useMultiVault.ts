@@ -975,34 +975,34 @@ export const useMultiVault = () => {
   );
 
   // Individual vault hook
-  const usdeVault = useMemo(
+  const usdcVault = useMemo(
     () => ({
-      ...vaultData.USDE,
+      ...vaultData.USDC,
       refreshData: refreshAllData,
       deposit: (amount: string) =>
-        deposit(VAULTS.USDE.yieldAllocatorVaultAddress, amount, "USDE"),
+        deposit(VAULTS.USDC.yieldAllocatorVaultAddress, amount, "USDC"),
       withdraw: (amount: string) =>
-        withdraw(VAULTS.USDE.yieldAllocatorVaultAddress, amount, "USDE"),
-      claimDeposit: () => claimDeposit(VAULTS.USDE.yieldAllocatorVaultAddress),
-      claimRedeem: () => claimRedeem(VAULTS.USDE.yieldAllocatorVaultAddress),
+        withdraw(VAULTS.USDC.yieldAllocatorVaultAddress, amount, "USDC"),
+      claimDeposit: () => claimDeposit(VAULTS.USDC.yieldAllocatorVaultAddress),
+      claimRedeem: () => claimRedeem(VAULTS.USDC.yieldAllocatorVaultAddress),
       getClaimableDepositAmount: () =>
-        getClaimableDepositAmount(VAULTS.USDE.yieldAllocatorVaultAddress),
+        getClaimableDepositAmount(VAULTS.USDC.yieldAllocatorVaultAddress),
       getClaimableRedeemAmount: () =>
-        getClaimableRedeemAmount(VAULTS.USDE.yieldAllocatorVaultAddress),
+        getClaimableRedeemAmount(VAULTS.USDC.yieldAllocatorVaultAddress),
       isDepositTransacting,
       isWithdrawTransacting,
       transactionHash,
-  // Last deposit tracking
+      // Last deposit tracking
       lastDepositRequestId,
       lastDepositController,
       lastDepositPendingAssets,
-  // Last withdraw tracking
+      // Last withdraw tracking
       lastWithdrawRequestId,
       lastWithdrawController,
       lastWithdrawPendingAssets,
     }),
     [
-      vaultData.USDE,
+      vaultData.USDC,
       refreshAllData,
       deposit,
       withdraw,
@@ -1032,20 +1032,19 @@ export const useMultiVault = () => {
     getAllVaults,
     getTotalTVL,
     getTotalUserDeposits,
-  // Transaction functions
+    // Transaction functions
     deposit,
     withdraw,
     claimDeposit,
     claimRedeem,
     getClaimableDepositAmount,
     getClaimableRedeemAmount,
-  // Transaction state
+    // Transaction state
     isTransacting,
     isDepositTransacting,
     isWithdrawTransacting,
     transactionHash,
-  // Individual vault access
-    usdeVault,
-    
+    // Individual vault access
+    usdcVault,
   };
 };

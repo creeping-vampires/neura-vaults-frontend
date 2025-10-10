@@ -62,21 +62,27 @@ export const usePrice = (targetToken?: string) => {
           await yieldMonitorService.getPriceChart(params);
 
         // Process token-based response structure
-        // Maintain separate records for each token: [{token: 'USDe', data: [...]}, {token: 'USDT0', data: [...]}]
+        // Maintain separate records for each token: [{token: 'USDC', data: [...]}, {token: 'USDT0', data: [...]}]
         const tokenSeparatedData: TokenPriceData[] = [];
         if (response.chart_data && Array.isArray(response.chart_data)) {
           response.chart_data.forEach((tokenData: TokenPriceData) => {
             if (tokenData.data && Array.isArray(tokenData.data)) {
               // Sort each token's data by timestamp
               const sortedTokenData = tokenData.data.sort((a, b) => {
-                const timestampA = typeof a.timestamp === 'string' ? Date.parse(a.timestamp) : a.timestamp;
-                const timestampB = typeof b.timestamp === 'string' ? Date.parse(b.timestamp) : b.timestamp;
+                const timestampA =
+                  typeof a.timestamp === "string"
+                    ? Date.parse(a.timestamp)
+                    : a.timestamp;
+                const timestampB =
+                  typeof b.timestamp === "string"
+                    ? Date.parse(b.timestamp)
+                    : b.timestamp;
                 return timestampA - timestampB;
               });
-              
+
               tokenSeparatedData.push({
                 token: tokenData.token,
-                data: sortedTokenData
+                data: sortedTokenData,
               });
             }
           });

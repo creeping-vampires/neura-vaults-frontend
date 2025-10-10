@@ -2,9 +2,9 @@ export const explorerUrl = "https://hyperevmscan.io";
 
 // Vault configurations
 export const VAULTS = {
-  USDE: {
-    name: "aiUSDe",
-    symbol: "USDe",
+  USDC: {
+    name: "aiUSDC",
+    symbol: "USDC",
     yieldAllocatorVaultAddress:
       "0x869c314b6a40Ce1b2adB4f61ff17eA445F390629" as `0x${string}`,
     aiAgentAddress:
@@ -31,7 +31,9 @@ export const VAULTS = {
 export type VaultType = keyof typeof VAULTS;
 export const VAULT_TYPES = Object.keys(VAULTS) as VaultType[];
 
-export const YIELD_ALLOCATOR_VAULT_ADDRESS = VAULTS.USDE.yieldAllocatorVaultAddress;
-export const WHITELIST_REGISTERY_ADDRESS = VAULTS.USDE.whitelistRegisteryAddress;
-export const AIAGENT_ADDRESS = VAULTS.USDE.aiAgentAddress;
-export const ASSET_TOKEN_ADDRESS = VAULTS.USDE.assetTokenAddress;
+export const YIELD_ALLOCATOR_VAULT_ADDRESS =
+  VAULTS.USDC.yieldAllocatorVaultAddress;
+export const WHITELIST_REGISTERY_ADDRESS =
+  VAULTS.USDC.whitelistRegisteryAddress;
+export const AIAGENT_ADDRESS = VAULTS.USDC.aiAgentAddress;
+export const ASSET_TOKEN_ADDRESS = VAULTS.USDC.assetTokenAddress;

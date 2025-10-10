@@ -131,7 +131,7 @@ export class MultiVaultBatchClient {
 
       // Extract vault data results using the index map
       const vaultDataInfo = callIndexMap.get(`vault_data_${type}`);
-      const totalAssets = allResults[vaultDataInfo.start].data as number;
+      const totalAssets = allResults[vaultDataInfo.start].data as bigint;
       const totalSupply = allResults[vaultDataInfo.start + 1].data as bigint;
       const vaultDecimals = allResults[vaultDataInfo.start + 2].data as bigint;
       // No vault-level pending values in new ABI; initialize to 0n and compute per-user later
@@ -374,10 +374,11 @@ export const getMultiVaultBatchClient = (publicClient: PublicClient) => {
  * Helper function to calculate vault metrics from batch data
  */
 export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
+  // Normalize total assets by asset decimals (ERC4626 assets)
   const totalAssetsFormatted =
     Number(
       (data.totalAssets * BigInt(10 ** 18)) /
-        BigInt(10 ** Number(data.vaultDecimals))
+        BigInt(10 ** Number(data.assetDecimals))
     ) / 1e18;
 
   const totalSupplyFormatted =

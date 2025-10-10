@@ -1,21 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   BarChart3,
   DollarSign,
-  ExternalLink,
   Percent,
   Search,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { publicClient } from "@/lib/privyConfig";
-import { VAULTS, VAULT_TYPES, VaultType } from "@/utils/constant";
-import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
-import { parseAbi } from "viem";
 import PythAttribution from "@/components/shared/PythAttribution";
 
 interface MarketItem {
@@ -37,7 +31,7 @@ const Markets = () => {
   const {
     getAllVaults,
     getTotalTVL,
-    // usdeVault,
+    // usdcVault,
     // refreshAllData,
   } = useMultiVault();
   const {
@@ -52,14 +46,14 @@ const Markets = () => {
   } = usePrice();
   const [loading, setLoading] = useState<boolean>(false);
   // const [txError, setTxError] = useState<string | null>(null);
-  // const [assetSymbol, setAssetSymbol] = useState<string>("USDe");
+  // const [assetSymbol, setAssetSymbol] = useState<string>("USDC");
   // const [assetDecimals, setAssetDecimals] = useState<number>(18);
 
   // useEffect(() => {
   //   const run = async () => {
   //     try {
   //       const assetAddress = await publicClient.readContract({
-  //         address: VAULTS.USDE.yieldAllocatorVaultAddress as `0x${string}`,
+  //         address: VAULTS.USDC.yieldAllocatorVaultAddress as `0x${string}`,
   //         abi: YieldAllocatorVaultABI as any,
   //         functionName: "asset",
   //         args: [],
@@ -85,7 +79,7 @@ const Markets = () => {
   //         typeof decimals === "number" ? decimals : Number(decimals)
   //       );
   //     } catch {
-  //       setAssetSymbol("USDe");
+  //       setAssetSymbol("USDC");
   //       setAssetDecimals(18);
   //     }
   //   };
@@ -100,7 +94,7 @@ const Markets = () => {
       totalDeposits: data?.tvl || 0,
       name: `ai${config.symbol}`,
       symbol: config.symbol,
-      status: config.symbol === "USDe" ? "active" : "coming-soon",
+      status: config.symbol === "USDC" ? "active" : "coming-soon",
     }));
 
     const usdt0Item: MarketItem = {
@@ -149,8 +143,8 @@ const Markets = () => {
   }, [getTotalTVL]);
 
   const handleVaultClick = (market: MarketItem) => {
-    // Only allow clicking on USDe vault
-    if (market.symbol === "USDe" && market.status === "active") {
+    // Only allow clicking on USDC vault
+    if (market.symbol === "USDC" && market.status === "active") {
       navigate(`/vaults/${market.address}`);
     }
   };
@@ -162,7 +156,7 @@ const Markets = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
-                Total AUM in USD
+                Total Value Locked
               </h3>
               <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
@@ -186,16 +180,13 @@ const Markets = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-              12.75
-              %
+              12.75 %
               <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                 <div className="font-medium text-muted-foreground">
                   7-Day APY
                 </div>
                 <div className="font-medium text-foreground">:</div>
-                <div className="font-medium ml-1 text-foreground">
-                  0.39%
-                </div>
+                <div className="font-medium ml-1 text-foreground">0.39%</div>
                 <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
               </div>
             </div>
@@ -279,7 +270,7 @@ const Markets = () => {
                 <tbody>
                   {filteredMarkets.map((market, i) => {
                     const isClickable =
-                      market.symbol === "USDe" && market.status === "active";
+                      market.symbol === "USDC" && market.status === "active";
                     const isComingSoon = market.status === "coming-soon";
                     return (
                       <tr
@@ -342,10 +333,7 @@ const Markets = () => {
                             isClickable ? "" : "opacity-70"
                           }`}
                         >
-                          {isComingSoon
-                            ? "0"
-                            : "12.75"}
-                          %
+                          {isComingSoon ? "0" : "12.75"}%
                           {!isComingSoon && (
                             <div className="flex items-center gap-1 absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                               <div className="font-medium text-muted-foreground">
@@ -355,7 +343,7 @@ const Markets = () => {
                                 :
                               </div>
                               <div className="font-medium ml-1 text-foreground">
-                               0.39%
+                                0.39%
                               </div>
                               <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                             </div>
