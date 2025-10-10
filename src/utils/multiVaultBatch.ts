@@ -9,8 +9,6 @@ export interface MultiVaultData {
   totalAssets: bigint;
   totalSupply: bigint;
   vaultDecimals: bigint;
-  totalRequestedAssets: bigint;
-  pendingDepositAssets: bigint;
   assetAddress: Address;
   assetDecimals: bigint;
   poolAddresses: `0x${string}`[];
@@ -19,7 +17,6 @@ export interface MultiVaultData {
   userShares?: bigint;
   userAssetBalance?: bigint;
   assetAllowance?: bigint;
-  userPrincipal?: bigint;
 }
 
 export class MultiVaultBatchClient {
@@ -144,8 +141,6 @@ export class MultiVaultBatchClient {
         totalAssets,
         totalSupply,
         vaultDecimals,
-        totalRequestedAssets,
-        pendingDepositAssets,
         assetAddress,
         assetDecimals,
         poolAddresses: [],
@@ -171,10 +166,6 @@ export class MultiVaultBatchClient {
         userShares: bigint;
         userAssetBalance: bigint;
         assetAllowance: bigint;
-        userPrincipal: bigint; // not supported, default to 0n
-        pendingDepositAssets: bigint; // pending deposit assets for user
-        totalRequestedAssets: bigint; // pending withdraw assets for user (shares->assets)
-        userSharesConvertedAssets: bigint; // current shares converted to assets
       }
     >
   > {
@@ -208,7 +199,7 @@ export class MultiVaultBatchClient {
 
     const userDataResults = await this.batchClient.batchRead(userDataCalls, {
       cacheKey: `multi_user_${userAddress}`,
-      ttl: 15000, // Shorter TTL for user data
+      ttl: 0,
     });
 
     // Organize results by vault type
@@ -218,123 +209,19 @@ export class MultiVaultBatchClient {
         userShares: bigint;
         userAssetBalance: bigint;
         assetAllowance: bigint;
-        userPrincipal: bigint;
-        pendingDepositAssets: bigint;
-        totalRequestedAssets: bigint;
-        userSharesConvertedAssets: bigint;
       }
     > = {} as any;
     let index = 0;
-
-    const currentBlock = await this.publicClient.getBlockNumber();
-    const fromBlock = currentBlock > 500_000n ? currentBlock - 500_000n : 0n;
 
     for (const type of vaultTypes) {
       const userShares = userDataResults[index++].data as bigint;
       const userAssetBalance = userDataResults[index++].data as bigint;
       const assetAllowance = userDataResults[index++].data as bigint;
-      const userPrincipal = 0n;
-
-      const vaultAddress = vaultData[type].vaultAddress;
-
-      // Convert current user shares to assets via on-chain convertToAssets
-      let userSharesConvertedAssets: bigint = 0n;
-      try {
-        if (userShares > 0n) {
-          userSharesConvertedAssets = (await this.publicClient.readContract({
-            address: vaultAddress,
-            abi: parseAbi([
-              "function convertToAssets(uint256 shares) view returns (uint256)",
-            ]) as readonly any[],
-            functionName: "convertToAssets",
-            args: [userShares],
-          })) as bigint;
-        }
-      } catch (err) {
-        userSharesConvertedAssets = 0n;
-      }
-
-      // Read latest DepositRequest for this user
-      let pendingDepositAssets: bigint = 0n;
-      try {
-        const depositRequestEvent = parseAbiItem(
-          "event DepositRequest(address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 assets)"
-        );
-        const depositLogs = await this.publicClient.getLogs({
-          address: vaultAddress,
-          event: depositRequestEvent,
-          args: { owner: userAddress },
-          fromBlock,
-          toBlock: currentBlock,
-        });
-        if (depositLogs && depositLogs.length > 0) {
-          const latest = depositLogs[depositLogs.length - 1];
-          const requestId = latest.args.requestId as bigint;
-          const controller = latest.args.controller as Address;
-          pendingDepositAssets = (await this.publicClient.readContract({
-            address: vaultAddress,
-            abi: parseAbi([
-              "function pendingDepositRequest(uint256 requestId, address controller) view returns (uint256 assets)",
-            ]) as readonly any[],
-            functionName: "pendingDepositRequest",
-            args: [requestId, controller],
-          })) as bigint;
-        }
-      } catch (err) {
-        // swallow errors and default to 0n
-        pendingDepositAssets = 0n;
-      }
-
-      // Read latest RedeemRequest for this user and convert pending shares to assets
-      let totalRequestedAssets: bigint = 0n;
-      try {
-        const redeemRequestEvent = parseAbiItem(
-          "event RedeemRequest(address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 shares)"
-        );
-        const redeemLogs = await this.publicClient.getLogs({
-          address: vaultAddress,
-          event: redeemRequestEvent,
-          args: { owner: userAddress },
-          fromBlock,
-          toBlock: currentBlock,
-        });
-        if (redeemLogs && redeemLogs.length > 0) {
-          const latest = redeemLogs[redeemLogs.length - 1];
-          const requestId = latest.args.requestId as bigint;
-          const controller = latest.args.controller as Address;
-          const pendingShares = (await this.publicClient.readContract({
-            address: vaultAddress,
-            abi: parseAbi([
-              "function pendingRedeemRequest(uint256 requestId, address controller) view returns (uint256 shares)",
-            ]) as readonly any[],
-            functionName: "pendingRedeemRequest",
-            args: [requestId, controller],
-          })) as bigint;
-          if (pendingShares > 0n) {
-            const pendingAssets = (await this.publicClient.readContract({
-              address: vaultAddress,
-              abi: parseAbi([
-                "function convertToAssets(uint256 shares) view returns (uint256)",
-              ]) as readonly any[],
-              functionName: "convertToAssets",
-              args: [pendingShares],
-            })) as bigint;
-            totalRequestedAssets = pendingAssets;
-          }
-        }
-      } catch (err) {
-        // swallow errors and default to 0n
-        totalRequestedAssets = 0n;
-      }
 
       results[type] = {
         userShares,
         userAssetBalance,
         assetAllowance,
-        userPrincipal,
-        pendingDepositAssets,
-        totalRequestedAssets,
-        userSharesConvertedAssets,
       };
     }
 
@@ -374,7 +261,6 @@ export const getMultiVaultBatchClient = (publicClient: PublicClient) => {
  * Helper function to calculate vault metrics from batch data
  */
 export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
-  // Normalize total assets by asset decimals (ERC4626 assets)
   const totalAssetsFormatted =
     Number(
       (data.totalAssets * BigInt(10 ** 18)) /
@@ -420,32 +306,22 @@ export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
         (userData.userAssetBalance * BigInt(10 ** 18)) /
           BigInt(10 ** Number(data.assetDecimals))
       ) / 1e18;
-    // Convert current user shares to assets via on-chain value
-    const userDepositsFormatted =
-      Number(
-        (userData.userSharesConvertedAssets * BigInt(10 ** 18)) /
-          BigInt(10 ** Number(data.assetDecimals))
-      ) / 1e18;
-
-    // Derive price per share for reference/display
+      
     const pricePerShare =
-      data.totalSupply > 0n
-        ? Number(data.totalAssets) / Number(data.totalSupply)
+      totalSupplyFormatted > 0
+        ? totalAssetsFormatted / totalSupplyFormatted
         : 0;
-    const formattedPricePerShare = Number(
-      formatUnits(BigInt(Math.round(pricePerShare * 1e18)), 18)
-    );
-    const compoundedYield =
-      userDepositsFormatted > userSharesFormatted
-        ? userDepositsFormatted - userSharesFormatted
-        : 0;
+        
+    const userDepositsFormatted = userSharesFormatted * pricePerShare;
+    
+    const compoundedYield = 0;
 
     userMetrics = {
       userShares: userSharesFormatted,
       userDeposits: userDepositsFormatted,
       compoundedYield,
       assetBalance: userAssetBalanceFormatted,
-      pricePerShare: formattedPricePerShare,
+      pricePerShare: pricePerShare,
     };
   }
 

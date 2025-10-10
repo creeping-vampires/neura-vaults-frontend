@@ -22,7 +22,6 @@ const Dashboard = () => {
     // usdt0Vault,
     refreshAllData,
   } = useMultiVault();
-  console.log("usdcVault", usdcVault);
   const { authenticated, login } = usePrivy();
   const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
 
