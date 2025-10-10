@@ -174,10 +174,19 @@ const VaultDetails = () => {
   const {
     deposit,
     withdraw,
-    withdrawPendingDeposit,
+    claimDeposit,
+    claimRedeem,
+    getClaimableDepositAmount,
+    getClaimableRedeemAmount,
     isDepositTransacting,
     isWithdrawTransacting,
     refreshData,
+    lastDepositRequestId,
+    lastDepositController,
+    lastDepositPendingAssets,
+    lastWithdrawRequestId,
+    lastWithdrawController,
+    lastWithdrawPendingAssets,
     ...vaultData
   } = vaultDataObject;
   const countdown = useCountdown();
@@ -188,10 +197,7 @@ const VaultDetails = () => {
     isLoading: chartLoading,
     error: chartError,
     fetchPriceChart,
-    priceData,
     isPriceLoading,
-    priceError,
-    getVaultDataByToken,
     get24APY,
     get7APY,
   } = usePrice();
@@ -319,24 +325,54 @@ const VaultDetails = () => {
     Map<string, NodeJS.Timeout>
   >(new Map());
 
-  // Polling for deposit & withdraw status
-  useEffect(() => {
-    if (!vaultData?.hasPendingDeposit && !vaultData?.hasPendingWithdrawal) {
-      return;
+  // Claimable amounts state and polling (separated for deposit and withdraw)
+  const [claimableDeposit, setClaimableDeposit] = useState<number>(0);
+  const [claimableWithdrawAssets, setClaimableWithdrawAssets] =
+    useState<number>(0);
+
+  const refreshClaimableDeposit = useCallback(async () => {
+    try {
+      const amount = await getClaimableDepositAmount?.();
+      setClaimableDeposit(amount || 0);
+    } catch (e) {
+      console.log("error refreshing deposit claimable", e);
     }
+  }, [getClaimableDepositAmount]);
 
-    const pollDepositWithdrawStatus = setInterval(() => {
-      refreshData();
-    }, 60000); // Poll every minute (60,000 ms)
+  const refreshClaimableWithdraw = useCallback(async () => {
+    try {
+      const amount = await getClaimableRedeemAmount?.();
+      setClaimableWithdrawAssets(amount || 0);
+    } catch (e) {
+      console.log("error refreshing withdraw claimable", e);
+    }
+  }, [getClaimableRedeemAmount]);
 
-    return () => {
-      clearInterval(pollDepositWithdrawStatus);
-    };
-  }, [
-    vaultData?.hasPendingDeposit,
-    vaultData?.hasPendingWithdrawal,
-    refreshData,
-  ]);
+  // Initial fetch for both claimables
+  useEffect(() => {
+    refreshClaimableDeposit();
+    refreshClaimableWithdraw();
+  }, [refreshClaimableDeposit, refreshClaimableWithdraw]);
+
+  // Start polling deposit claimable only when it is non-zero
+  useEffect(() => {
+    if (claimableDeposit > 0) {
+      const t = setInterval(() => {
+        refreshClaimableDeposit();
+      }, 60000);
+      return () => clearInterval(t);
+    }
+  }, [claimableDeposit, refreshClaimableDeposit]);
+
+  // Start polling withdraw claimable only when it is non-zero
+  useEffect(() => {
+    if (claimableWithdrawAssets > 0) {
+      const t = setInterval(() => {
+        refreshClaimableWithdraw();
+      }, 30000);
+      return () => clearInterval(t);
+    }
+  }, [claimableWithdrawAssets, refreshClaimableWithdraw]);
 
   const addPendingTransaction = useCallback(
     (type: "deposit" | "withdraw", amount: string, hash?: string) => {
@@ -586,15 +622,6 @@ const VaultDetails = () => {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    if (!value || isNaN(value)) return "$0.00";
-    if (value >= 1e12) return `$${(value / 1e12)?.toFixed(2)}T`;
-    if (value >= 1e9) return `$${(value / 1e9)?.toFixed(2)}B`;
-    if (value >= 1e6) return `$${(value / 1e6)?.toFixed(2)}M`;
-    if (value >= 1e3) return `$${(value / 1e3)?.toFixed(2)}K`;
-    return `$${value?.toFixed(2)}`;
-  };
-
   const handlePercentageClick = (percent: number) => {
     const maxAmount =
       activeTab === "deposit"
@@ -642,7 +669,7 @@ const VaultDetails = () => {
             <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <div>
-            <h1 className="text-lg sm:text-2xl font-medium text-foreground font-libertinus">
+            <h1 className="text-lg sm:text-2xl font-medium text-foreground font-libertinus whitespace-nowrap">
               {vaultConfig.config.name} Vault
             </h1>
             <div className="flex items-center space-x-2 mt-0.5">
@@ -658,43 +685,111 @@ const VaultDetails = () => {
 
         <div className="flex gap-3">
           {/* Pending Deposits Section */}
-          {vaultData?.hasPendingDeposit && (
-            <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 p-3 border border-primary/20 rounded-md flex items-center gap-3">
+          {lastDepositRequestId && claimableDeposit === 0 && (
+            <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
+              <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
+                <div className="h-full bg-primary/60 animate-progress" />
+              </div>
               <div className="">
                 <span className="text-primary text-sm font-medium">
                   Pending Deposit
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Your deposit will be processed in the next settlement
+                  Deposit settlement in progress. Please wait for confirmation,
+                  then claim your shares.
                 </p>
+                {/* <div className="mt-1 text-xs">
+                  Pending Assets: {lastDepositPendingAssets?.toFixed(4)}{" "}
+                  {vaultConfig.config.symbol}
+                </div> */}
+              </div>
+            </Card>
+          )}
+
+          {claimableDeposit > 0 && (
+            <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 py-1 border border-primary/20 rounded-md flex items-center gap-3">
+              <div className="">
+                <span className="text-primary text-sm font-medium">
+                  Pending Deposit
+                </span>
+                <p className="text-xs text-muted-foreground">
+                  Your deposit is ready—claim your shares to start earning
+                </p>
+                {/* <div className="mt-1 text-xs">
+                  Claimable Shares: {claimableDeposit.toFixed(4)}{" "}
+                  {vaultConfig.config.symbol}
+                </div> */}
               </div>
               <Button
                 onClick={async () => {
                   try {
-                    await withdrawPendingDeposit();
+                    await claimDeposit?.();
                     refreshData();
+                    await refreshClaimableDeposit();
                   } catch (error) {
-                    console.error("Error withdrawing pending deposit:", error);
+                    console.error("Error claiming deposit:", error);
                   }
                 }}
                 size="sm"
-                variant="outline"
-                className="text-xs border-primary/20 hover:bg-primary/10"
+                variant="wallet"
+                className="text-xs border-2 border-primary/60 hover:border-primary transition-all duration-300 relative overflow-hidden"
               >
-                Cancel Pending Deposit
+                Claim Shares
               </Button>
             </Card>
           )}
-          {vaultData?.hasPendingWithdrawal && (
-            <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 p-3 border border-primary/20 rounded-md flex items-center gap-3">
+
+          {/* Pending Withdrawals Section */}
+          {lastWithdrawRequestId && claimableWithdrawAssets === 0 && (
+            <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
+              <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
+                <div className="h-full bg-primary/60 animate-progress" />
+              </div>
               <div className="">
                 <span className="text-primary text-sm font-medium">
                   Pending Withdrawal
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Your withdrawal is being processed automatically
+                  Withdrawal settlement in progress. Please wait for
+                  confirmation, then withdraw your assets.
                 </p>
+                {/* <div className="mt-1 text-xs">
+                  Pending Assets: {lastWithdrawPendingAssets?.toFixed(4)}{" "}
+                  {vaultConfig.config.symbol}
+                </div> */}
               </div>
+            </Card>
+          )}
+          {claimableWithdrawAssets > 0 && (
+            <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 py-1 border border-primary/20 rounded-md flex items-center gap-3">
+              <div className="">
+                <span className="text-primary text-sm font-medium">
+                  Pending Withdrawal
+                </span>
+                <p className="text-xs text-muted-foreground">
+                  Your withdrawal is ready—claim your assets to withdraw
+                </p>
+                {/* <div className="mt-1 text-xs">
+                    Claimable Assets: {claimableWithdrawAssets.toFixed(2)}{" "}
+                    {vaultConfig.config.symbol}
+                  </div> */}
+              </div>
+              <Button
+                onClick={async () => {
+                  try {
+                    await claimRedeem?.();
+                    refreshData();
+                    await refreshClaimableWithdraw();
+                  } catch (error) {
+                    console.error("Error claiming withdraw:", error);
+                  }
+                }}
+                size="sm"
+                variant="wallet"
+                className="text-xs border-2 border-primary/60 hover:border-primary transition-all duration-300 relative overflow-hidden"
+              >
+                Withdraw Assets
+              </Button>
             </Card>
           )}
         </div>
@@ -791,6 +886,7 @@ const VaultDetails = () => {
                         Shares: {vaultData.userShares?.toFixed(4) || "0.0000"}
                       </span>
                     </div>
+
                     {vaultData.compoundedYield > 0 && (
                       <div className="flex items-center mt-1">
                         <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
@@ -996,13 +1092,13 @@ const VaultDetails = () => {
                       DeFi.
                     </p>
 
-                    <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
+                    {/* <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground text-xs sm:text-sm">
                           Total Pending Deposits
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
-                          {vaultData.pendingDepositAssets?.toFixed(2) || "0.00"}{" "}
+                          {vaultData.pendingDepositAssets?.toFixed(4) || "0.00"}{" "}
                           {vaultConfig.config.symbol}
                         </span>
                       </div>
@@ -1011,19 +1107,11 @@ const VaultDetails = () => {
                           Total Pending Withdrawals
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
-                          {vaultData.totalRequestedAssets?.toFixed(2) || "0.00"}{" "}
+                          {vaultData.totalRequestedAssets?.toFixed(4) || "0.00"}{" "}
                           {vaultConfig.config.symbol}
                         </span>
                       </div>
-                      {/* <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-xs sm:text-sm">
-                          Performance Fee
-                        </span>
-                        <span className="text-foreground font-medium text-xs sm:text-sm">
-                          10.00%
-                        </span>
-                      </div> */}
-                    </div>
+                    </div> */}
 
                     <div className="pt-3 sm:pt-4">
                       <h4 className="text-foreground font-medium mb-2 sm:mb-3 text-sm">

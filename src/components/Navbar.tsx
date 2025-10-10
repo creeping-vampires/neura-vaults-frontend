@@ -40,9 +40,9 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const { hasAccess, isLoading } = useUserAccess();
 
 
-  useEffect(() => {
-    console.log("Wallet Test: ", {wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user});
-  },[wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user])
+  // useEffect(() => {
+    // console.log("Wallet Test: ", {wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user});
+  // },[wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user])
 
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);

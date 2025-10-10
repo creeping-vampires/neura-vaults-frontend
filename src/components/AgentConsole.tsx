@@ -51,10 +51,7 @@ import { useLocation } from "react-router-dom";
       try {
         setIsLoading(true);
 
-        // Try to get latest agent thought first
-        // const latestThought = await agentService.getLatestAgentThought();
-
-        // Fetch vault activities to get all strategy summaries
+        // Fetch vault activity summaries
         let strategySummaries: StrategySummaryItem[] = [];
         if (vaultId) {
           try {
@@ -86,16 +83,8 @@ import { useLocation } from "react-router-dom";
           }
         }
 
-        // if (latestThought) {
-        //   setAgentData({
-        //     id: latestThought.thoughtId.toString(),
-        //     content: latestThought.thought,
-        //     timestamp: latestThought.createdAt,
-        //     strategySummaries,
-        //   });
-        // } else
         if (strategySummaries.length > 0) {
-          // Use latest rebalance strategy summary as primary content if no agent thought
+          // Use latest rebalance summary as primary content
           const latestRebalance =
             strategySummaries[strategySummaries.length - 1];
           setAgentData({
@@ -107,7 +96,7 @@ import { useLocation } from "react-router-dom";
         } 
       } catch (error) {
         console.error("Error fetching agent data:", error);
-        // Fallback data
+        // Fallback
         setAgentData({
           id: "autonomous_trader_fallback",
           content:
@@ -119,14 +108,14 @@ import { useLocation } from "react-router-dom";
       }
     };
 
-    // Fetch agent data when component mounts and console opens
+    // Fetch on mount/open
     useEffect(() => {
       if (isOpen && isAiUSDeVault) {
         fetchAgentData();
       }
     }, [isOpen, isAiUSDeVault]);
 
-    // Scroll to bottom when console opens or when data changes
+    // Scroll to bottom on open or data change
     useEffect(() => {
       if (isOpen) {
         // Small delay to ensure DOM is updated
@@ -134,7 +123,7 @@ import { useLocation } from "react-router-dom";
       }
     }, [isOpen, agentData]);
 
-    // Don't render if not on aiUSDe vault page
+    // Only render on vault pages
     if (!isAiUSDeVault) {
       return null;
     }
