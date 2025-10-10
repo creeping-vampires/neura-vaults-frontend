@@ -24,7 +24,6 @@ const Sidebar = ({
     { icon: BarChart3, path: "/markets", tooltip: "Vaults" },
     { icon: Target, path: "/portfolio", tooltip: "Portfolio" },
     ...(isAdmin ? [{ icon: Shield, path: "/admin", tooltip: "Admin" }] : []),
-    // { icon: HelpCircle, path: '/help', tooltip: 'How it works' }
   ];
 
   useEffect(() => {

@@ -1,5 +1,3 @@
-// src/components/shared/AddressDisplay.tsx
-
 import React from "react";
 import { Address } from "viem";
 import { useHLName } from "@/hooks/useHLName";

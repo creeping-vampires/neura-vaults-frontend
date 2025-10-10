@@ -37,7 +37,6 @@ const Markets = () => {
   const {
     getAllVaults,
     getTotalTVL,
-    // getAverageAPR,
     // usdeVault,
     // refreshAllData,
   } = useMultiVault();

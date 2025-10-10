@@ -16,7 +16,7 @@ export const useActiveWallet = (): ActiveWalletInfo => {
 
 
   useEffect(() => {
-    console.log("Wallet Authenticated: ", {authenticated, user, wallets});
+    // console.log("Wallet Authenticated: ", {authenticated, user, wallets});
     
     // Additional check for MetaMask connection when user is authenticated
     if (authenticated && user?.linkedAccounts?.some(account => account.type === "wallet")) {

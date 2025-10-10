@@ -6,7 +6,7 @@ export const VAULTS = {
     name: "aiUSDe",
     symbol: "USDe",
     yieldAllocatorVaultAddress:
-      "0x259Ae78e99405393bc398EeC9fc6d00c5b1694a9" as `0x${string}`,
+      "0x869c314b6a40Ce1b2adB4f61ff17eA445F390629" as `0x${string}`,
     aiAgentAddress:
       "0x7b10086b7a1363E45a9e3875B8dA42927BA27F08" as `0x${string}`,
     whitelistRegisteryAddress:

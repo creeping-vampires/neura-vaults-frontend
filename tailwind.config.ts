@@ -102,6 +102,11 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0.5" },
         },
+        "progress": {
+          "0%": { transform: "translateX(-100%)" },
+          "50%": { transform: "translateX(100%)" },
+          "100%": { transform: "translateX(-100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -109,6 +114,7 @@ export default {
         fadeIn: "fadeIn 0.8s ease-in-out",
         float: "float 3s ease-in-out infinite",
         "pulse-slow": "pulse-slow 2s ease-in-out infinite",
+        progress: "progress 4s cubic-bezier(0.45,0,0.55,1) infinite",
       },
     },
   },
