@@ -9,6 +9,12 @@ interface SidebarProps {
   isMobile?: boolean;
 }
 
+const socials = [
+  { name: "twitter", link: "https://x.com/Neuravaults" },
+  { name: "discord", link: "https://discord.gg/officialneuravaults" },
+  { name: "gitbook", link: "https://neura-vaults.gitbook.io/neura-vaults/" },
+];
+
 const Sidebar = ({
   isOpen = false,
   onClose,
@@ -129,17 +135,28 @@ const Sidebar = ({
       </nav>
 
       {/* User Profile */}
-      {/* <div className="p-4 border-t border-sidebar-border">
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center">
-            <User className="h-4 w-4 text-muted-foreground" />
-          </div>
-            <div className="ml-3 flex-1">
-              <p className="text-sidebar-foreground font-medium text-sm">User</p>
-              <p className="text-sidebar-accent text-xs">Connected</p>
-            </div>
+      <div className="p-4 border-t border-border">
+        <div className="flex items-center justify-center gap-6 ml-auto">
+          {socials.map(({ name, link }, idx) => (
+            <a
+              href={link}
+              key={idx}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-9 w-9 rotate-45 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center"
+            >
+              <div className="-rotate-45 inline-flex h-7 w-7 items-center justify-center">
+                {/* <Icon className="h-5 w-5 text-muted-foreground" /> */}
+                <img
+                  src={`/${name}.svg`}
+                  alt={name}
+                  className="h-4 w-4 invert opacity-70"
+                />
+              </div>
+            </a>
+          ))}
         </div>
-      </div> */}
+      </div>
     </div>
   );
 };

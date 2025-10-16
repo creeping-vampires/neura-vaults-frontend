@@ -669,7 +669,7 @@ const VaultDetails = () => {
             <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <div>
-            <h1 className="text-lg sm:text-2xl font-medium text-foreground font-libertinus whitespace-nowrap">
+            <h1 className="text-lg sm:text-2xl font-medium text-[#e4dfcb] font-libertinus whitespace-nowrap">
               {vaultConfig.config.name} Vault
             </h1>
             <div className="flex items-center space-x-2 mt-0.5">
@@ -913,7 +913,7 @@ const VaultDetails = () => {
           <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
             <CardHeader className="pb-2 sm:pb-6">
               <div className="flex flex-row items-start sm:items-center justify-between gap-3">
-                <CardTitle className="text-foreground font-medium text-base sm:text-lg">
+                <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                   Performance
                 </CardTitle>
                 <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto w-full sm:w-auto">
@@ -1079,7 +1079,7 @@ const VaultDetails = () => {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                   <CardHeader className="pb-3 sm:pb-6">
-                    <CardTitle className="text-foreground font-medium text-base sm:text-lg">
+                    <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                       About this Vault
                     </CardTitle>
                   </CardHeader>
@@ -1133,7 +1133,7 @@ const VaultDetails = () => {
                     <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                       <CardHeader className="pb-3 sm:pb-6">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-foreground font-medium text-base sm:text-lg">
+                          <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                             Vault Activity
                           </CardTitle>
                         </div>
@@ -1158,7 +1158,7 @@ const VaultDetails = () => {
             <TabsContent value="pools" className="mt-4 sm:mt-6">
               <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                 <CardHeader>
-                  <CardTitle className="text-foreground font-medium text-base sm:text-lg">
+                  <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                     Whitelisted Pools
                   </CardTitle>
                 </CardHeader>
@@ -1234,7 +1234,7 @@ const VaultDetails = () => {
             <TabsContent value="composition" className="mt-4 sm:mt-6">
               <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                 <CardHeader>
-                  <CardTitle className="text-foreground font-medium text-base sm:text-lg">
+                  <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                     Portfolio Composition
                   </CardTitle>
                 </CardHeader>
