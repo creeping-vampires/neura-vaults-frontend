@@ -233,7 +233,7 @@ const Admin: React.FC = () => {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold text-[#e4dfcb]">Admin Dashboard</h1>
           <p className="text-muted-foreground">
             Manage invite codes and access control
           </p>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, DollarSign, Percent, Rocket } from "lucide-react";
+import { TrendingUp, DollarSign, Percent, Rocket, Star } from "lucide-react";
 import { usePrice } from "@/hooks/usePrice";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { publicClient } from "@/lib/privyConfig";
@@ -10,8 +10,8 @@ import { parseAbi } from "viem";
 import { fetchHypeBalance } from "@/lib/utils";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { VAULTS, VAULT_TYPES, VaultType } from "@/utils/constant";
-import { useMultiVault } from '@/hooks/useMultiVault';
-import { useActiveWallet } from '@/hooks/useActiveWallet';
+import { useMultiVault } from "@/hooks/useMultiVault";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import PythAttribution from "@/components/shared/PythAttribution";
 
 const Dashboard = () => {
@@ -195,7 +195,7 @@ const Dashboard = () => {
         <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
           <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
             <div className="flex items-center space-x-2">
-              <CardTitle className="text-foreground font-bold text-base sm:text-lg">
+              <CardTitle className="text-[#e4dfcb] font-bold text-base sm:text-lg">
                 Token Balances
               </CardTitle>
             </div>
@@ -277,7 +277,7 @@ const Dashboard = () => {
           <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
             <div className="flex items-start sm:items-center justify-between gap-2 sm:gap-0">
               <div className="flex items-center space-x-2">
-                <CardTitle className="text-foreground font-bold text-base sm:text-lg">
+                <CardTitle className="text-[#e4dfcb] font-bold text-base sm:text-lg">
                   Rewards Program
                 </CardTitle>
               </div>

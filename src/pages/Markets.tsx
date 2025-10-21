@@ -229,7 +229,7 @@ const Markets = () => {
       {/* Markets Table */}
       <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
         <CardHeader className="pl-4 pb-0 pt-4 sm:p-6 sm:pb-0">
-          <CardTitle className="text-foreground font-bold text-lg sm:text-xl">
+          <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
             Vaults
           </CardTitle>
         </CardHeader>

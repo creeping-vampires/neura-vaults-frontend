@@ -339,9 +339,9 @@ const Portfolio = () => {
         <CardContent className="p-4 sm:p-6 relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 w-full">
-              <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
+              <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                 Your Deposits
-              </h3>
+              </CardTitle>
             </div>
             <Button
               variant="ghost"
@@ -581,7 +581,7 @@ const Portfolio = () => {
           <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
             <CardHeader className="px-4 pb-0 pt-4 sm:p-6 sm:pb-0">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-foreground font-bold text-xl">
+                <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                   Your Positions
                 </CardTitle>
                 <Badge
