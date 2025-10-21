@@ -52,14 +52,14 @@ const Sidebar = ({
           <div className="relative group">
             <img
               src="/logo.webp"
-              className="w-[54px] h-[54px] rounded-xl transition-all duration-300"
+              className="w-[65px] h-[65px] -my-[6.5px] rounded-xl transition-all duration-300"
             />
           </div>
           <div className="overflow-hidden">
             <h1 className="text-sidebar-foreground font-medium text-xl font-libertinus transition-all duration-300 group-hover:text-white">
               Neura
             </h1>
-            <p className="text-sm text-muted-foreground font-libertinus -mt-1">
+            <p className="text-base text-muted-foreground font-libertinus -mt-1">
               Vaults
             </p>
           </div>
