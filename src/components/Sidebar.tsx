@@ -52,10 +52,10 @@ const Sidebar = ({
           <div className="relative group">
             <img
               src="/logo.webp"
-              className="w-[52px] h-[52px] rounded-xl transition-all duration-300"
+              className="w-[54px] h-[54px] rounded-xl transition-all duration-300"
             />
           </div>
-          <div className="ml-1 overflow-hidden">
+          <div className="overflow-hidden">
             <h1 className="text-sidebar-foreground font-medium text-xl font-libertinus transition-all duration-300 group-hover:text-white">
               Neura
             </h1>
