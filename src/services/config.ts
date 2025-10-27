@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const API_URL_LATEST = import.meta.env.VITE_API_URL_LATEST;
 
 if (!API_URL) {
   throw new Error("VITE_API_URL environment variable is not defined");
@@ -35,6 +36,30 @@ export interface TokenPriceData {
 
 export interface PriceChartResponse {
   chart_data: TokenPriceData[];
+}
+
+// Latest price chart types (new endpoint)
+export interface LatestPriceChartPoint {
+  sharePrice: string;
+  totalAssets: string;
+  totalSupply: string;
+  timestamp: string;
+  blockNumber: string;
+  apy: number;
+  apy7d: number;
+  apy30d: number;
+}
+
+export interface LatestPriceChartData {
+  vaultAddress: string;
+  vaultName: string;
+  period: string; // e.g., "7d"
+  dataPoints: LatestPriceChartPoint[];
+}
+
+export interface LatestPriceChartResponse {
+  success: boolean;
+  data: LatestPriceChartData;
 }
 
 export interface VaultPriceItem {
@@ -112,7 +137,6 @@ export interface WithdrawalsRequest {
 export type VaultDepositsResponse = VaultDeposit[];
 export type VaultWithdrawalsResponse = VaultWithdrawal[];
 
-// Rebalance Types
 export interface RebalanceTransaction {
   id: number;
   transaction_hash: string;
@@ -154,13 +178,62 @@ export type VaultRebalancesResponse = VaultRebalance[];
 
 export type VaultPriceResponse = VaultPriceItem[];
 
+// NEW: Latest deposits/withdrawals API types
+export interface LatestVaultActionItem {
+  id: string;
+  vaultAddress: string;
+  vaultName: string;
+  sender: string;
+  owner: string;
+  assets: string; // raw wei amount
+  shares: string; // raw wei amount
+  timestamp: string; // seconds since epoch
+  blockNumber: string;
+  txHash: string;
+}
+
+export interface LatestDepositsData {
+  deposits: LatestVaultActionItem[];
+  count: number;
+  limit: number;
+  offset: number;
+  filters: {
+    vaultAddress?: string;
+    owner?: string;
+    days?: number;
+  };
+}
+
+export interface LatestWithdrawalsData {
+  withdrawals: LatestVaultActionItem[];
+  count: number;
+  limit: number;
+  offset: number;
+  filters: {
+    vaultAddress?: string;
+    owner?: string;
+    days?: number;
+  };
+}
+
+export interface LatestDepositsResponse {
+  success: boolean;
+  data: LatestDepositsData;
+}
+
+export interface LatestWithdrawalsResponse {
+  success: boolean;
+  data: LatestWithdrawalsData;
+}
+
 // API Routes
 export const API_ROUTES = {
   GET_DAILY_METRICS: `${API_URL}/yield-monitor/daily-metrics/`,
-  GET_PRICE_CHART: `${API_URL}/vault/price-chart/`,
-  GET_VAULT_PRICE: `${API_URL}/vault/price/`,
-  GET_VAULT_DEPOSITS: `${API_URL}/vault/deposits/`,
-  GET_VAULT_WITHDRAWALS: `${API_URL}/vault/withdrawals/`,
+  GET_PRICE_CHART_7D: `${API_URL_LATEST}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/7d`,
+  GET_PRICE_CHART_30D: `${API_URL_LATEST}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/30d`,
+  GET_VAULTS_LATEST: `${API_URL_LATEST}/neura-vault/vaults`,
+  GET_VAULT_DEPOSITS_LATEST: `${API_URL_LATEST}/neura-vault/deposits`,
+  GET_VAULT_WITHDRAWALS_LATEST: `${API_URL_LATEST}/neura-vault/withdrawals`,
   GET_VAULT_REBALANCES: `${API_URL}/vault/rebalances/combined/`,
   GET_AGENT_THOUGHTS: `${API_URL}/agent-thoughts/`,
 
@@ -278,3 +351,43 @@ export function clearApiCaches() {
 }
 
 export default api;
+
+export interface LatestVaultAllocation {
+  protocol: string;
+  name: string;
+  currentAPY: number;
+}
+
+export interface LatestVaultCurrentData {
+  sharePrice: string;
+  totalAssets: string;
+  totalSupply: string;
+  timestamp: string;
+  blockNumber: string;
+}
+
+export interface LatestVaultApy {
+  apy: number | null;
+  apy7d: number | null;
+  apy30d: number | null;
+}
+
+export interface LatestVaultItem {
+  name: string;
+  address: string;
+  chain: string;
+  symbol: string;
+  underlying: string;
+  safe: string;
+  silo: string;
+  proxyAdmin: string;
+  startBlock: string;
+  allocations: LatestVaultAllocation[];
+  currentData: LatestVaultCurrentData;
+  apy: LatestVaultApy;
+}
+
+export interface LatestVaultsResponse {
+  success: boolean;
+  data: LatestVaultItem[];
+}

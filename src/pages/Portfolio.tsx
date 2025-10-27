@@ -94,21 +94,30 @@ const Portfolio = () => {
     hasFetched,
   } = useTransactionHistory();
 
-  // Memoize asset metadata to avoid redundant fetching
+  // Memoize asset metadata to avoid redundant fetching (dynamic vaults)
   const { assetSymbol, assetDecimals } = useMemo(() => {
-    // Use cached values from vault data if available
-    const usdcVaultData = getAllVaults().find((v) => v.type === "USDC");
-    if (usdcVaultData?.data?.assetDecimals) {
+    const vaults = getAllVaults();
+    // Prefer a vault that has assetDecimals available
+    const withDecimals = vaults.find((v) => v.data?.assetDecimals);
+    if (withDecimals) {
       return {
-        assetSymbol: "USDC",
-        assetDecimals: usdcVaultData.data.assetDecimals,
+        assetSymbol: withDecimals.symbol,
+        assetDecimals: withDecimals.data.assetDecimals as number,
       };
     }
+    // Fallback to first vault symbol and default decimals
+    const first = vaults[0];
     return {
-      assetSymbol: "USDC",
+      assetSymbol: first?.symbol || priceData.token || "",
       assetDecimals: 18,
     };
-  }, [getAllVaults]);
+  }, [getAllVaults, priceData.token]);
+
+  // Primary symbol for APY display in overview (fallback to first vault)
+  const primarySymbol = useMemo(() => {
+    const vaults = getAllVaults();
+    return vaults[0]?.symbol || priceData.token;
+  }, [getAllVaults, priceData.token]);
 
   // Lazy load transaction data when transactions tab is selected
   // useEffect(() => {
@@ -165,15 +174,14 @@ const Portfolio = () => {
         return userDeposits > 0 || userShares > 0;
       })
       .map((vault) => ({
-        vaultType: vault.type,
-        vaultAddress: vault.config.yieldAllocatorVaultAddress,
-        asset: vault.config.symbol,
-        name: vault.config.name,
+        vaultAddress: vault.address,
+        asset: vault.symbol,
+        name: vault.name || `ai${vault.symbol}`,
         balance: vault.data?.userShares || 0,
         value: vault.data?.userDeposits || 0,
         apy: vault.data?.currentNetAPR || 0,
         earnings: vault.data?.compoundedYield || 0,
-        icon: vault.config.symbol.charAt(0),
+        icon: vault.symbol.charAt(0),
         status: "active",
       }));
   }, [getAllVaults]);
@@ -519,9 +527,7 @@ const Portfolio = () => {
               <div className="flex flex-col items-center">
                 <div className="text-muted-foreground text-xs">Current APY</div>
                 <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
-                  {get24APY(
-                    "0x259Ae78e99405393bc398EeC9fc6d00c5b1694a9"
-                  ).toFixed(2)}
+                  {get24APY(primarySymbol).toFixed(2)}
                   %
                   <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                     <div className="font-medium text-muted-foreground">
@@ -903,36 +909,6 @@ const Portfolio = () => {
                   </table>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="rewards" className="mt-4 sm:mt-6">
-          <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
-            <CardHeader className="px-4 pb-0 pt-4 sm:p-6 sm:pb-0">
-              <CardTitle className="text-foreground font-bold text-xl">
-                Rewards
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full text-muted-foreground text-sm text-center mt-4">
-                Rewards coming soon.
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analytics" className="mt-4 sm:mt-6">
-          <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
-            <CardHeader className="px-4 pb-0 pt-4 sm:p-6 sm:pb-0">
-              <CardTitle className="text-foreground font-bold text-xl">
-                Analytics
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-muted-foreground text-sm text-center mt-4">
-                Analytics coming soon.
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

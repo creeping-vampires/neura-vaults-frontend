@@ -57,7 +57,7 @@ const Loader = () => (
   </div>
 );
 const AppRoutes = () => {
-  const { usdcVault } = useMultiVault();
+  const { isLoading: isVaultsLoading, error: vaultsError } = useMultiVault();
   const { isPriceLoading, priceError } = usePrice();
   const { authenticated } = usePrivy();
   const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
@@ -66,16 +66,14 @@ const AppRoutes = () => {
   useMetaMaskMonitor();
 
   const isLoading =
-    usdcVault?.isLoading ||
-    // usdt0Vault?.isLoading ||
+    isVaultsLoading ||
     isPriceLoading ||
     (authenticated && isTxLoading);
 
   const hasError = Boolean(
-    usdcVault?.error ||
-      // usdt0Vault?.error ||
-      priceError ||
-      (authenticated && txError)
+    vaultsError ||
+    priceError ||
+    (authenticated && txError)
   );
 
   if (isLoading || hasError) {

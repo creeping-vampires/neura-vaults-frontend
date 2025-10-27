@@ -2,14 +2,10 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, DollarSign, Percent, Rocket, Star } from "lucide-react";
+import { TrendingUp, DollarSign, Percent, Rocket } from "lucide-react";
 import { usePrice } from "@/hooks/usePrice";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
-import { publicClient } from "@/lib/privyConfig";
-import { parseAbi } from "viem";
 import { fetchHypeBalance } from "@/lib/utils";
-import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
-import { VAULTS, VAULT_TYPES, VaultType } from "@/utils/constant";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import PythAttribution from "@/components/shared/PythAttribution";
@@ -18,12 +14,17 @@ const Dashboard = () => {
   const {
     getAllVaults,
     getTotalTVL,
-    usdcVault,
     // usdt0Vault,
     refreshAllData,
   } = useMultiVault();
   const { authenticated, login } = usePrivy();
   const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
+
+  const primaryVault = useMemo(() => {
+    const vaults = getAllVaults();
+    const usdc = vaults.find((v) => v.symbol === "USDC");
+    return usdc || vaults[0];
+  }, [getAllVaults]);
 
   const { get24APY, getHighest7APY } = usePrice();
 
@@ -156,8 +157,7 @@ const Dashboard = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="space-y-1 sm:space-y-2">
-              <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-                12.75 %
+              <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">     {dashboardData.currentAPY.toFixed(2)} %
                 <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                   <div className="font-medium text-muted-foreground">
                     7-Day APY
@@ -206,7 +206,7 @@ const Dashboard = () => {
                 <div className="w-full to-primary/10 p-3 sm:p-4 rounded-xl border border-border">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                      USDC Balance
+                      {`${primaryVault?.symbol || "Vault"} Balance`}
                     </p>
                     <Badge
                       variant="secondary"
@@ -216,7 +216,7 @@ const Dashboard = () => {
                     </Badge>
                   </div>
                   <p className="text-foreground font-bold text-xl sm:text-2xl">
-                    {usdcVault?.assetBalance?.toFixed(4) || "0.0000"} USDC
+                    {Number(primaryVault?.data?.assetBalance || 0).toFixed(4)} {primaryVault?.symbol || ""}
                   </p>
                 </div>
 

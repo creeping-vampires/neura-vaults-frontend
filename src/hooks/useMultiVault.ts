@@ -8,13 +8,13 @@ import {
   parseAbiItem,
   maxUint256,
 } from "viem";
-import { hyperliquid, publicClient } from "@/lib/privyConfig";
-import { VAULTS, VaultType, VAULT_TYPES } from "@/utils/constant";
+import { hyperliquid } from "@/lib/privyConfig";
+import { usePrice } from "@/hooks/usePrice";
 import {
   getMultiVaultBatchClient,
   calculateVaultMetrics,
 } from "@/utils/multiVaultBatch";
-import { VaultData, VaultMetrics } from "@/types/vault";
+import { VaultData } from "@/types/vault";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { toast } from "@/hooks/use-toast";
 import { switchToChain } from "@/lib/utils";
@@ -22,7 +22,7 @@ import { useActiveWallet } from "@/hooks/useActiveWallet";
 
 // Multi-vault cache to prevent unnecessary re-fetching
 let multiVaultCache: {
-  data: Record<VaultType, VaultData>;
+  data: Record<string, VaultData>;
   timestamp: number;
 } | null = null;
 
@@ -30,6 +30,7 @@ export const useMultiVault = () => {
   const publicClient = usePublicClient();
   const { data: wagmiWalletClient } = useWalletClient();
   const { wallets } = useWallets();
+  const { allVaultData } = usePrice();
 
   // Track last deposit request for pending status UI
   const [lastDepositRequestId, setLastDepositRequestId] = useState<
@@ -53,7 +54,7 @@ export const useMultiVault = () => {
     number | null
   >(null);
 
-// Use cached data if fresh (<5m)
+  // Use cached data if fresh (<5m)
   const cachedData = useMemo(() => {
     if (multiVaultCache) {
       const isExpired = Date.now() - multiVaultCache.timestamp > 5 * 60 * 1000; // 5 minutes
@@ -62,7 +63,7 @@ export const useMultiVault = () => {
       }
     }
 
-// Fallback to localStorage
+    // Fallback to localStorage
     try {
       const cached = localStorage.getItem("multiVaultData");
       if (cached) {
@@ -80,46 +81,23 @@ export const useMultiVault = () => {
     return null;
   }, []);
 
-// Initialize vault data from cache or defaults
-  const initialVaultData: Record<VaultType, VaultData> = useMemo(() => {
+  // Initialize vault data from cache or empty
+  const initialVaultData: Record<string, VaultData> = useMemo(() => {
     if (cachedData) {
       return cachedData;
     }
-
-    const defaultData: Record<VaultType, VaultData> = {} as any;
-    VAULT_TYPES.forEach((type) => {
-      defaultData[type] = {
-        totalAssets: 0,
-        totalSupply: 0,
-        currentNetAPR: 0,
-        tvl: 0,
-        userDeposits: 0,
-        userShares: 0,
-        compoundedYield: 0,
-        assetBalance: 0,
-        pricePerShare: 1,
-        assetDecimals: 18,
-        totalRequestedAssets: 0,
-        pendingDepositAssets: 0,
-        isLoading: cachedData ? false : true,
-        error: null,
-        poolNetAPRs: [],
-        poolTVLs: [],
-        poolAddresses: [],
-      };
-    });
-    return defaultData;
+    return {};
   }, [cachedData]);
 
   const [vaultData, setVaultData] =
-    useState<Record<VaultType, VaultData>>(initialVaultData);
+    useState<Record<string, VaultData>>(initialVaultData);
   const [isLoading, setIsLoading] = useState<boolean>(() => {
-// Skip initial loading with cache
+    // Skip initial loading with cache
     return cachedData ? false : true;
   });
   const [error, setError] = useState<string | null>(null);
 
-// Transaction state
+  // Transaction state
   const [isTransacting, setIsTransacting] = useState(false);
   const [isDepositTransacting, setIsDepositTransacting] = useState(false);
   const [isWithdrawTransacting, setIsWithdrawTransacting] = useState(false);
@@ -130,6 +108,10 @@ export const useMultiVault = () => {
 
   const fetchAllVaultData = useCallback(async () => {
     if (!publicClient) return;
+    if (!allVaultData || allVaultData.length === 0) {
+      // wait for price hook to load vaults
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -138,19 +120,17 @@ export const useMultiVault = () => {
       const multiVaultClient = getMultiVaultBatchClient(publicClient);
       const { vaultData: rawVaultData, userData } =
         await multiVaultClient.refreshAllData(
-          VAULT_TYPES,
+          allVaultData,
           (userAddress as `0x${string}`) || undefined
         );
 
-      // Convert to VaultData
-      const processedVaultData: Record<VaultType, VaultData> = {} as any;
+      // Convert to VaultData keyed by address
+      const processedVaultData: Record<string, VaultData> = {} as any;
 
-      VAULT_TYPES.forEach((type) => {
-        const rawData = rawVaultData[type];
-        const userDataForVault = userData[type];
-
+      Object.entries(rawVaultData).forEach(([address, rawData]) => {
+        const userDataForVault = (userData as any)[address];
         const metrics = calculateVaultMetrics(rawData, userDataForVault);
-        processedVaultData[type] = {
+        processedVaultData[address] = {
           totalAssets: metrics.totalAssets,
           totalSupply: metrics.totalSupply,
           currentNetAPR: metrics.currentNetAPR,
@@ -160,14 +140,14 @@ export const useMultiVault = () => {
           compoundedYield: (metrics as any).compoundedYield || 0,
           assetBalance: (metrics as any).assetBalance || 0,
           pricePerShare: (metrics as any).pricePerShare || 1,
-          assetDecimals: Number(rawData.assetDecimals),
+          assetDecimals: Number((rawData as any).assetDecimals),
           totalRequestedAssets: metrics.totalRequestedAssets,
           pendingDepositAssets: metrics.pendingDepositAssets,
           isLoading: false,
           error: null,
-          poolNetAPRs: rawData.poolNetAPRs || [],
-          poolTVLs: rawData.poolTVLs || [],
-          poolAddresses: rawData.poolAddresses || [],
+          poolNetAPRs: (rawData as any).poolNetAPRs || [],
+          poolTVLs: (rawData as any).poolTVLs || [],
+          poolAddresses: (rawData as any).poolAddresses || [],
         };
       });
 
@@ -194,9 +174,10 @@ export const useMultiVault = () => {
         error instanceof Error ? error.message : "Failed to fetch vault data";
       setError(errorMessage);
 
-      const errorVaultData: Record<VaultType, VaultData> = {} as any;
-      VAULT_TYPES.forEach((type) => {
-        errorVaultData[type] = {
+      // Set uniform error state for all known vaults
+      const errorVaultData: Record<string, VaultData> = {} as any;
+      (allVaultData || []).forEach((v: any) => {
+        errorVaultData[v.address] = {
           totalAssets: 0,
           totalSupply: 0,
           currentNetAPR: 0,
@@ -220,71 +201,52 @@ export const useMultiVault = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [publicClient, userAddress]);
+  }, [publicClient, userAddress, allVaultData]);
 
   const refreshAllData = useCallback(() => {
     fetchAllVaultData();
-  }, [publicClient, userAddress]);
+  }, [fetchAllVaultData]);
 
   useEffect(() => {
     fetchAllVaultData();
   }, [fetchAllVaultData]);
 
-  const getVaultByType = useCallback(
-    (vaultType: VaultType) => {
-      return vaultData[vaultType];
+  const getVaultByAddress = useCallback(
+    (address: string) => {
+      return vaultData[address];
     },
     [vaultData]
   );
 
   const getAllVaults = useCallback(() => {
-    return VAULT_TYPES.map((type) => ({
-      type,
-      config: VAULTS[type],
-      data: vaultData[type],
+    return (allVaultData || []).map((v: any) => ({
+      address: v.address,
+      symbol: v.symbol,
+      name: v.name,
+      data: vaultData[v.address],
     }));
-  }, [vaultData]);
+  }, [vaultData, allVaultData]);
 
   const getTotalTVL = useCallback(async () => {
-    if (!publicClient) return 0;
-
-    try {
-      const totals = await Promise.all(
-        VAULT_TYPES.map(async (type) => {
-          const address = VAULTS[type].yieldAllocatorVaultAddress as `0x${string}`;
-          const assets = (await publicClient.readContract({
-            address,
-            abi: YieldAllocatorVaultABI as any,
-            functionName: "totalAssets",
-            args: [],
-          })) as bigint;
-          const decimals = vaultData[type]?.assetDecimals ?? 18;
-          return Number(formatUnits(assets, decimals));
-        })
-      );
-      return totals.reduce((sum, v) => sum + v, 0);
-    } catch (error) {
-      console.error("Error fetching TVL via totalAssets:", error);
-      return 0;
-    }
-  }, [vaultData, publicClient]);
+    // Sum across computed tvl in state
+    return Object.values(vaultData).reduce((sum, v) => sum + (v?.tvl || 0), 0);
+  }, [vaultData]);
 
   const getTotalUserDeposits = useCallback(() => {
-    return Object.values(vaultData).reduce((total, vault) => {
-      return total + (vault?.userDeposits || 0);
+    return Object.values(vaultData).reduce((total, v) => {
+      return total + (v?.userDeposits || 0);
     }, 0);
   }, [vaultData]);
 
   // Watch for settlement events to refresh UI promptly
   useEffect(() => {
-    if (!publicClient || !userAddress) return;
+    if (!publicClient || !userAddress || !allVaultData || allVaultData.length === 0) return;
 
     const unsubscribers: (() => void)[] = [];
 
     try {
-      VAULT_TYPES.forEach((type) => {
-        const address = VAULTS[type]
-          .yieldAllocatorVaultAddress as `0x${string}`;
+      (allVaultData || []).forEach((v: any) => {
+        const address = v.address as `0x${string}`;
 
         const unwatchDeposit = publicClient.watchContractEvent({
           address,
@@ -334,7 +296,7 @@ export const useMultiVault = () => {
     return () => {
       unsubscribers.forEach((unsub) => unsub());
     };
-  }, [publicClient, userAddress, refreshAllData]);
+  }, [publicClient, userAddress, refreshAllData, allVaultData]);
 
   // Helpers: claimable amounts
   const getClaimableDepositAmount = useCallback(
@@ -348,7 +310,7 @@ export const useMultiVault = () => {
           args: [userAddress as `0x${string}`],
         })) as bigint;
 
-  // Format by asset decimals
+        // Format by asset decimals
         const asset = (await publicClient.readContract({
           address: vaultAddress as `0x${string}`,
           abi: YieldAllocatorVaultABI,
@@ -409,7 +371,7 @@ export const useMultiVault = () => {
       return wagmiWalletClient;
     }
 
-  // Fallback to privy wallet
+    // Fallback to privy wallet
     const privyWallet = isPrivyWallet
       ? wallet
       : wallets.find((w) => w.walletClientType === "privy");
@@ -426,11 +388,16 @@ export const useMultiVault = () => {
 
   // Transaction functions
   const deposit = useCallback(
-    async (vaultAddress: string, amount: string, vaultType: VaultType) => {
+    async (vaultAddress: string, amount: string) => {
       const walletClient = await getWalletClient();
       if (!walletClient || !userAddress) {
         throw new Error("Wallet not connected");
       }
+
+      const vaultInfo = (allVaultData || []).find(
+        (v: any) => v.address?.toLowerCase() === vaultAddress?.toLowerCase()
+      );
+      const vaultSymbol = vaultInfo?.symbol || "Vault";
 
       try {
         const chainSwitched = await switchToChain();
@@ -440,7 +407,7 @@ export const useMultiVault = () => {
         setIsDepositTransacting(true);
         setTransactionHash(null);
 
-  // Validate vault interface
+        // Validate vault interface
         let assetAddress: `0x${string}`;
         try {
           assetAddress = (await publicClient.readContract({
@@ -497,7 +464,7 @@ export const useMultiVault = () => {
           await publicClient.waitForTransactionReceipt({ hash: approveTx });
         }
 
-  // Use requestDeposit (ERC-7540)
+        // Use requestDeposit (ERC-7540)
         const depositGas = await publicClient.estimateContractGas({
           address: vaultAddress as `0x${string}`,
           abi: YieldAllocatorVaultABI,
@@ -530,7 +497,7 @@ export const useMultiVault = () => {
           hash: depositTx,
         });
 
-  // Read DepositRequest logs
+        // Read DepositRequest logs
         try {
           const depositRequestEvent = parseAbiItem(
             "event DepositRequest(address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 assets)"
@@ -553,7 +520,7 @@ export const useMultiVault = () => {
               setLastDepositRequestId(extractedRequestId);
               setLastDepositController(extractedController);
 
-  // Query pending assets
+              // Query pending assets
               try {
                 const pendingAssets = (await publicClient.readContract({
                   address: vaultAddress as `0x${string}`,
@@ -561,7 +528,7 @@ export const useMultiVault = () => {
                   functionName: "pendingDepositRequest",
                   args: [extractedRequestId, extractedController],
                 })) as bigint;
-  // Format by asset decimals
+                // Format by asset decimals
                 const formatted = Number(
                   formatUnits(pendingAssets, Number(assetDecimals as number))
                 );
@@ -575,7 +542,7 @@ export const useMultiVault = () => {
               }
             }
           } else {
-  // No matching logs
+            // No matching logs
             toast({
               variant: "default",
               title: "Deposit Request Submitted",
@@ -590,7 +557,7 @@ export const useMultiVault = () => {
         toast({
           variant: "success",
           title: "✅ Deposit Request Submitted",
-          description: `Successfully requested deposit of ${amount} ${vaultType}. Your deposit will be processed in the next settlement.`,
+          description: `Successfully requested deposit of ${amount} ${vaultSymbol}. Your deposit will be processed in the next settlement.`,
         });
 
         await refreshAllData();
@@ -613,15 +580,21 @@ export const useMultiVault = () => {
         setIsDepositTransacting(false);
       }
     },
-    [getWalletClient, userAddress, refreshAllData]
+    [getWalletClient, userAddress, refreshAllData, publicClient, allVaultData]
   );
 
   const withdraw = useCallback(
-    async (vaultAddress: string, amount: string, vaultType: VaultType) => {
+    async (vaultAddress: string, amount: string) => {
       const walletClient = await getWalletClient();
       if (!walletClient || !userAddress) {
         throw new Error("Wallet not connected");
       }
+
+      const vaultInfo = (allVaultData || []).find(
+        (v: any) => v.address?.toLowerCase() === vaultAddress?.toLowerCase()
+      );
+      const vaultSymbol = vaultInfo?.symbol || "Vault";
+
       try {
         const chainSwitched = await switchToChain();
         if (!chainSwitched) {
@@ -630,7 +603,7 @@ export const useMultiVault = () => {
         setIsWithdrawTransacting(true);
         setTransactionHash(null);
 
-  // Validate vault interface
+        // Validate vault interface
         let assetAddress: `0x${string}`;
         try {
           assetAddress = (await publicClient.readContract({
@@ -653,7 +626,7 @@ export const useMultiVault = () => {
           Number(assetDecimals as number)
         );
 
-  // Read share balance
+        // Read share balance
         const userShares = await publicClient.readContract({
           address: vaultAddress as `0x${string}`,
           abi: YieldAllocatorVaultABI,
@@ -661,7 +634,7 @@ export const useMultiVault = () => {
           args: [userAddress as `0x${string}`],
         });
 
-  // Read asset balance
+        // Read asset balance
         const userAssets = await publicClient.readContract({
           address: vaultAddress as `0x${string}`,
           abi: YieldAllocatorVaultABI,
@@ -672,18 +645,18 @@ export const useMultiVault = () => {
         console.log("userShares", userShares);
         console.log("userAssets", userAssets);
 
-  // For full withdrawals, use actual shares
+        // For full withdrawals, use actual shares
         const isFullWithdrawal =
           amountBigInt >= ((userAssets as bigint) * 99n) / 100n; // 99% threshold
 
         const shares = isFullWithdrawal
-          ? userShares
-          : await publicClient.readContract({
+          ? (userShares as bigint)
+          : ((await publicClient.readContract({
               address: vaultAddress as `0x${string}`,
               abi: YieldAllocatorVaultABI,
               functionName: "convertToShares",
               args: [amountBigInt],
-            });
+            })) as bigint);
 
         const requestRedeemGas = await publicClient.estimateContractGas({
           address: vaultAddress as `0x${string}`,
@@ -716,7 +689,7 @@ export const useMultiVault = () => {
           hash: withdrawTx,
         });
 
-  // Read RedeemRequest logs
+        // Read RedeemRequest logs
         try {
           const redeemRequestEvent = parseAbiItem(
             "event RedeemRequest(address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 shares)"
@@ -739,7 +712,7 @@ export const useMultiVault = () => {
               setLastWithdrawRequestId(extractedRequestId);
               setLastWithdrawController(extractedController);
 
-  // Query pending shares; convert to assets
+              // Query pending shares; convert to assets
               try {
                 const pendingShares = (await publicClient.readContract({
                   address: vaultAddress as `0x${string}`,
@@ -770,7 +743,7 @@ export const useMultiVault = () => {
               }
             }
           } else {
-  // No matching logs
+            // No matching logs
             toast({
               variant: "default",
               title: "Withdrawal Request Submitted",
@@ -785,7 +758,7 @@ export const useMultiVault = () => {
         toast({
           variant: "success",
           title: "✅ Withdrawal Request Submitted",
-          description: `Successfully requested withdrawal of ${amount} ${vaultType}. You can claim your withdrawal once it's processed.`,
+          description: `Successfully requested withdrawal of ${amount} ${vaultSymbol}. You can claim your withdrawal once it's processed.`,
         });
 
         await refreshAllData();
@@ -808,7 +781,7 @@ export const useMultiVault = () => {
         setIsWithdrawTransacting(false);
       }
     },
-    [getWalletClient, userAddress, refreshAllData]
+    [getWalletClient, userAddress, refreshAllData, publicClient, allVaultData]
   );
 
   // Post-claim cleanup
@@ -885,7 +858,7 @@ export const useMultiVault = () => {
         setIsTransacting(false);
       }
     },
-    [getWalletClient, userAddress, refreshAllData]
+    [getWalletClient, userAddress, refreshAllData, publicClient]
   );
 
   const claimRedeem = useCallback(
@@ -971,38 +944,59 @@ export const useMultiVault = () => {
         setIsTransacting(false);
       }
     },
-    [getWalletClient, userAddress, refreshAllData]
+    [getWalletClient, userAddress, refreshAllData, publicClient]
   );
 
-  // Individual vault hook
-  const usdcVault = useMemo(
-    () => ({
-      ...vaultData.USDC,
-      refreshData: refreshAllData,
-      deposit: (amount: string) =>
-        deposit(VAULTS.USDC.yieldAllocatorVaultAddress, amount, "USDC"),
-      withdraw: (amount: string) =>
-        withdraw(VAULTS.USDC.yieldAllocatorVaultAddress, amount, "USDC"),
-      claimDeposit: () => claimDeposit(VAULTS.USDC.yieldAllocatorVaultAddress),
-      claimRedeem: () => claimRedeem(VAULTS.USDC.yieldAllocatorVaultAddress),
-      getClaimableDepositAmount: () =>
-        getClaimableDepositAmount(VAULTS.USDC.yieldAllocatorVaultAddress),
-      getClaimableRedeemAmount: () =>
-        getClaimableRedeemAmount(VAULTS.USDC.yieldAllocatorVaultAddress),
-      isDepositTransacting,
-      isWithdrawTransacting,
-      transactionHash,
-      // Last deposit tracking
-      lastDepositRequestId,
-      lastDepositController,
-      lastDepositPendingAssets,
-      // Last withdraw tracking
-      lastWithdrawRequestId,
-      lastWithdrawController,
-      lastWithdrawPendingAssets,
-    }),
+  const getVaultClientByAddress = useCallback(
+    (addr: string) => {
+      const info = (allVaultData || []).find(
+        (v: any) => v.address?.toLowerCase() === addr?.toLowerCase()
+      );
+      const data = vaultData[addr] || {
+        totalAssets: 0,
+        totalSupply: 0,
+        currentNetAPR: 0,
+        tvl: 0,
+        userDeposits: 0,
+        userShares: 0,
+        compoundedYield: 0,
+        assetBalance: 0,
+        pricePerShare: 1,
+        assetDecimals: 18,
+        totalRequestedAssets: 0,
+        pendingDepositAssets: 0,
+        isLoading: true,
+        error: null,
+        poolNetAPRs: [],
+        poolTVLs: [],
+        poolAddresses: [],
+      } as VaultData;
+
+      return {
+        ...data,
+        symbol: info?.symbol || "Vault",
+        refreshData: refreshAllData,
+        deposit: (amount: string) => deposit(addr, amount),
+        withdraw: (amount: string) => withdraw(addr, amount),
+        claimDeposit: () => claimDeposit(addr),
+        claimRedeem: () => claimRedeem(addr),
+        getClaimableDepositAmount: () => getClaimableDepositAmount(addr),
+        getClaimableRedeemAmount: () => getClaimableRedeemAmount(addr),
+        isDepositTransacting,
+        isWithdrawTransacting,
+        transactionHash,
+        // Last deposit tracking
+        lastDepositRequestId,
+        lastDepositController,
+        lastDepositPendingAssets,
+        // Last withdraw tracking
+        lastWithdrawRequestId,
+        lastWithdrawController,
+        lastWithdrawPendingAssets,
+      };
+    },
     [
-      vaultData.USDC,
+      vaultData,
       refreshAllData,
       deposit,
       withdraw,
@@ -1019,16 +1013,29 @@ export const useMultiVault = () => {
       lastWithdrawRequestId,
       lastWithdrawController,
       lastWithdrawPendingAssets,
+      allVaultData,
     ]
   );
 
+  // Backwards-compatible: expose a default USDC vault client if present
+  const defaultVaultAddress = useMemo(() => {
+    const usdc = (allVaultData || []).find((v: any) => v.symbol === "USDC");
+    return usdc?.address || (allVaultData && allVaultData[0]?.address) || "";
+  }, [allVaultData]);
+
+  const usdcVault = useMemo(() => {
+    if (!defaultVaultAddress) {
+      return getVaultClientByAddress("");
+    }
+    return getVaultClientByAddress(defaultVaultAddress);
+  }, [defaultVaultAddress, getVaultClientByAddress]);
 
   return {
     vaultData,
     isLoading,
     error,
     refreshAllData,
-    getVaultByType,
+    getVaultByAddress,
     getAllVaults,
     getTotalTVL,
     getTotalUserDeposits,
@@ -1046,5 +1053,14 @@ export const useMultiVault = () => {
     transactionHash,
     // Individual vault access
     usdcVault,
+    // Dynamic vault client by address
+    getVaultClientByAddress,
+    // Last deposit/withdraw markers
+    lastDepositRequestId,
+    lastDepositController,
+    lastDepositPendingAssets,
+    lastWithdrawRequestId,
+    lastWithdrawController,
+    lastWithdrawPendingAssets,
   };
 };
