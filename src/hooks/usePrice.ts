@@ -67,7 +67,6 @@ export const usePrice = (targetToken?: string) => {
         const points = response?.data?.dataPoints || [];
         
         const transformed = points.map((pt: LatestPriceChartPoint) => {
-          // Helpers scoped to this transformation to keep logic tight and safe
           const safeBigInt = (v: string | number | undefined | null): bigint | null => {
             try {
               if (v === undefined || v === null) return null;
@@ -80,15 +79,14 @@ export const usePrice = (targetToken?: string) => {
             }
           };
 
-          // Compute share price: prefer (assets * 1e18) / supply ; fallback to sharePrice
-          const computeSharePrice = (): string => {
+       const computeSharePrice = (): string => {
             const assets = safeBigInt(pt.totalAssets);
             const supply = safeBigInt(pt.totalSupply);
             if (assets !== null && supply !== null && supply > 0n) {
               const scaled = (assets * 10n ** 18n) / supply;
               return formatUnits(scaled, 18);
             }
-            // Fallback: use provided sharePrice (raw wei or already decimal)
+            
             const sp = pt.sharePrice;
             if (typeof sp === 'string' && sp.length > 0) {
               const spBig = safeBigInt(sp);
