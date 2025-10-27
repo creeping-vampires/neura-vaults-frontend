@@ -22,11 +22,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { useMultiVault } from "@/hooks/useMultiVault";
-import { useWhitelist } from "@/hooks/useWhitelist";
 import { usePrice } from "@/hooks/usePrice";
 import { usePrivy } from "@privy-io/react-auth";
 import { useUserAccess } from "@/hooks/useUserAccess";
-import { getExplorerTxUrl, formatAddress } from "@/lib/utils";
+import { getExplorerTxUrl } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import {
   ChartContainer,
@@ -44,7 +43,7 @@ import {
   AreaChart,
 } from "recharts";
 import { Input } from "@/components/ui/input";
-import { explorerUrl, VAULTS, VaultType } from "@/utils/constant";
+import { explorerUrl } from "@/utils/constant";
 import AgentConsole from "@/components/AgentConsole";
 import PythAttribution from "@/components/shared/PythAttribution";
 import AccessCodeModal from "@/components/AccessCodeModal";
@@ -74,20 +73,6 @@ const getPoolName = (address: string, symbol: string): string => {
   return (
     poolNames[address] || `Pool ${address.slice(0, 6)}...${address.slice(-4)}`
   );
-};
-
-// Helper function to get vault configuration by address
-const getVaultConfig = (vaultAddress: string) => {
-  for (const [key, config] of Object.entries(VAULTS)) {
-    if (
-      config.yieldAllocatorVaultAddress.toLowerCase() ===
-      vaultAddress.toLowerCase()
-    ) {
-      return { type: key as VaultType, config };
-    }
-  }
-  // Default to USDC if not found
-  return { type: "USDC" as VaultType, config: VAULTS.USDC };
 };
 
 const useCountdown = () => {
@@ -128,13 +113,29 @@ const VaultDetails = () => {
   const { vaultId } = useParams();
   const navigate = useNavigate();
 
-  // Get vault configuration based on the vault address from URL
-  const vaultConfig = vaultId
-    ? getVaultConfig(vaultId)
-    : { type: "USDC" as VaultType, config: VAULTS.USDC };
-
   const multiVaultData = useMultiVault();
-  const { getTotalTVL } = multiVaultData;
+  const { getTotalTVL, getVaultClientByAddress } = multiVaultData;
+
+  // Use dynamic vault client based on route address
+  const vaultDataObject = useMemo(() => getVaultClientByAddress(vaultId || ""), [getVaultClientByAddress, vaultId]);
+  const {
+    deposit,
+    withdraw,
+    claimDeposit,
+    claimRedeem,
+    getClaimableDepositAmount,
+    getClaimableRedeemAmount,
+    isDepositTransacting,
+    isWithdrawTransacting,
+    refreshData,
+    lastDepositRequestId,
+    lastDepositController,
+    lastDepositPendingAssets,
+    lastWithdrawRequestId,
+    lastWithdrawController,
+    lastWithdrawPendingAssets,
+    ...vaultData
+  } = vaultDataObject;
 
   const { authenticated, login } = usePrivy();
   const { hasAccess } = useUserAccess();
@@ -155,43 +156,6 @@ const VaultDetails = () => {
     calculateTotalAUM();
   }, [getTotalTVL]);
 
-  // Get the specific vault data based on vaultId
-  const getVaultDataByAddress = (address: string) => {
-    if (address === VAULTS.USDC.yieldAllocatorVaultAddress) {
-      return multiVaultData.usdcVault;
-    }
-    // else if (address === VAULTS.USDT0.yieldAllocatorVaultAddress) {
-    //   return multiVaultData.usdt0Vault;
-    // }
-    // Default to USDC vault if address not found
-    return multiVaultData.usdcVault;
-  };
-
-  const vaultDataObject = vaultId
-    ? getVaultDataByAddress(vaultId)
-    : multiVaultData.usdcVault;
-
-  const {
-    deposit,
-    withdraw,
-    claimDeposit,
-    claimRedeem,
-    getClaimableDepositAmount,
-    getClaimableRedeemAmount,
-    isDepositTransacting,
-    isWithdrawTransacting,
-    refreshData,
-    lastDepositRequestId,
-    lastDepositController,
-    lastDepositPendingAssets,
-    lastWithdrawRequestId,
-    lastWithdrawController,
-    lastWithdrawPendingAssets,
-    ...vaultData
-  } = vaultDataObject;
-  const countdown = useCountdown();
-
-  const { getWhitelistedPools } = useWhitelist();
   const {
     chartData: priceChartData,
     isLoading: chartLoading,
@@ -200,43 +164,26 @@ const VaultDetails = () => {
     isPriceLoading,
     get24APY,
     get7APY,
+    // Add dynamic vault helpers
+    allVaultData,
+    getVaultDataByAddress,
+    priceData,
   } = usePrice();
 
-  const [selectedTimeframe, setSelectedTimeframe] = useState("1D");
+  const [selectedTimeframe, setSelectedTimeframe] = useState<"7D" | "1M">("7D");
   const [chartData, setChartData] = useState([]);
 
-  const currentVault = vaultConfig.config.symbol;
+  // Derive current vault symbol dynamically from live data
+  const currentVault = (vaultId && getVaultDataByAddress(vaultId)?.symbol) || priceData.token || "";
+  const currentVaultName = (vaultId && getVaultDataByAddress(vaultId)?.name) || currentVault || "Vault";
 
   useEffect(() => {
     if (!selectedTimeframe || !vaultId) {
       return;
     }
 
-    let days = 7;
-    let limit = 7;
-    switch (selectedTimeframe) {
-      case "1D":
-        days = 24;
-        limit = 24;
-        break;
-      case "7D":
-        days = 7;
-        limit = 7;
-        break;
-      case "1M":
-        days = 30;
-        limit = 30;
-        break;
-      case "ALL":
-        days = 365;
-        limit = 365;
-        break;
-      default:
-        days = 30;
-        limit = 100;
-    }
-    fetchPriceChart({ days, limit });
-  }, [selectedTimeframe]);
+    fetchPriceChart({ address: vaultId, timeframe: selectedTimeframe });
+  }, [selectedTimeframe, vaultId, fetchPriceChart]);
 
   useEffect(() => {
     if (!priceChartData || priceChartData.length === 0) {
@@ -246,13 +193,13 @@ const VaultDetails = () => {
 
     const allTransformed = [];
 
-    const relevantTokenData = priceChartData.filter(
-      (tokenData) => tokenData.token === "USDe"
-    );
+    // Use chart data as-is for the selected vault; no hardcoded token filter
+    const relevantTokenData = priceChartData;
 
     relevantTokenData.forEach((tokenData) => {
-      const tokenTransformed = tokenData.data
-        ?.map((point) => {
+      const points = (tokenData as any).dataPoints || tokenData.data || [];
+      const tokenTransformed = points
+        ?.map((point: any) => {
           const tsRaw = point.timestamp as number | string;
           const tsNum =
             typeof tsRaw === "number" ? tsRaw : Date.parse(tsRaw as string);
@@ -262,17 +209,42 @@ const VaultDetails = () => {
             ? tsNum * 1000
             : tsNum;
 
-          const valueRaw = point.share_price_formatted as number | string;
-          const valueNum =
-            typeof valueRaw === "string"
-              ? parseFloat(valueRaw.replace(/[^0-9.\-]/g, ""))
-              : Number(valueRaw);
+          // Prefer latest fields; fallback to legacy if needed
+          const sharePriceRaw = (point.sharePrice ?? null) as number | string | null;
+          let valueNum: number;
+          if (sharePriceRaw !== null && sharePriceRaw !== undefined) {
+            valueNum =
+              typeof sharePriceRaw === "string"
+                ? parseFloat(sharePriceRaw.replace(/[^0-9.\-]/g, ""))
+                : Number(sharePriceRaw);
+          } else if (point.totalAssets !== undefined && point.totalSupply !== undefined) {
+            const totalAssetsNum = Number(point.totalAssets);
+            const totalSupplyNum = Number(point.totalSupply);
+            valueNum = totalSupplyNum > 0 ? totalAssetsNum / totalSupplyNum : 0;
+          } else {
+            const legacyRaw = point.share_price_formatted as number | string;
+            valueNum =
+              typeof legacyRaw === "string"
+                ? parseFloat(legacyRaw.replace(/[^0-9.\-]/g, ""))
+                : Number(legacyRaw);
+          }
 
-          const apyRaw = point.pool_apy as number | string;
+          // APY may be null in latest; gracefully handle
+          const apyCandidate =
+            point.apy !== null && point.apy !== undefined
+              ? point.apy
+              : point.apy7d !== null && point.apy7d !== undefined
+              ? point.apy7d
+              : point.apy30d !== null && point.apy30d !== undefined
+              ? point.apy30d
+              : point.pool_apy;
+
           const apyNum =
-            typeof apyRaw === "string"
-              ? parseFloat(apyRaw.replace(/[^0-9.\-]/g, ""))
-              : Number(apyRaw);
+            typeof apyCandidate === "string"
+              ? parseFloat(apyCandidate.replace(/[^0-9.\-]/g, ""))
+              : apyCandidate !== null && apyCandidate !== undefined
+              ? Number(apyCandidate)
+              : NaN;
 
           const formattedValue = isNaN(valueNum)
             ? 0
@@ -285,12 +257,18 @@ const VaultDetails = () => {
             date: ts,
             value: formattedValue,
             apy: formattedApy,
-            share_price_formatted: formattedValue?.toFixed(6),
-            pool_apy: formattedApy ? formattedApy?.toFixed(4) : undefined,
-            token: tokenData.token, // Preserve token information
+            share_price_formatted: formattedValue,
+            pool_apy: formattedApy ? formattedApy : undefined,
+            token: (tokenData as any).token || "USDe",
+            vaultAddress: (tokenData as any).vaultAddress || vaultId,
+            vaultName: (tokenData as any).vaultName || currentVault,
+            period: (tokenData as any).period || selectedTimeframe,
+            blockNumber: point.blockNumber,
+            totalAssets: point.totalAssets,
+            totalSupply: point.totalSupply,
           } as any;
         })
-        .filter((d) => typeof d.date === "number" && !isNaN(d.date));
+        .filter((d: any) => typeof d.date === "number" && !isNaN(d.date));
 
       if (tokenTransformed) {
         allTransformed.push(...tokenTransformed);
@@ -468,7 +446,7 @@ const VaultDetails = () => {
                         transaction.type === "deposit"
                           ? "deposited"
                           : "withdrew"
-                      } ${transaction.amount} ${vaultConfig.config.symbol}.`,
+                      } ${transaction.amount} ${currentVault}.`,
                     });
 
                     refreshData();
@@ -508,25 +486,8 @@ const VaultDetails = () => {
     };
   }, [latestTransactions, transactionMonitors]);
 
-  const timeframes = ["1D", "7D", "1M", "ALL"];
+  const timeframes = ["7D", "1M"] as const;
 
-  useEffect(() => {
-    const fetchWhitelistedPools = async () => {
-      try {
-        const pools = await getWhitelistedPools();
-        const filteredPools = pools.filter((pool, i) =>
-          vaultConfig.config.symbol === "USDC"
-            ? i !== pools.length - 1
-            : i !== 2
-        );
-        setWhitelistedPools(filteredPools);
-      } catch (error) {
-        console.error("Error fetching whitelisted pools:", error);
-      }
-    };
-
-    fetchWhitelistedPools();
-  }, []);
 
   // Calculate pool composition data from vaultData
   const dynamicPoolData = useMemo(() => {
@@ -538,12 +499,7 @@ const VaultDetails = () => {
       return [];
     }
 
-    const vaultSymbol =
-      Object.entries(VAULTS).find(
-        ([_, config]) =>
-          config.yieldAllocatorVaultAddress.toLowerCase() ===
-          vaultId?.toLowerCase()
-      )?.[0] || "USDC";
+    const vaultSymbol = currentVault || "USDC";
 
     const validPools = vaultData.poolAddresses
       .map((address, index) => {
@@ -670,14 +626,14 @@ const VaultDetails = () => {
           </Button>
           <div>
             <h1 className="text-lg sm:text-2xl font-medium text-[#e4dfcb] font-libertinus whitespace-nowrap">
-              {vaultConfig.config.name} Vault
+              {currentVaultName} Vault
             </h1>
             <div className="flex items-center space-x-2 mt-0.5">
               <Badge
                 variant="secondary"
                 className="bg-primary/10 text-primary border-primary/20 text-xs"
               >
-                {vaultConfig.config.symbol}
+                {currentVault}
               </Badge>
             </div>
           </div>
@@ -700,7 +656,7 @@ const VaultDetails = () => {
                 </p>
                 {/* <div className="mt-1 text-xs">
                   Pending Assets: {lastDepositPendingAssets?.toFixed(4)}{" "}
-                  {vaultConfig.config.symbol}
+                  {currentVault}
                 </div> */}
               </div>
             </Card>
@@ -717,7 +673,7 @@ const VaultDetails = () => {
                 </p>
                 {/* <div className="mt-1 text-xs">
                   Claimable Shares: {claimableDeposit.toFixed(4)}{" "}
-                  {vaultConfig.config.symbol}
+                  {currentVault}
                 </div> */}
               </div>
               <Button
@@ -755,7 +711,7 @@ const VaultDetails = () => {
                 </p>
                 {/* <div className="mt-1 text-xs">
                   Pending Assets: {lastWithdrawPendingAssets?.toFixed(4)}{" "}
-                  {vaultConfig.config.symbol}
+                  {currentVault}
                 </div> */}
               </div>
             </Card>
@@ -771,7 +727,7 @@ const VaultDetails = () => {
                 </p>
                 {/* <div className="mt-1 text-xs">
                     Claimable Assets: {claimableWithdrawAssets.toFixed(2)}{" "}
-                    {vaultConfig.config.symbol}
+                    {currentVault}
                   </div> */}
               </div>
               <Button
@@ -993,7 +949,7 @@ const VaultDetails = () => {
                         fontSize={12}
                         tickFormatter={(value) => {
                           const date = new Date(value);
-                          return selectedTimeframe === "1D"
+                          return selectedTimeframe === "7D"
                             ? date.toLocaleTimeString("en-US", {
                                 hour: "2-digit",
                                 minute: "2-digit",
@@ -1085,7 +1041,7 @@ const VaultDetails = () => {
                   </CardHeader>
                   <CardContent className="space-y-3 sm:space-y-4 pt-0">
                     <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
-                      Autonomous Liquidity {vaultConfig.config.symbol} is a
+                      Autonomous Liquidity {currentVault} is a
                       tokenized AI yield optimization strategy that maximizes
                       risk-adjusted returns on stablecoin investments across
                       numerous DeFi protocols. By continuously scanning the
@@ -1099,7 +1055,7 @@ const VaultDetails = () => {
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
                           {vaultData.pendingDepositAssets?.toFixed(4) || "0.00"}{" "}
-                          {vaultConfig.config.symbol}
+                          {currentVault}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -1108,7 +1064,7 @@ const VaultDetails = () => {
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
                           {vaultData.totalRequestedAssets?.toFixed(4) || "0.00"}{" "}
-                          {vaultConfig.config.symbol}
+                          {currentVault}
                         </span>
                       </div>
                     </div> */}
@@ -1149,7 +1105,6 @@ const VaultDetails = () => {
                   <VaultActivity
                     vaultId={vaultId}
                     currentVault={currentVault}
-                    vaultConfig={vaultConfig}
                   />
                 </Suspense>
               </div>
@@ -1175,11 +1130,11 @@ const VaultDetails = () => {
                               <img
                                 src={`/pools/${getPoolName(
                                   poolAddress,
-                                  vaultConfig.config.symbol
+                                  currentVault
                                 ).toLowerCase()}.svg`}
                                 alt={getPoolName(
                                   poolAddress,
-                                  vaultConfig.config.symbol
+                                  currentVault
                                 )}
                                 className="min-w-9 h-9 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
                               />
@@ -1188,7 +1143,7 @@ const VaultDetails = () => {
                               <p className="text-foreground font-medium">
                                 {getPoolName(
                                   poolAddress,
-                                  vaultConfig.config.symbol
+                                  currentVault
                                 )}
                               </p>
                               <p className="text-muted-foreground text-sm">
@@ -1372,10 +1327,10 @@ const VaultDetails = () => {
                     <span className="text-foreground font-medium">
                       {activeTab === "deposit"
                         ? `${vaultData?.assetBalance?.toFixed(2) || "0.00"} ${
-                            vaultConfig.config.symbol
+                            currentVault
                           }`
                         : `${vaultData?.userDeposits?.toFixed(2) || "0.00"} ${
-                            vaultConfig.config.symbol
+                            currentVault
                           }`}
                     </span>
                   </div>
@@ -1409,7 +1364,7 @@ const VaultDetails = () => {
                       className="w-full h-12 px-4 py-3 bg-gradient-to-br from-card to-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground text-sm">
-                      {vaultConfig.config.symbol}
+                      {currentVault}
                     </span>
                   </div>
                 </div>
@@ -1494,7 +1449,7 @@ const VaultDetails = () => {
                                     {tx.type}{" "}
                                     {tx.amount &&
                                       `${parseFloat(tx.amount).toFixed(4)} ${
-                                        vaultConfig.config.symbol
+                                        currentVault
                                       }`}
                                   </span>
                                   <span
@@ -1532,7 +1487,7 @@ const VaultDetails = () => {
                   <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                 </div>
                 <p className="text-base sm:text-lg font-bold text-foreground">
-                  {countdown.minutes} Minutes
+                  {/* {countdown.minutes} Minutes */}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
                   Settlement: Every 30 minutes

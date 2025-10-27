@@ -1,10 +1,10 @@
-import { PublicClient, Address, formatUnits, parseAbiItem } from "viem";
+import { PublicClient, Address, parseAbi } from "viem";
 import { getBatchRpcClient } from "./batchRpc";
-import { VAULTS, VaultType } from "./constant";
-import { parseAbi } from "viem";
+import { LatestVaultItem } from "@/services/config";
 
 export interface MultiVaultData {
-  vaultType: VaultType;
+  symbol: string;
+  name: string;
   vaultAddress: Address;
   totalAssets: bigint;
   totalSupply: bigint;
@@ -32,111 +32,91 @@ export class MultiVaultBatchClient {
    * Fetch data for multiple vaults in optimized batches
    */
   async fetchMultiVaultData(
-    vaultTypes: VaultType[]
-  ): Promise<Record<VaultType, MultiVaultData>> {
-    const vaultConfigs = vaultTypes.map((type) => ({
-      type,
-      config: VAULTS[type],
-      address: VAULTS[type].yieldAllocatorVaultAddress as Address,
+    vaults: LatestVaultItem[]
+  ): Promise<Record<string, MultiVaultData>> {
+    const vaultConfigs = vaults.map((v) => ({
+      address: v.address as Address,
+      symbol: v.symbol,
+      name: v.name,
     }));
 
     // Combine all calls into a single batch for maximum efficiency
-    const allCalls = [];
-    const callIndexMap = new Map();
+    const allCalls: any[] = [];
+    const callIndexMap = new Map<string, any>();
     let currentIndex = 0;
 
     // Step 1: Asset addresses
-    vaultConfigs.forEach(({ address, type }) => {
+    vaultConfigs.forEach(({ address }) => {
       allCalls.push({
         address,
-        abi: parseAbi([
-          "function asset() view returns (address)",
-        ]) as readonly any[],
+        abi: parseAbi(["function asset() view returns (address)"]) as readonly any[],
         functionName: "asset",
       });
-      callIndexMap.set(`asset_${type}`, currentIndex++);
+      callIndexMap.set(`asset_${address}`, currentIndex++);
     });
 
     // Step 2: Vault data
-    vaultConfigs.forEach(({ address, type }) => {
+    vaultConfigs.forEach(({ address }) => {
       const baseIndex = currentIndex;
       allCalls.push(
         {
           address,
-          abi: parseAbi([
-            "function totalAssets() view returns (uint256)",
-          ]) as readonly any[],
+          abi: parseAbi(["function totalAssets() view returns (uint256)"]) as readonly any[],
           functionName: "totalAssets",
         },
         {
           address,
-          abi: parseAbi([
-            "function totalSupply() view returns (uint256)",
-          ]) as readonly any[],
+          abi: parseAbi(["function totalSupply() view returns (uint256)"]) as readonly any[],
           functionName: "totalSupply",
         },
         {
           address,
-          abi: parseAbi([
-            "function decimals() view returns (uint8)",
-          ]) as readonly any[],
+          abi: parseAbi(["function decimals() view returns (uint8)"]) as readonly any[],
           functionName: "decimals",
         }
       );
-      callIndexMap.set(`vault_data_${type}`, { start: baseIndex, count: 3 });
+      callIndexMap.set(`vault_data_${address}`, { start: baseIndex, count: 3 });
       currentIndex += 3;
     });
 
     // Execute single optimized batch call
     const allResults = await this.batchClient.batchRead(allCalls, {
-      cacheKey: `multi_vault_complete_${vaultTypes.join("_")}`,
+      cacheKey: `multi_vault_complete_${vaultConfigs.map((v) => v.address).join("_")}`,
       ttl: 30000,
     });
 
     // Extract asset addresses from results
-    const assetAddresses = vaultConfigs.map(
-      ({ type }) => allResults[callIndexMap.get(`asset_${type}`)]
-    );
+    const assetAddresses = vaultConfigs.map(({ address }) => allResults[callIndexMap.get(`asset_${address}`)]);
 
     // Add asset decimals calls to the batch
     const assetDecimalsCalls = assetAddresses.map((result) => ({
       address: result.data as Address,
-      abi: parseAbi([
-        "function decimals() view returns (uint8)",
-      ]) as readonly any[],
+      abi: parseAbi(["function decimals() view returns (uint8)"]) as readonly any[],
       functionName: "decimals",
     }));
 
-    const assetDecimalsResults = await this.batchClient.batchRead(
-      assetDecimalsCalls,
-      {
-        cacheKey: `asset_decimals_${vaultTypes.join("_")}`,
-        ttl: 30000,
-      }
-    );
+    const assetDecimalsResults = await this.batchClient.batchRead(assetDecimalsCalls, {
+      cacheKey: `asset_decimals_${vaultConfigs.map((v) => v.address).join("_")}`,
+      ttl: 30000,
+    });
 
-    // Organize results by vault type
-    const results: Record<VaultType, MultiVaultData> = {} as Record<
-      VaultType,
-      MultiVaultData
-    >;
+    // Organize results keyed by vault address
+    const results: Record<string, MultiVaultData> = {};
 
     for (let i = 0; i < vaultConfigs.length; i++) {
-      const { type, address } = vaultConfigs[i];
+      const { address, symbol, name } = vaultConfigs[i];
       const assetAddress = assetAddresses[i].data as Address;
       const assetDecimals = assetDecimalsResults[i].data as bigint;
 
       // Extract vault data results using the index map
-      const vaultDataInfo = callIndexMap.get(`vault_data_${type}`);
+      const vaultDataInfo = callIndexMap.get(`vault_data_${address}`);
       const totalAssets = allResults[vaultDataInfo.start].data as bigint;
       const totalSupply = allResults[vaultDataInfo.start + 1].data as bigint;
       const vaultDecimals = allResults[vaultDataInfo.start + 2].data as bigint;
-      // No vault-level pending values in new ABI; initialize to 0n and compute per-user later
-      const totalRequestedAssets = 0n;
-      const pendingDepositAssets = 0n;
 
-      results[type] = {
-        vaultType: type,
+      results[address] = {
+        symbol,
+        name,
         vaultAddress: address,
         totalAssets,
         totalSupply,
@@ -156,12 +136,11 @@ export class MultiVaultBatchClient {
    * Fetch user-specific data for multiple vaults
    */
   async fetchMultiUserData(
-    vaultTypes: VaultType[],
     userAddress: Address,
-    vaultData: Record<VaultType, MultiVaultData>
+    vaultData: Record<string, MultiVaultData>
   ): Promise<
     Record<
-      VaultType,
+      string,
       {
         userShares: bigint;
         userAssetBalance: bigint;
@@ -170,28 +149,23 @@ export class MultiVaultBatchClient {
     >
   > {
     // Create user-specific calls for all vaults
-    const userDataCalls = Object.entries(vaultData).flatMap(([type, data]) => [
+    const entries = Object.entries(vaultData);
+    const userDataCalls = entries.flatMap(([key, data]) => [
       {
         address: data.vaultAddress,
-        abi: parseAbi([
-          "function balanceOf(address) view returns (uint256)",
-        ]) as readonly any[],
+        abi: parseAbi(["function balanceOf(address) view returns (uint256)"]) as readonly any[],
         functionName: "balanceOf",
         args: [userAddress],
       },
       {
         address: data.assetAddress,
-        abi: parseAbi([
-          "function balanceOf(address) view returns (uint256)",
-        ]) as readonly any[],
+        abi: parseAbi(["function balanceOf(address) view returns (uint256)"]) as readonly any[],
         functionName: "balanceOf",
         args: [userAddress],
       },
       {
         address: data.assetAddress,
-        abi: parseAbi([
-          "function allowance(address, address) view returns (uint256)",
-        ]) as readonly any[],
+        abi: parseAbi(["function allowance(address, address) view returns (uint256)"]) as readonly any[],
         functionName: "allowance",
         args: [userAddress, data.vaultAddress],
       },
@@ -202,23 +176,16 @@ export class MultiVaultBatchClient {
       ttl: 0,
     });
 
-    // Organize results by vault type
-    const results: Record<
-      VaultType,
-      {
-        userShares: bigint;
-        userAssetBalance: bigint;
-        assetAllowance: bigint;
-      }
-    > = {} as any;
+    // Organize results keyed by vault address
+    const results: Record<string, { userShares: bigint; userAssetBalance: bigint; assetAllowance: bigint }> = {} as any;
     let index = 0;
 
-    for (const type of vaultTypes) {
+    for (const [key] of entries) {
       const userShares = userDataResults[index++].data as bigint;
       const userAssetBalance = userDataResults[index++].data as bigint;
       const assetAllowance = userDataResults[index++].data as bigint;
 
-      results[type] = {
+      results[key] = {
         userShares,
         userAssetBalance,
         assetAllowance,
@@ -231,16 +198,12 @@ export class MultiVaultBatchClient {
   /**
    * Refresh all multi-vault data with user data
    */
-  async refreshAllData(vaultTypes: VaultType[], userAddress?: Address) {
-    const vaultData = await this.fetchMultiVaultData(vaultTypes);
+  async refreshAllData(vaults: LatestVaultItem[], userAddress?: Address) {
+    const vaultData = await this.fetchMultiVaultData(vaults);
 
     let userData = {};
     if (userAddress) {
-      userData = await this.fetchMultiUserData(
-        vaultTypes,
-        userAddress,
-        vaultData
-      );
+      userData = await this.fetchMultiUserData(userAddress, vaultData);
     }
 
     return { vaultData, userData };

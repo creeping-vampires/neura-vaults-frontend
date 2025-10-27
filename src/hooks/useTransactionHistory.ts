@@ -1,10 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useLocation } from "react-router-dom";
-import { publicClient } from "@/lib/privyConfig";
-import { formatUnits } from "viem";
-import { VAULTS } from "@/utils/constant";
-import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 
 export interface Transaction {
   id: string;
