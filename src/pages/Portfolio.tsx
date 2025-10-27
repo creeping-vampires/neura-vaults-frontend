@@ -527,8 +527,7 @@ const Portfolio = () => {
               <div className="flex flex-col items-center">
                 <div className="text-muted-foreground text-xs">Current APY</div>
                 <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
-                  {get24APY(primarySymbol).toFixed(2)}
-                  %
+                  {get24APY().toFixed(2)}%
                   <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                     <div className="font-medium text-muted-foreground">
                       7-Day APY
@@ -686,7 +685,7 @@ const Portfolio = () => {
                             })}
                           </td>
                           <td className="text-primary font-semibold py-6 gap-1 relative group">
-                            {get24APY(position.asset).toFixed(2)}%
+                            {get24APY().toFixed(2)}%
                             <div className="flex items-center gap-1 absolute top-14 left-6 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                               <div className="font-medium text-muted-foreground">
                                 7-Day APY
@@ -695,9 +694,7 @@ const Portfolio = () => {
                                 :
                               </div>
                               <div className="font-medium ml-1 text-foreground">
-                                {get7APY(position.asset)
-                                  ? `${get7APY(position.asset).toFixed(2)}%`
-                                  : "-"}
+                                {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
                               </div>
                               <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                             </div>
