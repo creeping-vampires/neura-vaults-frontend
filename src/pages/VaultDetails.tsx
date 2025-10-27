@@ -117,7 +117,10 @@ const VaultDetails = () => {
   const { getTotalTVL, getVaultClientByAddress } = multiVaultData;
 
   // Use dynamic vault client based on route address
-  const vaultDataObject = useMemo(() => getVaultClientByAddress(vaultId || ""), [getVaultClientByAddress, vaultId]);
+  const vaultDataObject = useMemo(
+    () => getVaultClientByAddress(vaultId || ""),
+    [getVaultClientByAddress, vaultId]
+  );
   const {
     deposit,
     withdraw,
@@ -174,8 +177,14 @@ const VaultDetails = () => {
   const [chartData, setChartData] = useState([]);
 
   // Derive current vault symbol dynamically from live data
-  const currentVault = (vaultId && getVaultDataByAddress(vaultId)?.symbol) || priceData.token || "";
-  const currentVaultName = (vaultId && getVaultDataByAddress(vaultId)?.name) || currentVault || "Vault";
+  const currentVault =
+    (vaultId && getVaultDataByAddress(vaultId)?.symbol) ||
+    priceData.token ||
+    "";
+  const currentVaultName =
+    (vaultId && getVaultDataByAddress(vaultId)?.name) ||
+    currentVault ||
+    "Vault";
 
   useEffect(() => {
     if (!selectedTimeframe || !vaultId) {
@@ -195,7 +204,7 @@ const VaultDetails = () => {
 
     // Use chart data as-is for the selected vault; no hardcoded token filter
     const relevantTokenData = priceChartData;
-
+console.log("priceChartData",priceChartData)
     relevantTokenData.forEach((tokenData) => {
       const points = (tokenData as any).dataPoints || tokenData.data || [];
       const tokenTransformed = points
@@ -209,63 +218,29 @@ const VaultDetails = () => {
             ? tsNum * 1000
             : tsNum;
 
-          // Prefer latest fields; fallback to legacy if needed
-          const sharePriceRaw = (point.sharePrice ?? null) as number | string | null;
-          let valueNum: number;
-          if (sharePriceRaw !== null && sharePriceRaw !== undefined) {
-            valueNum =
-              typeof sharePriceRaw === "string"
-                ? parseFloat(sharePriceRaw.replace(/[^0-9.\-]/g, ""))
-                : Number(sharePriceRaw);
-          } else if (point.totalAssets !== undefined && point.totalSupply !== undefined) {
+          // Focus only on share price and timestamp
+          const spRaw = point.share_price_formatted ?? point.sharePrice;
+          let valueNum: number = 0;
+
+          if (typeof spRaw === "string") {
+            const parsed = parseFloat(spRaw.replace(/[^0-9.\-]/g, ""));
+            valueNum = isNaN(parsed) ? 0 : parsed;
+          } else if (typeof spRaw === "number") {
+            valueNum = spRaw;
+          } else if (
+            point.totalAssets !== undefined &&
+            point.totalSupply !== undefined
+          ) {
             const totalAssetsNum = Number(point.totalAssets);
             const totalSupplyNum = Number(point.totalSupply);
             valueNum = totalSupplyNum > 0 ? totalAssetsNum / totalSupplyNum : 0;
-          } else {
-            const legacyRaw = point.share_price_formatted as number | string;
-            valueNum =
-              typeof legacyRaw === "string"
-                ? parseFloat(legacyRaw.replace(/[^0-9.\-]/g, ""))
-                : Number(legacyRaw);
           }
 
-          // APY may be null in latest; gracefully handle
-          const apyCandidate =
-            point.apy !== null && point.apy !== undefined
-              ? point.apy
-              : point.apy7d !== null && point.apy7d !== undefined
-              ? point.apy7d
-              : point.apy30d !== null && point.apy30d !== undefined
-              ? point.apy30d
-              : point.pool_apy;
-
-          const apyNum =
-            typeof apyCandidate === "string"
-              ? parseFloat(apyCandidate.replace(/[^0-9.\-]/g, ""))
-              : apyCandidate !== null && apyCandidate !== undefined
-              ? Number(apyCandidate)
-              : NaN;
-
-          const formattedValue = isNaN(valueNum)
-            ? 0
-            : parseFloat(valueNum?.toFixed(6));
-          const formattedApy = isNaN(apyNum)
-            ? undefined
-            : parseFloat(apyNum?.toFixed(4));
+          const formattedValue = isNaN(valueNum) ? 0 : parseFloat(valueNum.toFixed(8));
 
           return {
             date: ts,
             value: formattedValue,
-            apy: formattedApy,
-            share_price_formatted: formattedValue,
-            pool_apy: formattedApy ? formattedApy : undefined,
-            token: (tokenData as any).token || "USDe",
-            vaultAddress: (tokenData as any).vaultAddress || vaultId,
-            vaultName: (tokenData as any).vaultName || currentVault,
-            period: (tokenData as any).period || selectedTimeframe,
-            blockNumber: point.blockNumber,
-            totalAssets: point.totalAssets,
-            totalSupply: point.totalSupply,
           } as any;
         })
         .filter((d: any) => typeof d.date === "number" && !isNaN(d.date));
@@ -487,7 +462,6 @@ const VaultDetails = () => {
   }, [latestTransactions, transactionMonitors]);
 
   const timeframes = ["7D", "1M"] as const;
-
 
   // Calculate pool composition data from vaultData
   const dynamicPoolData = useMemo(() => {
@@ -783,7 +757,7 @@ const VaultDetails = () => {
                       <span className="text-primary text-xs sm:text-sm font-medium">
                         {isPriceLoading
                           ? "Loading..."
-                          : get24APY(vaultId).toFixed(2)}
+                          : get24APY().toFixed(2)}
                         % APY (24h)
                       </span>
                       <div className="flex items-center gap-1 relative">
@@ -810,8 +784,8 @@ const VaultDetails = () => {
                             </div>
                             <div className="font-medium text-foreground">:</div>
                             <div className="font-medium ml-1 text-foreground">
-                              {get7APY(vaultId)
-                                ? get7APY(vaultId).toFixed(2)
+                              {get7APY()
+                                ? get7APY().toFixed(2)
                                 : "-"}
                             </div>
                             <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
@@ -963,9 +937,9 @@ const VaultDetails = () => {
                       <YAxis
                         stroke="#404040"
                         fontSize={12}
-                        domain={["dataMin - 0.00001", "dataMax + 0.00001"]}
+                        domain={["dataMin * 0.999", "dataMax * 1.001"]}
                         tickCount={6}
-                        tickFormatter={(value) => value?.toFixed(6)}
+                        tickFormatter={(value) => value?.toFixed(4)}
                       />
                       <ChartTooltip
                         content={
@@ -977,7 +951,7 @@ const VaultDetails = () => {
                                     ? value
                                     : parseFloat(String(value));
                                 const label = `${currentVault} Share Price`;
-                                return [numValue?.toFixed(6), label];
+                                return [numValue?.toFixed(4), label];
                               }
                               return [value, name];
                             }}
@@ -1041,11 +1015,10 @@ const VaultDetails = () => {
                   </CardHeader>
                   <CardContent className="space-y-3 sm:space-y-4 pt-0">
                     <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
-                      Autonomous Liquidity {currentVault} is a
-                      tokenized AI yield optimization strategy that maximizes
-                      risk-adjusted returns on stablecoin investments across
-                      numerous DeFi protocols. By continuously scanning the
-                      DeFi.
+                      Autonomous Liquidity {currentVault} is a tokenized AI
+                      yield optimization strategy that maximizes risk-adjusted
+                      returns on stablecoin investments across numerous DeFi
+                      protocols. By continuously scanning the DeFi.
                     </p>
 
                     {/* <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
@@ -1132,19 +1105,13 @@ const VaultDetails = () => {
                                   poolAddress,
                                   currentVault
                                 ).toLowerCase()}.svg`}
-                                alt={getPoolName(
-                                  poolAddress,
-                                  currentVault
-                                )}
+                                alt={getPoolName(poolAddress, currentVault)}
                                 className="min-w-9 h-9 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
                               />
                             </div>
                             <div>
                               <p className="text-foreground font-medium">
-                                {getPoolName(
-                                  poolAddress,
-                                  currentVault
-                                )}
+                                {getPoolName(poolAddress, currentVault)}
                               </p>
                               <p className="text-muted-foreground text-sm">
                                 {poolAddress}
@@ -1326,12 +1293,12 @@ const VaultDetails = () => {
                     </span>
                     <span className="text-foreground font-medium">
                       {activeTab === "deposit"
-                        ? `${vaultData?.assetBalance?.toFixed(2) || "0.00"} ${
-                            currentVault
-                          }`
-                        : `${vaultData?.userDeposits?.toFixed(2) || "0.00"} ${
-                            currentVault
-                          }`}
+                        ? `${
+                            vaultData?.assetBalance?.toFixed(2) || "0.00"
+                          } ${currentVault}`
+                        : `${
+                            vaultData?.userDeposits?.toFixed(2) || "0.00"
+                          } ${currentVault}`}
                     </span>
                   </div>
                 </div>
@@ -1448,9 +1415,9 @@ const VaultDetails = () => {
                                   <span className="text-xs font-medium text-foreground capitalize">
                                     {tx.type}{" "}
                                     {tx.amount &&
-                                      `${parseFloat(tx.amount).toFixed(4)} ${
-                                        currentVault
-                                      }`}
+                                      `${parseFloat(tx.amount).toFixed(
+                                        4
+                                      )} ${currentVault}`}
                                   </span>
                                   <span
                                     className={`text-xs ${getStatusColor()}`}
