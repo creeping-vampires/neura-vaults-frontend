@@ -31,7 +31,7 @@ const Markets = () => {
     isLoading: isVaultsLoading,
     error: vaultsError,
   } = useMultiVault();
-  const { get24APY, get7APY, getHighest24APY } = usePrice();
+  const { get24APY, get7APY, getHighest24APY, getVaultDataByAddress } = usePrice();
 
   const marketData: MarketItem[] = useMemo(() => {
     const allVaults = getAllVaults();
@@ -235,29 +235,40 @@ const Markets = () => {
                           </div>
                           <div className="font-medium text-foreground">:</div>
                           <div className="font-medium ml-1 text-foreground">
-                            {get7APY()
-                              ? `${get7APY().toFixed(2)}%`
-                              : "-"}
+                            {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
                           </div>
                           <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                         </div>
                       </td>
                       <td className="text-center py-4">
                         <div className="flex items-center justify-center gap-1">
-                          {["hypurrfi", "hyperlend", "felix"].map(
-                            (reward, idx) => (
-                              <div key={idx} className="relative group">
+                          {(
+                            getVaultDataByAddress(market.address)
+                              ?.allocations || []
+                          )
+                            .map((a) => a.protocol.toLowerCase())
+                            .map((reward, idx) => (
+                              <div
+                                key={`${reward}-${idx}`}
+                                className="relative group"
+                              >
                                 <img
                                   src={`/pools/${reward}.svg`}
                                   alt={reward}
                                   className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = "none";
+                                    target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${reward
+                                      .charAt(0)
+                                      .toUpperCase()}</div>`;
+                                  }}
                                 />
                                 <div className="absolute border border-white/30 top-8 uppercase left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                                   {reward}
                                 </div>
                               </div>
-                            )
-                          )}
+                            ))}
                         </div>
                       </td>
                     </tr>

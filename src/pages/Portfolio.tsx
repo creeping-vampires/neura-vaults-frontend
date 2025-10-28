@@ -86,7 +86,7 @@ const Portfolio = () => {
   const { getAllVaults, getTotalTVL, getTotalUserDeposits, refreshAllData } =
     useMultiVault();
 
-  const { priceData, getHighest7APY, get24APY, get7APY } = usePrice();
+  const { priceData, getHighest7APY, get24APY, get7APY, getVaultDataByAddress } = usePrice();
   const {
     transactions,
     isLoading: isLoadingTransactions,
@@ -555,32 +555,32 @@ const Portfolio = () => {
 
       {/* Portfolio Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="h-10 sm:h-12 bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/50 rounded-lg">
-          <TabsTrigger
+        {/* <TabsList className="h-10 sm:h-12 bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/50 rounded-lg"> */}
+        {/* <TabsTrigger
             value="positions"
             className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
           >
             Positions
-          </TabsTrigger>
-          {/* <TabsTrigger
+          </TabsTrigger> */}
+        {/* <TabsTrigger
             value="transactions"
             className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
           >
             Transactions
           </TabsTrigger> */}
-          {/* <TabsTrigger
+        {/* <TabsTrigger
             value="rewards"
             className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
           >
             Rewards
           </TabsTrigger> */}
-          <TabsTrigger
+        {/* <TabsTrigger
             value="analytics"
             className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
           >
             Analytics
-          </TabsTrigger>
-        </TabsList>
+          </TabsTrigger> */}
+        {/* </TabsList> */}
 
         <TabsContent value="positions" className="mt-4 sm:mt-6">
           <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
@@ -705,20 +705,31 @@ const Portfolio = () => {
                           <td className="py-4 sm:w-32">
                             <div className="flex space-x-2">
                               {/* {position.asset === "USDC" ? ( */}
-                              {["hypurrfi", "hyperlend", "felix"].map(
-                                (reward) => (
+                              {(
+                                getVaultDataByAddress(position.vaultAddress)
+                                  ?.allocations || []
+                              )
+                                .map((a) => a.protocol.toLowerCase())
+                                .map((reward) => (
                                   <div key={reward} className="relative group">
                                     <img
                                       src={`/pools/${reward}.svg`}
                                       alt={reward}
                                       className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                      onError={(e) => {
+                                        const target =
+                                          e.target as HTMLImageElement;
+                                        target.style.display = "none";
+                                        target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${reward
+                                          .charAt(0)
+                                          .toUpperCase()}</div>`;
+                                      }}
                                     />
                                     <div className="absolute border border-white/30 top-8 uppercase left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
                                       {reward}
                                     </div>
                                   </div>
-                                )
-                              )}
+                                ))}
                               {/* ) : (
                                 <span className="text-muted-foreground">-</span>
                               )} */}
