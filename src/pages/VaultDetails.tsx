@@ -1085,67 +1085,63 @@ console.log("priceChartData",priceChartData)
               <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                 <CardHeader>
                   <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
-                    Whitelisted Pools
+                    Active Pools
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {whitelistedPools.length > 0 ? (
-                      whitelistedPools.map((poolAddress, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between p-4 bg-gradient-to-r from-card/30 to-background/30 rounded-lg border border-border/50"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-                              <img
-                                src={`/pools/${getPoolName(
-                                  poolAddress,
-                                  currentVault
-                                ).toLowerCase()}.svg`}
-                                alt={getPoolName(poolAddress, currentVault)}
-                                className="min-w-9 h-9 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
-                              />
+                    {(() => {
+                      const currentVaultData = vaultId ? getVaultDataByAddress(vaultId) : null;
+                      const allocations = currentVaultData?.allocations || [];
+                      
+                      return allocations.length > 0 ? (
+                        allocations.map((allocation, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between p-4 bg-gradient-to-r from-card/30 to-background/30 rounded-lg border border-border/50"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                                <img
+                                  src={`/pools/${allocation.protocol.toLowerCase()}.svg`}
+                                  alt={allocation.protocol}
+                                  className="min-w-9 h-9 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${allocation.protocol.charAt(0).toUpperCase()}</div>`;
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <p className="text-foreground font-medium">
+                                  {allocation.name}
+                                </p>
+                                <p className="text-muted-foreground text-sm">
+                                  {allocation.protocol}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-foreground font-medium">
-                                {getPoolName(poolAddress, currentVault)}
-                              </p>
-                              <p className="text-muted-foreground text-sm">
-                                {poolAddress}
-                              </p>
+                            <div className="flex items-center space-x-3">
+                              <div className="text-right">
+                                <p className="text-foreground font-medium">
+                                  {allocation.currentAPY.toFixed(2)}% APY
+                                </p>
+                                <p className="text-muted-foreground text-sm">
+                                  Current Rate
+                                </p>
+                              </div>
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Badge
-                              variant="secondary"
-                              className="bg-primary/20 text-primary border-primary/30"
-                            >
-                              Active
-                            </Badge>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                window.open(
-                                  `${explorerUrl}/address/${poolAddress}`,
-                                  "_blank"
-                                )
-                              }
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              View on Explorer
-                            </Button>
-                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">
+                            No protocol allocations found for this vault.
+                          </p>
                         </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          No whitelisted pools found for this vault.
-                        </p>
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
