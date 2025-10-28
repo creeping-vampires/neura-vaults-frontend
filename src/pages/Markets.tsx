@@ -10,7 +10,6 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
-import PythAttribution from "@/components/shared/PythAttribution";
 
 interface MarketItem {
   address: `0x${string}`;
@@ -94,8 +93,6 @@ const Markets = () => {
                 maximumFractionDigits: 4,
               })}
             </p>
-
-            <PythAttribution variant="compact" className="mt-2" />
           </CardContent>
         </Card>
 
@@ -207,7 +204,7 @@ const Markets = () => {
                       <td className="py-4">
                         <div className="flex items-center">
                           <div>
-                            <div className="font-medium text-muted-foreground">
+                            <div className="font-medium text-foreground">
                               {market.name}
                             </div>
                           </div>

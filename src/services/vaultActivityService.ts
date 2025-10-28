@@ -24,10 +24,16 @@ export const fetchVaultActivities = async (
     ]);
 
     const depositItems = depositsResponse?.success
-      ? depositsResponse.data?.deposits ?? []
+      ? (depositsResponse.data?.deposits ?? []).map((item) => ({
+          ...item,
+          actionType: "Deposit" as const,
+        }))
       : [];
     const withdrawalItems = withdrawalsResponse?.success
-      ? withdrawalsResponse.data?.withdrawals ?? []
+      ? (withdrawalsResponse.data?.withdrawals ?? []).map((item) => ({
+          ...item,
+          actionType: "Withdraw" as const,
+        }))
       : [];
 
     const allItems: LatestVaultActionItem[] = [

@@ -45,7 +45,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { explorerUrl } from "@/utils/constant";
 import AgentConsole from "@/components/AgentConsole";
-import PythAttribution from "@/components/shared/PythAttribution";
 import AccessCodeModal from "@/components/AccessCodeModal";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
@@ -110,6 +109,7 @@ const useCountdown = () => {
 };
 
 const VaultDetails = () => {
+  const { minutes } = useCountdown();
   const { vaultId } = useParams();
   const navigate = useNavigate();
 
@@ -750,8 +750,6 @@ console.log("priceChartData",priceChartData)
                         maximumFractionDigits: 4,
                       })}
                     </p>
-
-                    <PythAttribution variant="compact" className="mt-1" />
                     <div className="flex items-center mt-1">
                       <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
                       <span className="text-primary text-xs sm:text-sm font-medium">
@@ -1454,7 +1452,7 @@ console.log("priceChartData",priceChartData)
                   <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                 </div>
                 <p className="text-base sm:text-lg font-bold text-foreground">
-                  {/* {countdown.minutes} Minutes */}
+                  {minutes} Minutes
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
                   Settlement: Every 30 minutes

@@ -8,7 +8,6 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { fetchHypeBalance } from "@/lib/utils";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
-import PythAttribution from "@/components/shared/PythAttribution";
 
 const Dashboard = () => {
   const {
@@ -123,8 +122,6 @@ const Dashboard = () => {
                 </p>
               </div>
             </div>
-
-            <PythAttribution variant="compact" className="mt-2" />
           </CardContent>
         </Card>
 
