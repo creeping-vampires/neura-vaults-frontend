@@ -1117,9 +1117,9 @@ console.log("priceChartData",priceChartData)
                                 <p className="text-foreground font-medium">
                                   {allocation.name}
                                 </p>
-                                <p className="text-muted-foreground text-sm">
+                                {/* <p className="text-muted-foreground text-sm">
                                   {allocation.protocol}
-                                </p>
+                                </p> */}
                               </div>
                             </div>
                             <div className="flex items-center space-x-3">
