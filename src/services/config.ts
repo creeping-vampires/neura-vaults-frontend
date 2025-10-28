@@ -190,6 +190,7 @@ export interface LatestVaultActionItem {
   timestamp: string; // seconds since epoch
   blockNumber: string;
   txHash: string;
+  actionType?: "Deposit" | "Withdraw";
 }
 
 export interface LatestDepositsData {
