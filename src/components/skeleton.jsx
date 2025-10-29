@@ -5,7 +5,7 @@ import { useLocation } from "react-router-dom";
 export default function SkeletonLoader() {
   const { pathname } = useLocation();
   const isDashboard = pathname === "/";
-  const isMarkets = pathname.startsWith("/markets");
+  const isMarkets = pathname.startsWith("/vaults");
   const isPortfolio = pathname.startsWith("/portfolio");
   const isVaultDetails = pathname.startsWith("/vaults/");
   return (

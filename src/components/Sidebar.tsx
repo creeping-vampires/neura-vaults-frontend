@@ -27,7 +27,7 @@ const Sidebar = ({
 
   const menuItems = [
     { icon: Home, path: "/", tooltip: "Dashboard" },
-    { icon: BarChart3, path: "/markets", tooltip: "Vaults" },
+    { icon: BarChart3, path: "/vaults", tooltip: "Vaults" },
     { icon: Target, path: "/portfolio", tooltip: "Portfolio" },
     ...(isAdmin ? [{ icon: Shield, path: "/admin", tooltip: "Admin" }] : []),
   ];
@@ -69,7 +69,9 @@ const Sidebar = ({
       <nav className="flex-1 p-4 mt-2">
         <div className="space-y-3">
           {menuItems.map((item, index) => {
-            const isActive = location.pathname === item.path;
+            const isActive =
+              location.pathname === item.path ||
+              (item.path !== "/" && location.pathname.startsWith(item.path));
             const isHovered = hoveredItem === item.path;
 
             return (
