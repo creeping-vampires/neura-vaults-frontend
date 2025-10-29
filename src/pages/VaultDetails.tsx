@@ -5,7 +5,7 @@ import React, {
   useMemo,
   Suspense,
 } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +112,7 @@ const VaultDetails = () => {
   const { minutes } = useCountdown();
   const { vaultId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const multiVaultData = useMultiVault();
   const { getTotalTVL, getVaultClientByAddress } = multiVaultData;
@@ -568,8 +569,8 @@ console.log("priceChartData",priceChartData)
       if (activeTab === "deposit") {
         // Check authentication and access for deposits
         if (!authenticated) {
-          // Show login if not authenticated
-          login();
+          localStorage.setItem('POST_LOGIN_REDIRECT_PATH', location.pathname);
+          await login();
           return;
         } else if (!hasAccess) {
           // Show access modal if authenticated but no access
@@ -580,6 +581,12 @@ console.log("priceChartData",priceChartData)
           await handleDeposit(inputAmount);
         }
       } else {
+        // Check authentication for withdrawals
+        if (!authenticated) {
+          localStorage.setItem('POST_LOGIN_REDIRECT_PATH', location.pathname);
+          await login();
+          return;
+        }
         await handleWithdraw(inputAmount);
       }
       setInputAmount("");

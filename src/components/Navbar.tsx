@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Wallet,
   LogIn,
@@ -19,6 +19,8 @@ import { ethers } from "ethers";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
+import { useQueryClient } from "@tanstack/react-query";
+import { useDisconnect } from "wagmi";
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -29,6 +31,9 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const { login, authenticated, exportWallet } = usePrivy();
   const { logout } = useLogout();
   const navigate = useNavigate();
+  const location = useLocation();
+  const queryClient = useQueryClient();
+  const { disconnect } = useDisconnect();
 
   const { wallet, userAddress, hasEmailLogin, isPrivyWallet } =
     useActiveWallet();
@@ -140,9 +145,50 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const handleLogout = async () => {
     try {
       await logout();
-      setShowWalletModal(false);
     } catch (error) {
       console.error("Error logging out:", error);
+    } finally {
+      try {
+        await disconnect();
+      } catch (e) {
+        console.warn("Error disconnecting wagmi connectors:", e);
+      }
+      try {
+        // Clear app storage and caches
+        localStorage.clear();
+        sessionStorage.clear();
+        queryClient.clear();
+        if (typeof caches !== "undefined") {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
+        }
+        try {
+          const anyIndexedDB = indexedDB as any;
+          if (anyIndexedDB?.databases) {
+            const dbs = await anyIndexedDB.databases();
+            await Promise.all(
+              (dbs || []).map(
+                (db: any) =>
+                  new Promise<void>((resolve) => {
+                    const req = indexedDB.deleteDatabase(db.name);
+                    req.onsuccess = req.onerror = req.onblocked = () => resolve();
+                  })
+              )
+            );
+          }
+        } catch (e) {
+        console.warn("Error clearing app data:", e);
+        }
+      } catch (e) {
+        console.error("Error clearing app data:", e);
+      }
+      setShowWalletModal(false);
+      navigate("/", { replace: true });
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch {}
+      }, 0);
     }
   };
 
@@ -187,7 +233,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
                 />
               </div>
               <div className="ml-0.5 overflow-hidden">
-                <h1 className="text-sidebar-foreground font-medium text-xl font-libertinus transition-all duration-300 group-hover:text-white">
+                <h1 className="text-sidebar-foreground font-medium text-xl font-libertinus transition-all duration-300">
                   Neura
                 </h1>
                 <p className="text-xs text-muted-foreground font-libertinus">
@@ -258,11 +304,22 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
                 <Button
                   onClick={async () => {
                     try {
+                      const desiredPath = location.pathname.startsWith('/vaults/')
+                        ? location.pathname
+                        : '/vaults';
+                      localStorage.setItem('POST_LOGIN_REDIRECT_PATH', desiredPath);
                       setShouldRedirectAfterLogin(true);
                       await login();
+                      if (authenticated) {
+                         const desiredPath = localStorage.getItem('POST_LOGIN_REDIRECT_PATH') || '/vaults';
+                         navigate(desiredPath, { replace: true });
+                         setShouldRedirectAfterLogin(false);
+                         localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
+                       }
                     } catch (error) {
                       setShouldRedirectAfterLogin(false);
                       console.error("Login failed:", error);
+                      localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
                     }
                   }}
                   variant="wallet"
