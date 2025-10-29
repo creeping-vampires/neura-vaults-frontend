@@ -344,11 +344,18 @@ const Portfolio = () => {
             className="w-40 px-6 py-2"
             onClick={async () => {
               try {
+                localStorage.setItem('POST_LOGIN_REDIRECT_PATH', '/vaults');
                 setShouldRedirectAfterLogin(true);
                 await login();
-             } catch (error) {
+                if (authenticated) {
+                  navigate('/vaults', { replace: true });
+                  setShouldRedirectAfterLogin(false);
+                  localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
+                }
+              } catch (error) {
                 setShouldRedirectAfterLogin(false);
                 console.error('Login failed:', error);
+                localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
               }
             }}
           >

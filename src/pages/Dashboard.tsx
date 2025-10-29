@@ -272,11 +272,18 @@ const Dashboard = () => {
                 <Button
                   onClick={async () => {
                     try {
+                      localStorage.setItem('POST_LOGIN_REDIRECT_PATH', '/vaults');
                       setShouldRedirectAfterLogin(true);
                       await login();
+                      if (authenticated) {
+                        navigate('/vaults', { replace: true });
+                        setShouldRedirectAfterLogin(false);
+                        localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
+                      }
                     } catch (error) {
                       setShouldRedirectAfterLogin(false);
                       console.error('Login failed:', error);
+                      localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
                     }
                   }}
                   variant="wallet"

@@ -3,12 +3,17 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import UnicornStudioEmbed from "@/components/ChromaBGs-Vyun";
 import ComingSoon from "@/components/ComingSoon";
+import { usePrivy } from "@privy-io/react-auth";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface AppContainerProps {
   children: React.ReactNode;
 }
 
 const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { authenticated } = usePrivy();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSmallMobile, setIsSmallMobile] = useState(false);
@@ -24,6 +29,21 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
     
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+ useEffect(() => {
+    try {
+      const key = 'POST_LOGIN_REDIRECT_PATH';
+      const target = localStorage.getItem(key);
+      if (target && authenticated) {
+        if (location.pathname !== target) {
+          navigate(target, { replace: true });
+        }
+        localStorage.removeItem(key);
+      }
+    } catch (e) {
+      console.log("error",e)
+    }
+  }, [authenticated, navigate, location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
