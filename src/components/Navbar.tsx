@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useNavigate } from "react-router-dom";
 import {
   Wallet,
   LogIn,
@@ -19,29 +19,24 @@ import { ethers } from "ethers";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
-import { useToast } from "@/hooks/use-toast";
 
 interface NavbarProps {
   isMobile?: boolean;
   onToggleSidebar?: () => void;
 }
 
-const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
-  const location = useLocation();
-  const { login, authenticated, exportWallet,ready,  user } = usePrivy();
+const Navbar = ({ onToggleSidebar }: NavbarProps) => {
+  const { login, authenticated, exportWallet } = usePrivy();
   const { logout } = useLogout();
-  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } =
+  const { wallet, userAddress, hasEmailLogin, isPrivyWallet } =
     useActiveWallet();
-
-
 
   const { hasAccess, isLoading } = useUserAccess();
 
-
   // useEffect(() => {
-    // console.log("Wallet Test: ", {wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user});
+  // console.log("Wallet Test: ", {wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user});
   // },[wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user])
 
   const [copiedWallet, setCopiedWallet] = useState(false);
@@ -50,6 +45,8 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
   const [currentChainId, setCurrentChainId] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const [shouldRedirectAfterLogin, setShouldRedirectAfterLogin] =
+    useState(false);
 
   const checkCurrentNetwork = async () => {
     if (!window.ethereum) return;
@@ -113,6 +110,13 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
     }
   }, [wallet]);
 
+  useEffect(() => {
+    if (shouldRedirectAfterLogin && authenticated) {
+      navigate("/vaults", { replace: true });
+      setShouldRedirectAfterLogin(false);
+    }
+  }, [shouldRedirectAfterLogin, authenticated, navigate]);
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard
       .writeText(text)
@@ -159,43 +163,6 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  const getPageInfo = () => {
-    switch (location.pathname) {
-      case "/":
-        return {
-          title: "Dashboard",
-          description: `Welcome to Neura! Hello ${
-            userAddress ? formatAddress(userAddress) : "Guest"
-          }`,
-        };
-      case "/markets":
-        return {
-          title: "Vaults",
-          description: "Explore and trade across all available vaults",
-        };
-      case "/portfolio":
-        return {
-          title: "Portfolio",
-          description:
-            "Track your positions, earnings, and transaction history",
-        };
-      default:
-        // Handle vault details and other dynamic routes
-        if (location.pathname.startsWith("/vaults/")) {
-          return {
-            title: "Vault Details",
-            description: "Manage your vault position and view analytics",
-          };
-        }
-        return {
-          title: "Neura Vault",
-          description: "Decentralized finance platform",
-        };
-    }
-  };
-
-  const pageInfo = getPageInfo();
 
   return (
     <>
@@ -258,7 +225,7 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
 
             {/* Wallet Connection */}
             <div className="flex items-center space-x-3">
-              {authenticated  ? (
+              {authenticated ? (
                 <>
                   {!hasAccess && (
                     <Button
@@ -289,7 +256,15 @@ const Navbar = ({ isMobile = false, onToggleSidebar }: NavbarProps) => {
                 </>
               ) : (
                 <Button
-                  onClick={() => login()}
+                  onClick={async () => {
+                    try {
+                      setShouldRedirectAfterLogin(true);
+                      await login();
+                    } catch (error) {
+                      setShouldRedirectAfterLogin(false);
+                      console.error("Login failed:", error);
+                    }
+                  }}
                   variant="wallet"
                   className="space-x-2"
                 >

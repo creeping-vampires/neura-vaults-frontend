@@ -21,7 +21,7 @@ interface MarketItem {
   rewards?: string[];
 }
 
-const Markets = () => {
+const Vaults = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -283,4 +283,4 @@ const Markets = () => {
   );
 };
 
-export default Markets;
+export default Vaults;

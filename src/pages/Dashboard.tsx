@@ -8,6 +8,7 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import { fetchHypeBalance } from "@/lib/utils";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const {
@@ -18,6 +19,7 @@ const Dashboard = () => {
   } = useMultiVault();
   const { authenticated, login } = usePrivy();
   const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
+  const navigate = useNavigate();
 
   const primaryVault = useMemo(() => {
     const vaults = getAllVaults();
@@ -51,6 +53,8 @@ const Dashboard = () => {
     interestEarned: 0,
     totalSupply: 0,
   });
+
+  const [shouldRedirectAfterLogin, setShouldRedirectAfterLogin] = useState(false);
 
   useEffect(() => {
     const calculateDashboardData = async () => {
@@ -99,6 +103,13 @@ const Dashboard = () => {
 
     calculateDashboardData();
   }, [getAllVaults, getTotalTVL]);
+
+  useEffect(() => {
+    if (shouldRedirectAfterLogin && authenticated) {
+      navigate('/vaults', { replace: true });
+      setShouldRedirectAfterLogin(false);
+    }
+  }, [shouldRedirectAfterLogin, authenticated, navigate]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen relative">
@@ -259,7 +270,15 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <Button
-                  onClick={login}
+                  onClick={async () => {
+                    try {
+                      setShouldRedirectAfterLogin(true);
+                      await login();
+                    } catch (error) {
+                      setShouldRedirectAfterLogin(false);
+                      console.error('Login failed:', error);
+                    }
+                  }}
                   variant="wallet"
                   className="w-40 px-6 py-2"
                 >

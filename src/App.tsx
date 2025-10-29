@@ -22,9 +22,9 @@ import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
 const AppContainer = lazy(() => import("./pages/AppContainer"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Markets = lazy(() => import("./pages/Markets"));
-const Portfolio = lazy(() => import("./pages/Portfolio"));
+const Vaults = lazy(() => import("./pages/Vaults"));
 const VaultDetails = lazy(() => import("./pages/VaultDetails"));
+const Portfolio = lazy(() => import("./pages/Portfolio"));
 const Admin = lazy(() => import("./pages/Admin"));
 const AdminRoute = lazy(() => import("./components/AdminRoute"));
 
@@ -66,14 +66,10 @@ const AppRoutes = () => {
   useMetaMaskMonitor();
 
   const isLoading =
-    isVaultsLoading ||
-    isPriceLoading ||
-    (authenticated && isTxLoading);
+    isVaultsLoading || isPriceLoading || (authenticated && isTxLoading);
 
   const hasError = Boolean(
-    vaultsError ||
-    priceError ||
-    (authenticated && txError)
+    vaultsError || priceError || (authenticated && txError)
   );
 
   if (isLoading || hasError) {
@@ -85,9 +81,9 @@ const AppRoutes = () => {
       <AppContainer>
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/markets" element={<Markets />} />
-          <Route path="/portfolio" element={<Portfolio />} />
+          <Route path="/vaults" element={<Vaults />} />
           <Route path="/vaults/:vaultId" element={<VaultDetails />} />
+          <Route path="/portfolio" element={<Portfolio />} />
           <Route
             path="/admin"
             element={

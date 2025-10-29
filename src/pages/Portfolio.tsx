@@ -135,6 +135,8 @@ const Portfolio = () => {
     change7d: 0,
   });
 
+  const [shouldRedirectAfterLogin, setShouldRedirectAfterLogin] = useState(false);
+
   useEffect(() => {
     const calculatePortfolioData = async () => {
       try {
@@ -323,6 +325,13 @@ const Portfolio = () => {
     }
   }, [authenticated, userAddress, refreshAllData]);
 
+  useEffect(() => {
+    if (shouldRedirectAfterLogin && authenticated) {
+      navigate('/vaults', { replace: true });
+      setShouldRedirectAfterLogin(false);
+    }
+  }, [shouldRedirectAfterLogin, authenticated, navigate]);
+
   if (!authenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
@@ -330,7 +339,19 @@ const Portfolio = () => {
           <h3 className="text-muted-foreground text-md font-medium mb-5">
             Login to view your portfolio balance
           </h3>
-          <Button variant="wallet" onClick={login} className="w-40 px-6 py-2">
+          <Button
+            variant="wallet"
+            className="w-40 px-6 py-2"
+            onClick={async () => {
+              try {
+                setShouldRedirectAfterLogin(true);
+                await login();
+             } catch (error) {
+                setShouldRedirectAfterLogin(false);
+                console.error('Login failed:', error);
+              }
+            }}
+          >
             Login
           </Button>
         </div>
@@ -613,7 +634,7 @@ const Portfolio = () => {
                   <div className="space-x-4">
                     <Button
                       variant="wallet"
-                      onClick={() => navigate(`/markets`)}
+                      onClick={() => navigate(`/vaults`)}
                     >
                       Deposit Assets
                     </Button>
