@@ -252,7 +252,7 @@ export const useMultiVault = () => {
         const unwatchDeposit = publicClient.watchContractEvent({
           address,
           abi: YieldAllocatorVaultABI as any,
-          eventName: "SettleDeposit",
+          eventName: "Deposit",
           onLogs: (logs) => {
             if (logs && logs.length > 0) {
               refreshAllData();
@@ -268,7 +268,7 @@ export const useMultiVault = () => {
         const unwatchRedeem = publicClient.watchContractEvent({
           address,
           abi: YieldAllocatorVaultABI as any,
-          eventName: "SettleRedeem",
+          eventName: "Withdraw",
           onLogs: (logs) => {
             if (logs && logs.length > 0) {
               refreshAllData();
