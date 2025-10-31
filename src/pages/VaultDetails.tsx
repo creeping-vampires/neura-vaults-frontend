@@ -519,7 +519,7 @@ useEffect(() => {
     const unwatchDeposit = publicClient.watchContractEvent({
       address: vaultId as `0x${string}`,
       abi: YieldAllocatorVaultABI as any,
-      eventName: "SettleDeposit",
+      eventName: "Deposit",
       onLogs: (logs) => {
         try {
           if (!logs || logs.length === 0) return;
@@ -561,7 +561,7 @@ useEffect(() => {
     const unwatchRedeem = publicClient.watchContractEvent({
       address: vaultId as `0x${string}`,
       abi: YieldAllocatorVaultABI as any,
-      eventName: "SettleRedeem",
+      eventName: "Withdraw",
       onLogs: (logs) => {
         try {
           if (!logs || logs.length === 0) return;
