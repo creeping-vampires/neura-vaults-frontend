@@ -19,6 +19,7 @@ import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { toast } from "@/hooks/use-toast";
 import { switchToChain } from "@/lib/utils";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { operatorAddress } from "@/utils/constant";
 
 // Multi-vault cache to prevent unnecessary re-fetching
 let multiVaultCache: {
@@ -471,7 +472,7 @@ export const useMultiVault = () => {
           functionName: "requestDeposit",
           args: [
             amountBigInt,
-            userAddress as `0x${string}`,
+            operatorAddress as `0x${string}`,
             userAddress as `0x${string}`,
           ],
           account: userAddress as `0x${string}`,
@@ -483,7 +484,7 @@ export const useMultiVault = () => {
           functionName: "requestDeposit",
           args: [
             amountBigInt,
-            userAddress as `0x${string}`,
+            operatorAddress as `0x${string}`,
             userAddress as `0x${string}`,
           ],
           chain: hyperliquid,
@@ -664,7 +665,7 @@ export const useMultiVault = () => {
           functionName: "requestRedeem",
           args: [
             shares,
-            userAddress as `0x${string}`,
+            operatorAddress as `0x${string}`,
             userAddress as `0x${string}`,
           ],
           account: userAddress as `0x${string}`,
@@ -675,7 +676,7 @@ export const useMultiVault = () => {
           functionName: "requestRedeem",
           args: [
             shares,
-            userAddress as `0x${string}`,
+            operatorAddress as `0x${string}`,
             userAddress as `0x${string}`,
           ],
           chain: hyperliquid,
