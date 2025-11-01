@@ -302,10 +302,8 @@ const VaultDetails = () => {
     refreshClaimableWithdraw();
   }, [vaultId, authenticated, refreshClaimableWithdraw]);
 
-  // Poll while there's a pending withdraw to detect when assets become claimable
   useEffect(() => {
     if (lastWithdrawRequestId) {
-      // Immediate refresh
       refreshClaimableWithdraw();
       const t = setInterval(() => {
         refreshClaimableWithdraw();
@@ -496,8 +494,8 @@ const VaultDetails = () => {
         console.error("SettleDeposit watcher error:", error);
         toast({
           variant: "destructive",
-          title: "Event Watcher Error",
-          description: "Deposit event monitoring encountered an error",
+          title: "Deposit Watcher Error",
+          description: "Deposit monitoring encountered an error",
         });
       },
     });
@@ -682,8 +680,8 @@ const VaultDetails = () => {
                   Pending Deposit
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Deposit settlement in progress. Please wait for confirmation,
-                  then your shares will be available shortly.
+                  Deposit settlement in progress. Shares will be available
+                  shortly after confirmation.
                 </p>
                 {/* <div className="mt-1 text-xs">
                   Pending Assets: {lastDepositPendingAssets?.toFixed(4)}{" "}

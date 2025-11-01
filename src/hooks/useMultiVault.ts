@@ -106,102 +106,131 @@ export const useMultiVault = () => {
   const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } =
     useActiveWallet();
 
-  const fetchAllVaultData = useCallback(async () => {
-    if (!publicClient) return;
-    if (!allVaultData || allVaultData.length === 0) {
-      // wait for price hook to load vaults
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const multiVaultClient = getMultiVaultBatchClient(publicClient);
-      const { vaultData: rawVaultData, userData } =
-        await multiVaultClient.refreshAllData(
-          allVaultData,
-          (userAddress as `0x${string}`) || undefined
-        );
-
-      // Convert to VaultData keyed by address
-      const processedVaultData: Record<string, VaultData> = {} as any;
-
-      Object.entries(rawVaultData).forEach(([address, rawData]) => {
-        const userDataForVault = (userData as any)[address];
-        const metrics = calculateVaultMetrics(rawData, userDataForVault);
-        processedVaultData[address] = {
-          totalAssets: metrics.totalAssets,
-          totalSupply: metrics.totalSupply,
-          currentNetAPR: metrics.currentNetAPR,
-          tvl: metrics.tvl,
-          userDeposits: (metrics as any).userDeposits || 0,
-          userShares: (metrics as any).userShares || 0,
-          compoundedYield: (metrics as any).compoundedYield || 0,
-          assetBalance: (metrics as any).assetBalance || 0,
-          pricePerShare: (metrics as any).pricePerShare || 1,
-          assetDecimals: Number((rawData as any).assetDecimals),
-          totalRequestedAssets: metrics.totalRequestedAssets,
-          pendingDepositAssets: metrics.pendingDepositAssets,
-          isLoading: false,
-          error: null,
-          poolNetAPRs: (rawData as any).poolNetAPRs || [],
-          poolTVLs: (rawData as any).poolTVLs || [],
-          poolAddresses: (rawData as any).poolAddresses || [],
-        };
-      });
-
-      setVaultData(processedVaultData);
-
-      // Update memory cache
-      multiVaultCache = { data: processedVaultData, timestamp: Date.now() };
-
-      // Persist to localStorage
-      try {
-        localStorage.setItem(
-          "multiVaultData",
-          JSON.stringify({
-            data: processedVaultData,
-            timestamp: Date.now(),
-          })
-        );
-      } catch (error) {
-        console.error("Failed to cache multi-vault data:", error);
+  const fetchAllVaultData = useCallback(
+    async (silentRefresh = false) => {
+      if (!publicClient) return;
+      if (!allVaultData || allVaultData.length === 0) {
+        // wait for price hook to load vaults
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching multi-vault data:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to fetch vault data";
-      setError(errorMessage);
 
-      // Set uniform error state for all known vaults
-      const errorVaultData: Record<string, VaultData> = {} as any;
-      (allVaultData || []).forEach((v: any) => {
-        errorVaultData[v.address] = {
-          totalAssets: 0,
-          totalSupply: 0,
-          currentNetAPR: 0,
-          tvl: 0,
-          userDeposits: 0,
-          userShares: 0,
-          compoundedYield: 0,
-          assetBalance: 0,
-          pricePerShare: 1,
-          assetDecimals: 18,
-          totalRequestedAssets: 0,
-          pendingDepositAssets: 0,
-          isLoading: false,
-          error: errorMessage,
-          poolNetAPRs: [],
-          poolTVLs: [],
-          poolAddresses: [],
-        };
-      });
-      setVaultData(errorVaultData);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [publicClient, userAddress, allVaultData]);
+      // Only show loading indicators for non-silent refreshes
+      if (!silentRefresh) {
+        setIsLoading(true);
+        setError(null);
+      }
+
+      try {
+        const multiVaultClient = getMultiVaultBatchClient(publicClient);
+        const { vaultData: rawVaultData, userData } =
+          await multiVaultClient.refreshAllData(
+            allVaultData,
+            (userAddress as `0x${string}`) || undefined
+          );
+
+        // Convert to VaultData keyed by address
+        const processedVaultData: Record<string, VaultData> = {} as any;
+
+        Object.entries(rawVaultData).forEach(([address, rawData]) => {
+          const userDataForVault = (userData as any)[address];
+          const metrics = calculateVaultMetrics(rawData, userDataForVault);
+          processedVaultData[address] = {
+            totalAssets: metrics.totalAssets,
+            totalSupply: metrics.totalSupply,
+            currentNetAPR: metrics.currentNetAPR,
+            tvl: metrics.tvl,
+            userDeposits: (metrics as any).userDeposits || 0,
+            userShares: (metrics as any).userShares || 0,
+            compoundedYield: (metrics as any).compoundedYield || 0,
+            assetBalance: (metrics as any).assetBalance || 0,
+            pricePerShare: (metrics as any).pricePerShare || 1,
+            assetDecimals: Number((rawData as any).assetDecimals),
+            totalRequestedAssets: metrics.totalRequestedAssets,
+            pendingDepositAssets: metrics.pendingDepositAssets,
+            isLoading: false,
+            error: null,
+            poolNetAPRs: (rawData as any).poolNetAPRs || [],
+            poolTVLs: (rawData as any).poolTVLs || [],
+            poolAddresses: (rawData as any).poolAddresses || [],
+          };
+        });
+
+        setVaultData(processedVaultData);
+
+        // Update memory cache
+        multiVaultCache = { data: processedVaultData, timestamp: Date.now() };
+
+        // Persist to localStorage
+        try {
+          localStorage.setItem(
+            "multiVaultData",
+            JSON.stringify({
+              data: processedVaultData,
+              timestamp: Date.now(),
+            })
+          );
+        } catch (error) {
+          console.error("Failed to cache multi-vault data:", error);
+        }
+
+        // Schedule silent refresh after successful data fetch (only for non-silent calls)
+        if (!silentRefresh && publicClient && allVaultData?.length > 0) {
+          const lastSilentRefresh = multiVaultCache?.timestamp || 0;
+          const timeSinceLastRefresh = Date.now() - lastSilentRefresh;
+          const minRefreshInterval = 30000; // 30 seconds minimum between silent refreshes
+
+          if (timeSinceLastRefresh >= minRefreshInterval) {
+            setTimeout(() => {
+              if (publicClient && allVaultData?.length > 0) {
+                fetchAllVaultData(true).catch((error) => {
+                  console.debug("Silent refresh failed:", error);
+                });
+              }
+            }, 5000); 
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching multi-vault data:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "Failed to fetch vault data";
+        
+          if (!silentRefresh) {
+          setError(errorMessage);
+
+          // Set uniform error state for all known vaults
+          const errorVaultData: Record<string, VaultData> = {} as any;
+          (allVaultData || []).forEach((v: any) => {
+            errorVaultData[v.address] = {
+              totalAssets: 0,
+              totalSupply: 0,
+              currentNetAPR: 0,
+              tvl: 0,
+              userDeposits: 0,
+              userShares: 0,
+              compoundedYield: 0,
+              assetBalance: 0,
+              pricePerShare: 1,
+              assetDecimals: 18,
+              totalRequestedAssets: 0,
+              pendingDepositAssets: 0,
+              isLoading: false,
+              error: errorMessage,
+              poolNetAPRs: [],
+              poolTVLs: [],
+              poolAddresses: [],
+            };
+          });
+          setVaultData(errorVaultData);
+        }
+      } finally {
+        // Only update loading state for non-silent refreshes
+        if (!silentRefresh) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [publicClient, userAddress, allVaultData]
+  );
 
   const refreshAllData = useCallback(() => {
     fetchAllVaultData();
@@ -240,7 +269,13 @@ export const useMultiVault = () => {
 
   // Watch for settlement events to refresh UI promptly
   useEffect(() => {
-    if (!publicClient || !userAddress || !allVaultData || allVaultData.length === 0) return;
+    if (
+      !publicClient ||
+      !userAddress ||
+      !allVaultData ||
+      allVaultData.length === 0
+    )
+      return;
 
     const unsubscribers: (() => void)[] = [];
 
@@ -254,7 +289,8 @@ export const useMultiVault = () => {
           eventName: "Deposit",
           onLogs: (logs) => {
             if (logs && logs.length > 0) {
-              refreshAllData();
+              fetchAllVaultData(true);
+              setLastDepositRequestId(null);
               toast({
                 variant: "success",
                 title: "📦 Deposits Settled",
@@ -270,7 +306,7 @@ export const useMultiVault = () => {
           eventName: "SettleRedeem",
           onLogs: (logs) => {
             if (logs && logs.length > 0) {
-              refreshAllData();
+              fetchAllVaultData(true);
               toast({
                 variant: "success",
                 title: "💸 Withdrawals Settled",
@@ -689,7 +725,6 @@ export const useMultiVault = () => {
           hash: withdrawTx,
         });
 
-        // Read RedeemRequest logs
         try {
           const redeemRequestEvent = parseAbiItem(
             "event RedeemRequest(address indexed controller, address indexed owner, uint256 indexed requestId, address sender, uint256 shares)"
@@ -927,7 +962,7 @@ export const useMultiVault = () => {
         setLastWithdrawRequestId(null);
         setLastWithdrawController(null);
         setLastWithdrawPendingAssets(null);
-        await refreshAllData();
+        await fetchAllVaultData(true);
         return tx;
       } catch (error) {
         console.error("Claim redeem failed:", error);
