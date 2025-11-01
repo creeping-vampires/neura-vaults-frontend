@@ -43,13 +43,12 @@ import {
   AreaChart,
 } from "recharts";
 import { Input } from "@/components/ui/input";
+import { explorerUrl } from "@/utils/constant";
 import AgentConsole from "@/components/AgentConsole";
 import AccessCodeModal from "@/components/AccessCodeModal";
-// Add operator-related imports
 import { usePublicClient, useWalletClient } from "wagmi";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
-import { operatorAddress } from "@/utils/constant";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 
@@ -129,6 +128,9 @@ const VaultDetails = () => {
   const {
     deposit,
     withdraw,
+    claimRedeem,
+    getClaimableDepositAmount,
+    getClaimableRedeemAmount,
     isDepositTransacting,
     isWithdrawTransacting,
     refreshData,
@@ -187,93 +189,9 @@ const VaultDetails = () => {
     currentVault ||
     "Vault";
 
-  // Operator access state
   const { userAddress } = useActiveWallet();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
-  const [operatorGranted, setOperatorGranted] = useState<boolean | null>(null);
-  const [operatorLoading, setOperatorLoading] = useState(false);
-  const [operatorError, setOperatorError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const checkOperator = async () => {
-      // Require vault address and user address to check
-      if (!vaultId || !publicClient || !userAddress) {
-        setOperatorGranted(null);
-        return;
-      }
-      setOperatorLoading(true);
-      setOperatorError(null);
-      try {
-        const granted = await publicClient.readContract({
-          address: vaultId as `0x${string}`,
-          abi: YieldAllocatorVaultABI as any,
-          functionName: "isOperator",
-          args: [userAddress, operatorAddress],
-        });
-        setOperatorGranted(Boolean(granted));
-      } catch (err: any) {
-        console.error("isOperator error", err);
-        setOperatorError("Failed to check operator access");
-        setOperatorGranted(false);
-        toast({
-          title: "Operator check failed",
-          description: err?.message ?? "Unable to verify operator permissions.",
-          variant: "destructive",
-        });
-      } finally {
-        setOperatorLoading(false);
-      }
-    };
-    checkOperator();
-  }, [vaultId, publicClient, userAddress]);
-
-  const handleSetOperator = async () => {
-    if (!vaultId) {
-      toast({
-        title: "Missing vault address",
-        description: "Vault address is required.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (!walletClient) {
-      toast({
-        title: "Wallet not connected",
-        description: "Connect a wallet to set operator.",
-        variant: "destructive",
-      });
-      return;
-    }
-    try {
-      setOperatorLoading(true);
-      const hash = await walletClient.writeContract({
-        address: vaultId as `0x${string}`,
-        abi: YieldAllocatorVaultABI as any,
-        functionName: "setOperator",
-        args: ["0x2CdC7b3039bA87F1eb1BCeA36907f9651821Cba4", true],
-        chain: walletClient.chain!,
-        account: userAddress as `0x${string}`,
-      });
-      toast({ title: "Operator transaction sent", description: `Tx: ${hash}` });
-      await publicClient!.waitForTransactionReceipt({ hash });
-      toast({
-        title: "Operator enabled",
-        description: "You can now deposit and withdraw.",
-      });
-      setOperatorGranted(true);
-      refreshData?.();
-    } catch (err: any) {
-      console.error("setOperator error", err);
-      toast({
-        title: "Failed to set operator",
-        description: err?.shortMessage || err?.message || "Transaction failed.",
-        variant: "destructive",
-      });
-    } finally {
-      setOperatorLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (!selectedTimeframe || !vaultId) {
@@ -290,10 +208,9 @@ const VaultDetails = () => {
     }
 
     const allTransformed = [];
-
-    // Use chart data as-is for the selected vault; no hardcoded token filter
+    
     const relevantTokenData = priceChartData;
-
+    
     relevantTokenData.forEach((tokenData) => {
       const points = (tokenData as any).dataPoints || tokenData.data || [];
       const tokenTransformed = points
@@ -369,6 +286,33 @@ const VaultDetails = () => {
     Map<string, NodeJS.Timeout>
   >(new Map());
 
+  const [claimableWithdrawAssets, setClaimableWithdrawAssets] =
+    useState<number>(0);
+  const refreshClaimableWithdraw = useCallback(async () => {
+    try {
+      const amount = await getClaimableRedeemAmount?.();
+      setClaimableWithdrawAssets(amount || 0);
+    } catch (e) {
+      console.log("error refreshing withdraw claimable", e);
+    }
+  }, [getClaimableRedeemAmount]);
+
+  // Initial refresh and on vault/auth changes
+  useEffect(() => {
+    refreshClaimableWithdraw();
+  }, [vaultId, authenticated, refreshClaimableWithdraw]);
+
+  // Poll while there's a pending withdraw to detect when assets become claimable
+  useEffect(() => {
+    if (lastWithdrawRequestId) {
+      // Immediate refresh
+      refreshClaimableWithdraw();
+      const t = setInterval(() => {
+        refreshClaimableWithdraw();
+      }, 30000);
+      return () => clearInterval(t);
+    }
+  }, [lastWithdrawRequestId, refreshClaimableWithdraw]);
 
   const addPendingTransaction = useCallback(
     (type: "deposit" | "withdraw", amount: string, hash?: string) => {
@@ -504,7 +448,7 @@ const VaultDetails = () => {
     };
   }, [latestTransactions, transactionMonitors]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!publicClient || !vaultId) return;
 
     let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -558,52 +502,13 @@ useEffect(() => {
       },
     });
 
-    const unwatchRedeem = publicClient.watchContractEvent({
-      address: vaultId as `0x${string}`,
-      abi: YieldAllocatorVaultABI as any,
-      eventName: "Withdraw",
-      onLogs: (logs) => {
-        try {
-          if (!logs || logs.length === 0) return;
-
-          setLatestTransactions((prev) => {
-            const updated = [...prev];
-            updated
-              .filter((tx) => tx.type === "withdraw" && tx.status === "pending")
-              .forEach((tx) => updateTransactionStatus(tx.id, "confirmed"));
-            return updated;
-          });
-
-          toast({
-            variant: "success",
-            title: "💸 Withdrawals Settled",
-            description: `${logs.length} withdrawal settlement(s). Updating data...`,
-          });
-
-          debouncedRefresh();
-        } catch (error) {
-          console.error("Error handling SettleRedeem event:", error);
-          toast({
-            variant: "destructive",
-            title: "Event Processing Error",
-            description: "Failed to process withdrawal settlement event",
-          });
-        }
-      },
-      onError: (error) => {
-        console.error("SettleRedeem watcher error:", error);
-        toast({
-          variant: "destructive",
-          title: "Event Watcher Error",
-          description: "Withdrawal event monitoring encountered an error",
-        });
-      },
-    });
-
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
-      try { unwatchDeposit(); } catch (error) { console.error("Error unwatching SettleDeposit:", error); }
-      try { unwatchRedeem(); } catch (error) { console.error("Error unwatching SettleRedeem:", error); }
+      try {
+        unwatchDeposit();
+      } catch (error) {
+        console.error("Error unwatching SettleDeposit:", error);
+      }
     };
   }, [publicClient, vaultId, refreshData, updateTransactionStatus]);
 
@@ -777,8 +682,8 @@ useEffect(() => {
                   Pending Deposit
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Deposit settlement in progress. Operator will complete
-                  processing.
+                  Deposit settlement in progress. Please wait for confirmation,
+                  then your shares will be available shortly.
                 </p>
                 {/* <div className="mt-1 text-xs">
                   Pending Assets: {lastDepositPendingAssets?.toFixed(4)}{" "}
@@ -789,7 +694,7 @@ useEffect(() => {
           )}
 
           {/* Pending Withdrawals Section */}
-          {lastWithdrawRequestId && (
+          {lastWithdrawRequestId && claimableWithdrawAssets === 0 && (
             <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
                 <div className="h-full bg-primary/60 animate-progress" />
@@ -799,14 +704,53 @@ useEffect(() => {
                   Pending Withdrawal
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Withdrawal settlement in progress. Operator will complete
-                  processing.
+                  Withdrawal settlement in progress. Please wait for
+                  confirmation, then withdraw your assets.
                 </p>
                 {/* <div className="mt-1 text-xs">
                   Pending Assets: {lastWithdrawPendingAssets?.toFixed(4)}{" "}
                   {currentVault}
                 </div> */}
               </div>
+            </Card>
+          )}
+          {claimableWithdrawAssets > 0 && (
+            <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 py-1 border border-primary/20 rounded-md flex items-center gap-3">
+              <div className="">
+                <span className="text-primary text-sm font-medium">
+                  Pending Withdrawal
+                </span>
+                <p className="text-xs text-muted-foreground">
+                  Your withdrawal is ready—claim your assets to withdraw
+                </p>
+                {/* <div className="mt-1 text-xs">
+                    Claimable Assets: {claimableWithdrawAssets.toFixed(2)}{" "}
+                    {currentVault}
+                  </div> */}
+              </div>
+              <Button
+                onClick={async () => {
+                  try {
+                    await claimRedeem?.();
+                    refreshData();
+                    await refreshClaimableWithdraw();
+                  } catch (error: any) {
+                    console.error("Error claiming withdraw:", error);
+                    toast({
+                      variant: "destructive",
+                      title: "Claim Failed",
+                      description:
+                        error?.message ||
+                        "Unable to claim withdrawal assets. Please try again.",
+                    });
+                  }
+                }}
+                size="sm"
+                variant="wallet"
+                className="text-xs border-2 border-primary/60 hover:border-primary transition-all duration-300 relative overflow-hidden"
+              >
+                Withdraw Assets
+              </Button>
             </Card>
           )}
         </div>
@@ -1384,177 +1328,143 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {operatorGranted === true ? (
-                  <>
-                    <div className="flex gap-2 mb-4">
-                      {[25, 50, 75, 100].map((percent) => (
-                        <button
-                          key={percent}
-                          onClick={() => handlePercentageClick(percent)}
-                          className="flex-1 py-2 px-3 text-xs font-medium rounded-md bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                        >
-                          {percent}%
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="">
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          min="0"
-                          value={inputAmount}
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            if (value === "" || Number(value) >= 0) {
-                              setInputAmount(value);
-                            }
-                          }}
-                          placeholder="Enter amount"
-                          className="w-full h-12 px-4 py-3 bg-gradient-to-br from-card to-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                        />
-                        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground text-sm">
-                          {currentVault}
-                        </span>
-                      </div>
-                    </div>
-
-                    <Button
-                      onClick={handleAction}
-                      disabled={
-                        activeTab === "deposit"
-                          ? isDepositTransacting ||
-                            !inputAmount ||
-                            parseFloat(inputAmount) <= 0 ||
-                            (vaultData?.assetBalance ?? 0) <= 0
-                          : isWithdrawTransacting ||
-                            !inputAmount ||
-                            parseFloat(inputAmount) <= 0 ||
-                            (vaultData?.userDeposits ?? 0) <= 0
-                      }
-                      className="w-full mt-4"
-                      variant="wallet"
+                <div className="flex gap-2 mb-4">
+                  {[25, 50, 75, 100].map((percent) => (
+                    <button
+                      key={percent}
+                      onClick={() => handlePercentageClick(percent)}
+                      className="flex-1 py-2 px-3 text-xs font-medium rounded-md bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                     >
-                      {activeTab === "deposit"
-                        ? isDepositTransacting
-                          ? "Depositing..."
-                          : "Deposit"
-                        : activeTab === "withdraw" &&
-                          (isWithdrawTransacting
-                            ? "Withdrawing..."
-                            : "Withdraw")}
-                    </Button>
+                      {percent}%
+                    </button>
+                  ))}
+                </div>
 
-                    {latestTransactions.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                          Latest Transactions
-                        </h4>
-                        <div
-                          className="space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                          style={{
-                            height: "calc(100vh - 635px)",
-                          }}
-                        >
-                          {latestTransactions
-                            .filter(
-                              (tx) =>
-                                tx.type === "deposit" || tx.type === "withdraw"
-                            )
-                            .map((tx) => {
-                              const getTransactionIcon = () => {
-                                if (tx.status === "confirmed")
-                                  return (
-                                    <CheckCircle className="h-4 w-4 text-primary" />
-                                  );
-                                if (tx.status === "failed")
-                                  return (
-                                    <XCircle className="h-4 w-4 text-red-500" />
-                                  );
-                                return (
-                                  <Loader2 className="h-4 w-4 text-orange-400 animate-spin" />
-                                );
-                              };
+                <div className="">
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={inputAmount}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === "" || Number(value) >= 0) {
+                          setInputAmount(value);
+                        }
+                      }}
+                      placeholder="Enter amount"
+                      className="w-full h-12 px-4 py-3 bg-gradient-to-br from-card to-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground text-sm">
+                      {currentVault}
+                    </span>
+                  </div>
+                </div>
 
-                              const getStatusText = () => {
-                                if (tx.status === "confirmed")
-                                  return "Confirmed";
-                                if (tx.status === "failed") return "Failed";
-                                return "Pending";
-                              };
+                <Button
+                  onClick={handleAction}
+                  disabled={
+                    activeTab === "deposit"
+                      ? isDepositTransacting ||
+                        !inputAmount ||
+                        parseFloat(inputAmount) <= 0 ||
+                        (vaultData?.assetBalance ?? 0) <= 0
+                      : isWithdrawTransacting ||
+                        !inputAmount ||
+                        parseFloat(inputAmount) <= 0 ||
+                        (vaultData?.userDeposits ?? 0) <= 0
+                  }
+                  className="w-full mt-4"
+                  variant="wallet"
+                >
+                  {activeTab === "deposit"
+                    ? isDepositTransacting
+                      ? "Depositing..."
+                      : "Deposit"
+                    : activeTab === "withdraw" &&
+                      (isWithdrawTransacting ? "Withdrawing..." : "Withdraw")}
+                </Button>
 
-                              const getStatusColor = () => {
-                                if (tx.status === "confirmed")
-                                  return "text-primary";
-                                if (tx.status === "failed")
-                                  return "text-red-500";
-                                return "text-orange-400";
-                              };
-
+                {latestTransactions.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <h4 className="text-sm font-medium text-muted-foreground mb-2">
+                      Latest Transactions
+                    </h4>
+                    <div
+                      className="space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+                      style={{
+                        height: "calc(100vh - 635px)",
+                      }}
+                    >
+                      {latestTransactions
+                        .filter(
+                          (tx) =>
+                            tx.type === "deposit" || tx.type === "withdraw"
+                        )
+                        .map((tx) => {
+                          const getTransactionIcon = () => {
+                            if (tx.status === "confirmed")
                               return (
-                                <div
-                                  key={tx.id}
-                                  className="flex items-center justify-between p-2 py-1 bg-card/50 rounded-md border border-border/50"
-                                >
-                                  <div className="flex items-center space-x-2">
-                                    {getTransactionIcon()}
-                                    <div className="flex flex-col">
-                                      <span className="text-xs font-medium text-foreground capitalize">
-                                        {tx.type}{" "}
-                                        {tx.amount &&
-                                          `${parseFloat(tx.amount).toFixed(
-                                            4
-                                          )} ${currentVault}`}
-                                      </span>
-                                      <span
-                                        className={`text-xs ${getStatusColor()}`}
-                                      >
-                                        {getStatusText()}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  {tx.hash && (
-                                    <a
-                                      href={getExplorerTxUrl(tx.hash)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                      <ExternalLink className="h-3 w-3" />
-                                    </a>
-                                  )}
-                                </div>
+                                <CheckCircle className="h-4 w-4 text-primary" />
                               );
-                            })}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Operator access is required to deposit or withdraw.
-                    </p>
-                    {operatorError && (
-                      <p className="text-xs text-destructive">
-                        {operatorError}
-                      </p>
-                    )}
-                    <Button
-                      onClick={handleSetOperator}
-                      disabled={operatorLoading || !walletClient || !vaultId}
-                      className="w-full"
-                      variant="wallet"
-                    >
-                      {operatorLoading ? (
-                        <span className="inline-flex items-center">
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Enabling...
-                        </span>
-                      ) : (
-                        "Set Operator"
-                      )}
-                    </Button>
+                            if (tx.status === "failed")
+                              return (
+                                <XCircle className="h-4 w-4 text-red-500" />
+                              );
+                            return (
+                              <Loader2 className="h-4 w-4 text-orange-400 animate-spin" />
+                            );
+                          };
+
+                          const getStatusText = () => {
+                            if (tx.status === "confirmed") return "Confirmed";
+                            if (tx.status === "failed") return "Failed";
+                            return "Pending";
+                          };
+
+                          const getStatusColor = () => {
+                            if (tx.status === "confirmed")
+                              return "text-primary";
+                            if (tx.status === "failed") return "text-red-500";
+                            return "text-orange-400";
+                          };
+
+                          return (
+                            <div
+                              key={tx.id}
+                              className="flex items-center justify-between p-2 py-1 bg-card/50 rounded-md border border-border/50"
+                            >
+                              <div className="flex items-center space-x-2">
+                                {getTransactionIcon()}
+                                <div className="flex flex-col">
+                                  <span className="text-xs font-medium text-foreground capitalize">
+                                    {tx.type}{" "}
+                                    {tx.amount &&
+                                      `${parseFloat(tx.amount).toFixed(
+                                        4
+                                      )} ${currentVault}`}
+                                  </span>
+                                  <span
+                                    className={`text-xs ${getStatusColor()}`}
+                                  >
+                                    {getStatusText()}
+                                  </span>
+                                </div>
+                              </div>
+                              {tx.hash && (
+                                <a
+                                  href={getExplorerTxUrl(tx.hash)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </CardContent>
