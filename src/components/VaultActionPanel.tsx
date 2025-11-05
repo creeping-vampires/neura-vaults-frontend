@@ -51,6 +51,7 @@ interface VaultActionPanelProps {
   onRequireAccess: () => void;
   pendingDepositAssets: bigint;
   pendingRedeemShares: bigint;
+  claimableDepositAssets?: number;
   claimableWithdrawAssets?: number;
 }
 
@@ -70,6 +71,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   onRequireAccess,
   pendingDepositAssets,
   pendingRedeemShares,
+  claimableDepositAssets,
   claimableWithdrawAssets,
 }) => {
   const publicClient = usePublicClient();
@@ -631,57 +633,66 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   // check pending transaction on page refresh
   useEffect(() => {
     const addDepositPendingTransactions = () => {
-      if ((pendingDepositAssets ?? 0n) > 0n) {
-        const depositTx: PendingTransaction = {
-          id: `backend-deposit-${Date.now()}`,
-          type: "deposit",
-          amount: formatUnits(pendingDepositAssets, 6),
-          status: "settling",
-          origin: "backend",
-          timestamp: Date.now(),
-        };
-        setLatestTransactions((prev) => {
-          if (!prev.some((tx) => tx.id === depositTx.id)) {
-            return [...prev, depositTx];
-          }
-          return prev;
-        });
+      if (
+        (pendingDepositAssets ?? 0n) > 0n ||
+        (claimableDepositAssets ?? 0) > 0
+      ) {
+        const existingDepositTx = latestTransactions.find(
+          (tx) => tx.type === "deposit" && tx.origin === "backend"
+        );
+
+        if (!existingDepositTx) {
+          const depositTx: PendingTransaction = {
+            id: `backend-deposit-${Date.now()}`,
+            type: "deposit",
+            amount: formatUnits(pendingDepositAssets, 6),
+            status: "settling",
+            origin: "backend",
+            timestamp: Date.now(),
+          };
+          setLatestTransactions((prev) => [...prev, depositTx]);
+        }
       }
     };
 
     addDepositPendingTransactions();
-  }, [pendingDepositAssets]);
+  }, [pendingDepositAssets, claimableDepositAssets]);
 
   useEffect(() => {
     const addWithdrawPendingTransactions = () => {
-      if ((pendingRedeemShares ?? 0n) > 0n) {
-        const withdrawTx: PendingTransaction = {
-          id: `backend-withdraw-${Date.now()}`,
-          type: "withdraw",
-          amount: formatUnits(pendingRedeemShares, 18),
-          status: "settling",
-          origin: "backend",
-          timestamp: Date.now(),
-        };
-        setLatestTransactions((prev) => {
-          // Avoid duplicate entries
-          if (!prev.some((tx) => tx.id === withdrawTx.id)) {
-            return [...prev, withdrawTx];
-          }
-          return prev;
-        });
+      if (
+        (pendingRedeemShares ?? 0n) > 0n ||
+        (claimableWithdrawAssets ?? 0) > 0
+      ) {
+        const existingWithdrawTx = latestTransactions.find(
+          (tx) => tx.type === "withdraw" && tx.origin === "backend"
+        );
+
+        if (!existingWithdrawTx) {
+          const withdrawTx: PendingTransaction = {
+            id: `backend-withdraw-${Date.now()}`,
+            type: "withdraw",
+            amount: formatUnits(pendingRedeemShares, 18),
+            status: "settling",
+            origin: "backend",
+            timestamp: Date.now(),
+          };
+          setLatestTransactions((prev) => [...prev, withdrawTx]);
+        }
       }
     };
 
     addWithdrawPendingTransactions();
-  }, [pendingRedeemShares]);
+  }, [pendingRedeemShares, claimableWithdrawAssets]);
 
   // Remove backend-origin transactions when pending values return to 0
   useEffect(() => {
     const removeBackendPendingTransactions = () => {
       if (
         (pendingDepositAssets ?? 0n) === 0n &&
-        (pendingRedeemShares ?? 0n) === 0n
+        claimableDepositAssets === 0 &&
+        (pendingRedeemShares ?? 0n) === 0n &&
+        claimableWithdrawAssets === 0
       ) {
         setLatestTransactions((prev) =>
           prev.filter((tx) => tx.origin !== "backend")
@@ -690,7 +701,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     };
 
     removeBackendPendingTransactions();
-  }, [pendingDepositAssets, pendingRedeemShares]);
+  }, [
+    pendingDepositAssets,
+    claimableDepositAssets,
+    pendingRedeemShares,
+    claimableWithdrawAssets,
+  ]);
 
   const handleDeposit = async (amount: string) => {
     let depositId: string | null = null;
