@@ -42,15 +42,13 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { Input } from "@/components/ui/input";
 import { explorerUrl } from "@/utils/constant";
 import AgentConsole from "@/components/AgentConsole";
 import AccessCodeModal from "@/components/AccessCodeModal";
-import { usePublicClient, useWalletClient } from "wagmi";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
-import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
+import VaultActionPanel from "@/components/VaultActionPanel";
 
 const chartConfig = {
   value: {
@@ -134,12 +132,8 @@ const VaultDetails = () => {
     isDepositTransacting,
     isWithdrawTransacting,
     refreshData,
-    lastDepositRequestId,
-    lastDepositController,
-    lastDepositPendingAssets,
-    lastWithdrawRequestId,
-    lastWithdrawController,
-    lastWithdrawPendingAssets,
+    pendingDepositAssets,
+    pendingRedeemShares,
     ...vaultData
   } = vaultDataObject;
 
@@ -190,8 +184,6 @@ const VaultDetails = () => {
     "Vault";
 
   const { userAddress } = useActiveWallet();
-  const publicClient = usePublicClient();
-  const { data: walletClient } = useWalletClient();
 
   useEffect(() => {
     if (!selectedTimeframe || !vaultId) {
@@ -208,9 +200,9 @@ const VaultDetails = () => {
     }
 
     const allTransformed = [];
-    
+
     const relevantTokenData = priceChartData;
-    
+
     relevantTokenData.forEach((tokenData) => {
       const points = (tokenData as any).dataPoints || tokenData.data || [];
       const tokenTransformed = points
@@ -263,28 +255,7 @@ const VaultDetails = () => {
     setChartData(allTransformed);
   }, [priceChartData]);
 
-  const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
-  const [inputAmount, setInputAmount] = useState<string>("");
-  const [whitelistedPools, setWhitelistedPools] = useState<string[]>([]);
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
-
-  // Pending transactions state
-  interface PendingTransaction {
-    id: string;
-    type: "deposit" | "withdraw";
-    amount: string;
-    hash?: string;
-    status: "pending" | "confirmed" | "failed";
-    timestamp: number;
-    autoRemoveTimer?: NodeJS.Timeout;
-  }
-
-  const [latestTransactions, setLatestTransactions] = useState<
-    PendingTransaction[]
-  >([]);
-  const [transactionMonitors, setTransactionMonitors] = useState<
-    Map<string, NodeJS.Timeout>
-  >(new Map());
 
   const [claimableWithdrawAssets, setClaimableWithdrawAssets] =
     useState<number>(0);
@@ -303,212 +274,14 @@ const VaultDetails = () => {
   }, [vaultId, authenticated, refreshClaimableWithdraw]);
 
   useEffect(() => {
-    if (lastWithdrawRequestId) {
+    if (pendingRedeemShares > 0n) {
       refreshClaimableWithdraw();
       const t = setInterval(() => {
         refreshClaimableWithdraw();
       }, 30000);
       return () => clearInterval(t);
     }
-  }, [lastWithdrawRequestId, refreshClaimableWithdraw]);
-
-  const addPendingTransaction = useCallback(
-    (type: "deposit" | "withdraw", amount: string, hash?: string) => {
-      const id = `${type}-${Date.now()}-${Math.random()
-        .toString(36)
-        .substr(2, 9)}`;
-      const newTransaction: PendingTransaction = {
-        id,
-        type,
-        amount,
-        hash,
-        status: "pending",
-        timestamp: Date.now(),
-      };
-
-      setLatestTransactions((prev) => [...prev, newTransaction]);
-
-      if (hash) {
-        startTransactionMonitoring(id, hash);
-      }
-
-      return id;
-    },
-    []
-  );
-
-  const updateTransactionStatus = useCallback(
-    (id: string, status: "pending" | "confirmed" | "failed", hash?: string) => {
-      setLatestTransactions((prev) =>
-        prev.map((tx) => {
-          if (tx.id === id) {
-            const updatedTx = { ...tx, status, ...(hash && { hash }) };
-
-            if (status === "confirmed" || status === "failed") {
-              const timer = setTimeout(() => {
-                setLatestTransactions((current) =>
-                  current.filter((t) => t.id !== id)
-                );
-                // Clean up monitor
-                const monitor = transactionMonitors.get(id);
-                if (monitor) {
-                  clearInterval(monitor);
-                  setTransactionMonitors((prev) => {
-                    const newMap = new Map(prev);
-                    newMap.delete(id);
-                    return newMap;
-                  });
-                }
-              }, 300000);
-
-              updatedTx.autoRemoveTimer = timer;
-            }
-
-            return updatedTx;
-          }
-          return tx;
-        })
-      );
-    },
-    [transactionMonitors]
-  );
-
-  const startTransactionMonitoring = useCallback(
-    (id: string, hash: string) => {
-      const monitor = setInterval(async () => {
-        try {
-          if (window.ethereum) {
-            const provider = new (await import("ethers")).BrowserProvider(
-              window.ethereum
-            );
-            const receipt = await provider.getTransactionReceipt(hash);
-
-            if (receipt) {
-              const status = receipt.status === 1 ? "confirmed" : "failed";
-
-              updateTransactionStatus(id, status);
-
-              // Handle success/failure actions
-              if (status === "confirmed") {
-                // Use functional update to get current state
-                setLatestTransactions((currentTransactions) => {
-                  const transaction = currentTransactions.find(
-                    (tx) => tx.id === id
-                  );
-                  if (transaction) {
-                    toast({
-                      title: `✅ ${
-                        transaction.type === "deposit"
-                          ? "Deposit"
-                          : "Withdrawal"
-                      } Successful`,
-                      description: `Successfully ${
-                        transaction.type === "deposit"
-                          ? "deposited"
-                          : "withdrew"
-                      } ${transaction.amount} ${currentVault}.`,
-                    });
-
-                    refreshData();
-                  }
-                  return currentTransactions;
-                });
-              }
-
-              clearInterval(monitor);
-              setTransactionMonitors((prev) => {
-                const newMap = new Map(prev);
-                newMap.delete(id);
-                return newMap;
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Error monitoring transaction:", error);
-        }
-      }, 3000);
-
-      setTransactionMonitors((prev) => new Map(prev.set(id, monitor)));
-    },
-    [updateTransactionStatus, refreshData]
-  );
-
-  useEffect(() => {
-    return () => {
-      latestTransactions.forEach((tx) => {
-        if (tx.autoRemoveTimer) {
-          clearTimeout(tx.autoRemoveTimer);
-        }
-      });
-      transactionMonitors.forEach((monitor) => {
-        clearInterval(monitor);
-      });
-    };
-  }, [latestTransactions, transactionMonitors]);
-
-  useEffect(() => {
-    if (!publicClient || !vaultId) return;
-
-    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-    const debouncedRefresh = () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        refreshData();
-      }, 500);
-    };
-
-    const unwatchDeposit = publicClient.watchContractEvent({
-      address: vaultId as `0x${string}`,
-      abi: YieldAllocatorVaultABI as any,
-      eventName: "Deposit",
-      onLogs: (logs) => {
-        try {
-          if (!logs || logs.length === 0) return;
-
-          setLatestTransactions((prev) => {
-            const updated = [...prev];
-            updated
-              .filter((tx) => tx.type === "deposit" && tx.status === "pending")
-              .forEach((tx) => updateTransactionStatus(tx.id, "confirmed"));
-            return updated;
-          });
-
-          toast({
-            variant: "success",
-            title: "📦 Deposits Settled",
-            description: `${logs.length} deposit settlement(s). Updating data...`,
-          });
-
-          debouncedRefresh();
-        } catch (error) {
-          console.error("Error handling SettleDeposit event:", error);
-          toast({
-            variant: "destructive",
-            title: "Event Processing Error",
-            description: "Failed to process deposit settlement event",
-          });
-        }
-      },
-      onError: (error) => {
-        console.error("SettleDeposit watcher error:", error);
-        toast({
-          variant: "destructive",
-          title: "Deposit Watcher Error",
-          description: "Deposit monitoring encountered an error",
-        });
-      },
-    });
-
-    return () => {
-      if (debounceTimer) clearTimeout(debounceTimer);
-      try {
-        unwatchDeposit();
-      } catch (error) {
-        console.error("Error unwatching SettleDeposit:", error);
-      }
-    };
-  }, [publicClient, vaultId, refreshData, updateTransactionStatus]);
+  }, [pendingRedeemShares, refreshClaimableWithdraw]);
 
   const timeframes = ["7D", "1M"] as const;
 
@@ -563,84 +336,6 @@ const VaultDetails = () => {
     vaultId,
   ]);
 
-  const handleDeposit = async (amount: string) => {
-    let depositId: string | null = null;
-
-    try {
-      depositId = addPendingTransaction("deposit", amount);
-
-      const depositTx = await deposit(amount);
-
-      if (depositId) {
-        updateTransactionStatus(depositId, "confirmed", depositTx);
-        startTransactionMonitoring(depositId, depositTx);
-      }
-    } catch (e: any) {
-      if (depositId) {
-        updateTransactionStatus(depositId, "failed");
-      }
-    }
-  };
-
-  const handleWithdraw = async (amount: string) => {
-    let withdrawId: string | null = null;
-
-    try {
-      withdrawId = addPendingTransaction("withdraw", amount);
-
-      const withdrawTx = await withdraw(amount);
-
-      if (withdrawId) {
-        updateTransactionStatus(withdrawId, "confirmed", withdrawTx);
-        startTransactionMonitoring(withdrawId, withdrawTx);
-      }
-    } catch (e: any) {
-      if (withdrawId) {
-        updateTransactionStatus(withdrawId, "failed");
-      }
-    }
-  };
-
-  const handlePercentageClick = (percent: number) => {
-    const maxAmount =
-      activeTab === "deposit"
-        ? vaultData?.assetBalance || 0
-        : vaultData?.userDeposits || 0;
-    const amount = ((maxAmount * percent) / 100).toString();
-    setInputAmount(amount);
-  };
-
-  const handleAction = async () => {
-    if (!inputAmount || parseFloat(inputAmount) <= 0) return;
-
-    try {
-      if (activeTab === "deposit") {
-        // Check authentication and access for deposits
-        if (!authenticated) {
-          localStorage.setItem("POST_LOGIN_REDIRECT_PATH", location.pathname);
-          await login();
-          return;
-        } else if (!hasAccess) {
-          // Show access modal if authenticated but no access
-          setShowAccessCodeModal(true);
-          return;
-        } else {
-          // Proceed with deposit if authenticated and has access
-          await handleDeposit(inputAmount);
-        }
-      } else {
-        // Check authentication for withdrawals
-        if (!authenticated) {
-          localStorage.setItem("POST_LOGIN_REDIRECT_PATH", location.pathname);
-          await login();
-          return;
-        }
-        await handleWithdraw(inputAmount);
-      }
-      setInputAmount("");
-    } catch (e: any) {}
-  };
-
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
@@ -667,10 +362,9 @@ const VaultDetails = () => {
             </div>
           </div>
         </div>
-
         <div className="flex gap-3">
           {/* Pending Deposits Section */}
-          {lastDepositRequestId && (
+          {pendingDepositAssets > 0n && (
             <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
                 <div className="h-full bg-primary/60 animate-progress" />
@@ -683,16 +377,12 @@ const VaultDetails = () => {
                   Deposit settlement in progress. Shares will be available
                   shortly after confirmation.
                 </p>
-                {/* <div className="mt-1 text-xs">
-                  Pending Assets: {lastDepositPendingAssets?.toFixed(4)}{" "}
-                  {currentVault}
-                </div> */}
               </div>
             </Card>
           )}
 
           {/* Pending Withdrawals Section */}
-          {lastWithdrawRequestId && claimableWithdrawAssets === 0 && (
+          {pendingRedeemShares > 0n && claimableWithdrawAssets === 0 && (
             <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
                 <div className="h-full bg-primary/60 animate-progress" />
@@ -705,13 +395,10 @@ const VaultDetails = () => {
                   Withdrawal settlement in progress. Please wait for
                   confirmation, then withdraw your assets.
                 </p>
-                {/* <div className="mt-1 text-xs">
-                  Pending Assets: {lastWithdrawPendingAssets?.toFixed(4)}{" "}
-                  {currentVault}
-                </div> */}
               </div>
             </Card>
           )}
+
           {claimableWithdrawAssets > 0 && (
             <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 py-1 border border-primary/20 rounded-md flex items-center gap-3">
               <div className="">
@@ -721,10 +408,6 @@ const VaultDetails = () => {
                 <p className="text-xs text-muted-foreground">
                   Your withdrawal is ready—claim your assets to withdraw
                 </p>
-                {/* <div className="mt-1 text-xs">
-                    Claimable Assets: {claimableWithdrawAssets.toFixed(2)}{" "}
-                    {currentVault}
-                  </div> */}
               </div>
               <Button
                 onClick={async () => {
@@ -1271,202 +954,24 @@ const VaultDetails = () => {
 
         <div className="w-full lg:w-80 flex-shrink-0 space-y-4 sm:space-y-6">
           <div className="sticky top-6 space-y-4 sm:space-y-6">
-            <Card
-              className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl sm:min-h-[435px]"
-              style={{
-                height: "calc(100vh - 315px)",
-              }}
-            >
-              <CardContent className="p-4 pt-2">
-                <div className="flex mb-4 border-b border-border">
-                  <button
-                    onClick={() => setActiveTab("deposit")}
-                    className={`flex-1 py-3 px-4 text-base font-medium transition-all duration-200 relative ${
-                      activeTab === "deposit"
-                        ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Deposit
-                    {activeTab === "deposit" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("withdraw")}
-                    className={`flex-1 py-3 px-4 text-base font-medium transition-all duration-200 relative ${
-                      activeTab === "withdraw"
-                        ? "text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Withdraw
-                    {activeTab === "withdraw" && (
-                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-full" />
-                    )}
-                  </button>
-                </div>
-
-                {/* Withdrawal Status */}
-
-                <div className="mt-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-muted-foreground text-sm">
-                      Available
-                    </span>
-                    <span className="text-foreground font-medium">
-                      {activeTab === "deposit"
-                        ? `${
-                            vaultData?.assetBalance?.toFixed(2) || "0.00"
-                          } ${currentVault}`
-                        : `${
-                            vaultData?.userDeposits?.toFixed(2) || "0.00"
-                          } ${currentVault}`}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-2 mb-4">
-                  {[25, 50, 75, 100].map((percent) => (
-                    <button
-                      key={percent}
-                      onClick={() => handlePercentageClick(percent)}
-                      className="flex-1 py-2 px-3 text-xs font-medium rounded-md bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                    >
-                      {percent}%
-                    </button>
-                  ))}
-                </div>
-
-                <div className="">
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      min="0"
-                      value={inputAmount}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        if (value === "" || Number(value) >= 0) {
-                          setInputAmount(value);
-                        }
-                      }}
-                      placeholder="Enter amount"
-                      className="w-full h-12 px-4 py-3 bg-gradient-to-br from-card to-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground text-sm">
-                      {currentVault}
-                    </span>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleAction}
-                  disabled={
-                    activeTab === "deposit"
-                      ? isDepositTransacting ||
-                        !inputAmount ||
-                        parseFloat(inputAmount) <= 0 ||
-                        (vaultData?.assetBalance ?? 0) <= 0
-                      : isWithdrawTransacting ||
-                        !inputAmount ||
-                        parseFloat(inputAmount) <= 0 ||
-                        (vaultData?.userDeposits ?? 0) <= 0
-                  }
-                  className="w-full mt-4"
-                  variant="wallet"
-                >
-                  {activeTab === "deposit"
-                    ? isDepositTransacting
-                      ? "Depositing..."
-                      : "Deposit"
-                    : activeTab === "withdraw" &&
-                      (isWithdrawTransacting ? "Withdrawing..." : "Withdraw")}
-                </Button>
-
-                {latestTransactions.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                      Latest Transactions
-                    </h4>
-                    <div
-                      className="space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-                      style={{
-                        height: "calc(100vh - 635px)",
-                      }}
-                    >
-                      {latestTransactions
-                        .filter(
-                          (tx) =>
-                            tx.type === "deposit" || tx.type === "withdraw"
-                        )
-                        .map((tx) => {
-                          const getTransactionIcon = () => {
-                            if (tx.status === "confirmed")
-                              return (
-                                <CheckCircle className="h-4 w-4 text-primary" />
-                              );
-                            if (tx.status === "failed")
-                              return (
-                                <XCircle className="h-4 w-4 text-red-500" />
-                              );
-                            return (
-                              <Loader2 className="h-4 w-4 text-orange-400 animate-spin" />
-                            );
-                          };
-
-                          const getStatusText = () => {
-                            if (tx.status === "confirmed") return "Confirmed";
-                            if (tx.status === "failed") return "Failed";
-                            return "Pending";
-                          };
-
-                          const getStatusColor = () => {
-                            if (tx.status === "confirmed")
-                              return "text-primary";
-                            if (tx.status === "failed") return "text-red-500";
-                            return "text-orange-400";
-                          };
-
-                          return (
-                            <div
-                              key={tx.id}
-                              className="flex items-center justify-between p-2 py-1 bg-card/50 rounded-md border border-border/50"
-                            >
-                              <div className="flex items-center space-x-2">
-                                {getTransactionIcon()}
-                                <div className="flex flex-col">
-                                  <span className="text-xs font-medium text-foreground capitalize">
-                                    {tx.type}{" "}
-                                    {tx.amount &&
-                                      `${parseFloat(tx.amount).toFixed(
-                                        4
-                                      )} ${currentVault}`}
-                                  </span>
-                                  <span
-                                    className={`text-xs ${getStatusColor()}`}
-                                  >
-                                    {getStatusText()}
-                                  </span>
-                                </div>
-                              </div>
-                              {tx.hash && (
-                                <a
-                                  href={getExplorerTxUrl(tx.hash)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                </a>
-                              )}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <VaultActionPanel
+              currentVault={currentVault}
+              availableAssetBalance={vaultData?.assetBalance}
+              availableUserDeposits={vaultData?.userDeposits}
+              deposit={deposit}
+              withdraw={withdraw}
+              isDepositTransacting={isDepositTransacting}
+              isWithdrawTransacting={isWithdrawTransacting}
+              vaultId={vaultId}
+              refreshData={refreshData}
+              authenticated={authenticated}
+              login={login}
+              hasAccess={hasAccess}
+              onRequireAccess={() => setShowAccessCodeModal(true)}
+              pendingDepositAssets={pendingDepositAssets}
+              pendingRedeemShares={pendingRedeemShares}
+              claimableWithdrawAssets={claimableWithdrawAssets}
+            />
 
             <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[180px]">
               <CardContent className="p-4 sm:p-6">

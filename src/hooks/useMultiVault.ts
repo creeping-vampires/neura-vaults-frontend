@@ -7,6 +7,7 @@ import {
   parseAbi,
   parseAbiItem,
   maxUint256,
+  Address,
 } from "viem";
 import { hyperliquid } from "@/lib/privyConfig";
 import { usePrice } from "@/hooks/usePrice";
@@ -26,33 +27,30 @@ let multiVaultCache: {
   timestamp: number;
 } | null = null;
 
+const serializeBigInt = (key: string, value: any) => {
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  return value;
+};
+
+const deserializeBigInt = (key: string, value: any) => {
+  if (key === "pendingDepositAssets" && typeof value === "string") {
+    return BigInt(value);
+  }
+  return value;
+};
+
 export const useMultiVault = () => {
   const publicClient = usePublicClient();
   const { data: wagmiWalletClient } = useWalletClient();
   const { wallets } = useWallets();
   const { allVaultData } = usePrice();
 
-  // Track last deposit request for pending status UI
-  const [lastDepositRequestId, setLastDepositRequestId] = useState<
-    bigint | null
-  >(null);
-  const [lastDepositController, setLastDepositController] = useState<
-    `0x${string}` | null
-  >(null);
-  const [lastDepositPendingAssets, setLastDepositPendingAssets] = useState<
-    number | null
-  >(null);
-
-  // Track last withdraw (redeem) request for pending status UI
-  const [lastWithdrawRequestId, setLastWithdrawRequestId] = useState<
-    bigint | null
-  >(null);
-  const [lastWithdrawController, setLastWithdrawController] = useState<
-    `0x${string}` | null
-  >(null);
-  const [lastWithdrawPendingAssets, setLastWithdrawPendingAssets] = useState<
-    number | null
-  >(null);
+  const [pendingDepositAssets, setPendingDepositAssets] = useState<bigint>(0n);
+  const [pendingRedeemShares, setPendingRedeemShares] = useState<bigint>(0n);
+  const [depositEventStatus, setDepositEventStatus] = useState("idle");
+  const [withdrawEventStatus, setWithdrawEventStatus] = useState("idle");
 
   // Use cached data if fresh (<5m)
   const cachedData = useMemo(() => {
@@ -67,7 +65,7 @@ export const useMultiVault = () => {
     try {
       const cached = localStorage.getItem("multiVaultData");
       if (cached) {
-        const parsed = JSON.parse(cached);
+        const parsed = JSON.parse(cached, deserializeBigInt);
         const isExpired = Date.now() - parsed.timestamp > 5 * 60 * 1000; // 5 minutes
         if (!isExpired && parsed.data) {
           // Update memory cache from localStorage
@@ -146,7 +144,7 @@ export const useMultiVault = () => {
             pricePerShare: (metrics as any).pricePerShare || 1,
             assetDecimals: Number((rawData as any).assetDecimals),
             totalRequestedAssets: metrics.totalRequestedAssets,
-            pendingDepositAssets: metrics.pendingDepositAssets,
+            pendingDepositAssets: pendingDepositAssets,
             isLoading: false,
             error: null,
             poolNetAPRs: (rawData as any).poolNetAPRs || [],
@@ -164,10 +162,13 @@ export const useMultiVault = () => {
         try {
           localStorage.setItem(
             "multiVaultData",
-            JSON.stringify({
-              data: processedVaultData,
-              timestamp: Date.now(),
-            })
+            JSON.stringify(
+              {
+                data: processedVaultData,
+                timestamp: Date.now(),
+              },
+              serializeBigInt
+            )
           );
         } catch (error) {
           console.error("Failed to cache multi-vault data:", error);
@@ -186,15 +187,15 @@ export const useMultiVault = () => {
                   console.debug("Silent refresh failed:", error);
                 });
               }
-            }, 5000); 
+            }, 5000);
           }
         }
       } catch (error) {
         console.error("Error fetching multi-vault data:", error);
         const errorMessage =
           error instanceof Error ? error.message : "Failed to fetch vault data";
-        
-          if (!silentRefresh) {
+
+        if (!silentRefresh) {
           setError(errorMessage);
 
           // Set uniform error state for all known vaults
@@ -212,7 +213,7 @@ export const useMultiVault = () => {
               pricePerShare: 1,
               assetDecimals: 18,
               totalRequestedAssets: 0,
-              pendingDepositAssets: 0,
+              pendingDepositAssets: 0n,
               isLoading: false,
               error: errorMessage,
               poolNetAPRs: [],
@@ -236,9 +237,90 @@ export const useMultiVault = () => {
     fetchAllVaultData();
   }, [fetchAllVaultData]);
 
+  // check pending redeem request
+  const checkPendingRedeemRequest = useCallback(async () => {
+    if (!publicClient || !userAddress || !allVaultData?.length) {
+      setPendingRedeemShares(0n);
+      return;
+    }
+
+    try {
+      // Check all vaults for pending redeem requests
+      let totalPendingShares = 0n;
+
+      for (const vault of allVaultData) {
+        try {
+          const pendingShares = (await publicClient.readContract({
+            address: vault.address as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "pendingRedeemRequest",
+            args: [0n, userAddress],
+          })) as bigint;
+
+          if (pendingShares > 0n) {
+            totalPendingShares += pendingShares;
+          }
+        } catch (e) {
+          console.warn(
+            `Failed to check pendingRedeemRequest for vault ${vault.address}`,
+            e
+          );
+        }
+      }
+
+      setPendingRedeemShares(totalPendingShares);
+    } catch (error) {
+      console.warn("Failed to check pending redeem requests", error);
+      setPendingRedeemShares(0n);
+    }
+  }, [publicClient, userAddress, allVaultData]);
+
+  // Check for pending deposit requests
+  const checkPendingDepositRequest = useCallback(async () => {
+    if (!publicClient || !userAddress || !allVaultData) return;
+
+    try {
+      let totalPendingAssets = 0n;
+
+      for (const vault of allVaultData) {
+        try {
+          // Check pendingDepositRequest with requestId 0 and user address
+          const pendingAssets = (await publicClient.readContract({
+            address: vault.address as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "pendingDepositRequest",
+            args: [0n, userAddress],
+          })) as bigint;
+
+          if (pendingAssets > 0n) {
+            totalPendingAssets += pendingAssets;
+          }
+        } catch (e) {
+          console.warn(
+            `Failed to check pendingDepositRequest for vault ${vault.address}`,
+            e
+          );
+        }
+      }
+
+      setPendingDepositAssets(totalPendingAssets);
+    } catch (error) {
+      console.warn("Failed to check pending deposit requests", error);
+      setPendingDepositAssets(0n);
+    }
+  }, [publicClient, userAddress, allVaultData]);
+
   useEffect(() => {
     fetchAllVaultData();
   }, [fetchAllVaultData]);
+
+  useEffect(() => {
+    checkPendingRedeemRequest();
+  }, [checkPendingRedeemRequest]);
+
+  useEffect(() => {
+    checkPendingDepositRequest();
+  }, [checkPendingDepositRequest]);
 
   const getVaultByAddress = useCallback(
     (address: string) => {
@@ -267,7 +349,6 @@ export const useMultiVault = () => {
     }, 0);
   }, [vaultData]);
 
-  // Watch for settlement events to refresh UI promptly
   useEffect(() => {
     if (
       !publicClient ||
@@ -283,45 +364,89 @@ export const useMultiVault = () => {
       (allVaultData || []).forEach((v: any) => {
         const address = v.address as `0x${string}`;
 
+        // Settlement: deposits finalized; update pending deposit tracking only
+        const unwatchSettleDeposit = publicClient.watchContractEvent({
+          address,
+          abi: YieldAllocatorVaultABI as any,
+          eventName: "SettleDeposit",
+          onLogs: (logs) => {},
+        });
+        // Completion: on-chain balance changes and positions updates
         const unwatchDeposit = publicClient.watchContractEvent({
           address,
           abi: YieldAllocatorVaultABI as any,
           eventName: "Deposit",
           onLogs: (logs) => {
-            if (logs && logs.length > 0) {
+            if (!logs || logs.length === 0) return;
+
+            const owners = logs
+              .map((l) => (l as any)?.args?.owner as Address | undefined)
+              .filter(Boolean) as Address[];
+
+            if (owners.length > 0) {
               fetchAllVaultData(true);
-              setLastDepositRequestId(null);
+              try {
+                checkPendingDepositRequest();
+              } catch {}
               toast({
                 variant: "success",
                 title: "📦 Deposits Settled",
-                description: "New shares may be claimable. Refreshing data...",
+                description:
+                  "New shares will be deposited shortly. Refreshing data...",
               });
+              setDepositEventStatus("settled");
             }
           },
         });
 
-        const unwatchRedeem = publicClient.watchContractEvent({
+        // Settlement: mark redemptions as available; avoid full refresh to minimize re-renders
+        const unwatchSettleRedeem = publicClient.watchContractEvent({
           address,
           abi: YieldAllocatorVaultABI as any,
           eventName: "SettleRedeem",
+          onLogs: (logs) => {},
+        });
+
+        // Completion: withdrawals applied to vault balances
+        const unwatchWithdraw = publicClient.watchContractEvent({
+          address,
+          abi: YieldAllocatorVaultABI as any,
+          eventName: "Withdraw",
           onLogs: (logs) => {
-            if (logs && logs.length > 0) {
+            if (!logs || logs.length === 0) return;
+
+            const owners = logs
+              .map((l) => (l as any)?.args?.owner as Address | undefined)
+              .filter(Boolean) as Address[];
+
+            if (owners.length > 0) {
               fetchAllVaultData(true);
+
+              try {
+                checkPendingRedeemRequest();
+              } catch {}
               toast({
                 variant: "success",
                 title: "💸 Withdrawals Settled",
                 description: "Assets may be claimable. Refreshing data...",
               });
+              setWithdrawEventStatus("settled");
             }
           },
         });
 
         unsubscribers.push(() => {
           try {
+            unwatchSettleDeposit();
+          } catch {}
+          try {
             unwatchDeposit();
           } catch {}
           try {
-            unwatchRedeem();
+            unwatchSettleRedeem();
+          } catch {}
+          try {
+            unwatchWithdraw();
           } catch {}
         });
       });
@@ -553,10 +678,7 @@ export const useMultiVault = () => {
             const extractedController = latest.args.controller as `0x${string}`;
 
             if (extractedRequestId && extractedController) {
-              setLastDepositRequestId(extractedRequestId);
-              setLastDepositController(extractedController);
-
-              // Query pending assets
+              // Query pending assets and update state
               try {
                 const pendingAssets = (await publicClient.readContract({
                   address: vaultAddress as `0x${string}`,
@@ -564,17 +686,14 @@ export const useMultiVault = () => {
                   functionName: "pendingDepositRequest",
                   args: [extractedRequestId, extractedController],
                 })) as bigint;
-                // Format by asset decimals
-                const formatted = Number(
-                  formatUnits(pendingAssets, Number(assetDecimals as number))
-                );
-                setLastDepositPendingAssets(formatted);
+
+                setPendingDepositAssets(pendingAssets);
               } catch (e) {
                 console.warn(
                   "Failed to read pendingDepositRequest for last request",
                   e
                 );
-                setLastDepositPendingAssets(null);
+                setPendingDepositAssets(0n);
               }
             }
           } else {
@@ -738,53 +857,19 @@ export const useMultiVault = () => {
             toBlock: receipt.blockNumber,
           });
 
-          if (redeemLogs && redeemLogs.length > 0) {
-            const latest = redeemLogs[redeemLogs.length - 1];
-            const extractedRequestId = latest.args.requestId as bigint;
-            const extractedController = latest.args.controller as `0x${string}`;
+          // After successful withdrawal, check for pending redeem request
+          try {
+            const pendingShares = (await publicClient.readContract({
+              address: vaultAddress as `0x${string}`,
+              abi: YieldAllocatorVaultABI,
+              functionName: "pendingRedeemRequest",
+              args: [0n, userAddress], // requestId: 0, controller: userAddress
+            })) as bigint;
 
-            if (extractedRequestId && extractedController) {
-              setLastWithdrawRequestId(extractedRequestId);
-              setLastWithdrawController(extractedController);
-
-              // Query pending shares; convert to assets
-              try {
-                const pendingShares = (await publicClient.readContract({
-                  address: vaultAddress as `0x${string}`,
-                  abi: YieldAllocatorVaultABI,
-                  functionName: "pendingRedeemRequest",
-                  args: [extractedRequestId, extractedController],
-                })) as bigint;
-
-                let pendingAssetsFormatted = 0;
-                if (pendingShares && pendingShares > 0n) {
-                  const pendingAssets = (await publicClient.readContract({
-                    address: vaultAddress as `0x${string}`,
-                    abi: YieldAllocatorVaultABI,
-                    functionName: "convertToAssets",
-                    args: [pendingShares],
-                  })) as bigint;
-                  pendingAssetsFormatted = Number(
-                    formatUnits(pendingAssets, Number(assetDecimals as number))
-                  );
-                }
-                setLastWithdrawPendingAssets(pendingAssetsFormatted);
-              } catch (e) {
-                console.warn(
-                  "Failed to read pendingRedeemRequest for last request",
-                  e
-                );
-                setLastWithdrawPendingAssets(null);
-              }
-            }
-          } else {
-            // No matching logs
-            toast({
-              variant: "default",
-              title: "Withdrawal Request Submitted",
-              description:
-                "Unable to locate requestId in logs for this transaction. Pending status may appear after refresh.",
-            });
+            setPendingRedeemShares(pendingShares || 0n);
+          } catch (e) {
+            console.warn("Failed to check pendingRedeemRequest", e);
+            setPendingRedeemShares(0n);
           }
         } catch (e) {
           console.warn("Failed to query RedeemRequest logs", e);
@@ -875,7 +960,9 @@ export const useMultiVault = () => {
           title: "✅ Shares Claimed",
           description: "Successfully claimed settled deposit shares.",
         });
-        setLastDepositRequestId(null);
+
+        // Check for any remaining pending deposit requests
+        await checkPendingDepositRequest();
         await refreshAllData();
         return tx;
       } catch (error) {
@@ -959,9 +1046,22 @@ export const useMultiVault = () => {
           title: "✅ Assets Claimed",
           description: "Successfully claimed settled withdrawal assets.",
         });
-        setLastWithdrawRequestId(null);
-        setLastWithdrawController(null);
-        setLastWithdrawPendingAssets(null);
+
+        // After claiming, check for any remaining pending redeem request
+        try {
+          const pendingShares = (await publicClient.readContract({
+            address: vaultAddress as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "pendingRedeemRequest",
+            args: [0n, userAddress], // requestId: 0, controller: userAddress
+          })) as bigint;
+
+          setPendingRedeemShares(pendingShares || 0n);
+        } catch (e) {
+          console.warn("Failed to check pendingRedeemRequest after claim", e);
+          setPendingRedeemShares(0n);
+        }
+
         await fetchAllVaultData(true);
         return tx;
       } catch (error) {
@@ -987,25 +1087,27 @@ export const useMultiVault = () => {
       const info = (allVaultData || []).find(
         (v: any) => v.address?.toLowerCase() === addr?.toLowerCase()
       );
-      const data = vaultData[addr] || {
-        totalAssets: 0,
-        totalSupply: 0,
-        currentNetAPR: 0,
-        tvl: 0,
-        userDeposits: 0,
-        userShares: 0,
-        compoundedYield: 0,
-        assetBalance: 0,
-        pricePerShare: 1,
-        assetDecimals: 18,
-        totalRequestedAssets: 0,
-        pendingDepositAssets: 0,
-        isLoading: true,
-        error: null,
-        poolNetAPRs: [],
-        poolTVLs: [],
-        poolAddresses: [],
-      } as VaultData;
+      const data =
+        vaultData[addr] ||
+        ({
+          totalAssets: 0,
+          totalSupply: 0,
+          currentNetAPR: 0,
+          tvl: 0,
+          userDeposits: 0,
+          userShares: 0,
+          compoundedYield: 0,
+          assetBalance: 0,
+          pricePerShare: 1,
+          assetDecimals: 18,
+          totalRequestedAssets: 0,
+          pendingDepositAssets: 0n,
+          isLoading: true,
+          error: null,
+          poolNetAPRs: [],
+          poolTVLs: [],
+          poolAddresses: [],
+        } as VaultData);
 
       return {
         ...data,
@@ -1020,14 +1122,10 @@ export const useMultiVault = () => {
         isDepositTransacting,
         isWithdrawTransacting,
         transactionHash,
-        // Last deposit tracking
-        lastDepositRequestId,
-        lastDepositController,
-        lastDepositPendingAssets,
-        // Last withdraw tracking
-        lastWithdrawRequestId,
-        lastWithdrawController,
-        lastWithdrawPendingAssets,
+        // Pending deposit tracking
+        pendingDepositAssets,
+        // Pending redeem tracking
+        pendingRedeemShares,
       };
     },
     [
@@ -1042,12 +1140,8 @@ export const useMultiVault = () => {
       isDepositTransacting,
       isWithdrawTransacting,
       transactionHash,
-      lastDepositRequestId,
-      lastDepositController,
-      lastDepositPendingAssets,
-      lastWithdrawRequestId,
-      lastWithdrawController,
-      lastWithdrawPendingAssets,
+      pendingDepositAssets,
+      pendingRedeemShares,
       allVaultData,
     ]
   );
@@ -1090,12 +1184,12 @@ export const useMultiVault = () => {
     usdcVault,
     // Dynamic vault client by address
     getVaultClientByAddress,
-    // Last deposit/withdraw markers
-    lastDepositRequestId,
-    lastDepositController,
-    lastDepositPendingAssets,
-    lastWithdrawRequestId,
-    lastWithdrawController,
-    lastWithdrawPendingAssets,
+    // Pending trxns tracking
+    pendingDepositAssets,
+    pendingRedeemShares,
+    depositEventStatus,
+    setDepositEventStatus,
+    withdrawEventStatus,
+    setWithdrawEventStatus,
   };
 };

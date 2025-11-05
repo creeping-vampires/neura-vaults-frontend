@@ -88,7 +88,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
               No activities found.
             </div>
           ) : (
-            vaultActivities.slice(0, 10).map((activity) => {
+            vaultActivities.slice(0, 10).map((activity, i) => {
               const symbolForDecimals =
                 activity.vaultName || currentVault || "";
               const decimals = getDecimalsFromSymbol(symbolForDecimals);
@@ -105,7 +105,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
 
               return (
                 <div
-                  key={`${activity.blockNumber}-${activity.txHash}`}
+                  key={`${i}-${activity.blockNumber}-${activity.txHash}`}
                   className="flex items-center justify-between py-1 sm:py-3 border-b border-border/50 last:border-b-0"
                 >
                   <div className="flex-1">
