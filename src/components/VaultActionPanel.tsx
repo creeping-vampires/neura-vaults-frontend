@@ -7,13 +7,19 @@ import { getExplorerTxUrl } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 import { usePublicClient } from "wagmi";
-import { Address, parseAbiItem } from "viem";
+import { Address, formatUnits, parseAbiItem } from "viem";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useMultiVault } from "@/hooks/useMultiVault";
 
 // User-initiated tx: pending -> submitted -> (confirmed) or failed
 // Backend-initiated tx: settling -> settled
-type TxStatus = "idle"|"pending" | "submitted" | "failed" | "settling" | "settled";
+type TxStatus =
+  | "idle"
+  | "pending"
+  | "submitted"
+  | "failed"
+  | "settling"
+  | "settled";
 type TxType = "deposit" | "withdraw" | string;
 type TxOrigin = "user" | "backend";
 
@@ -68,7 +74,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 }) => {
   const publicClient = usePublicClient();
   const { userAddress } = useActiveWallet();
-  const { depositEventStatus, setDepositEventStatus, withdrawEventStatus, setWithdrawEventStatus } = useMultiVault();
+  const {
+    depositEventStatus,
+    setDepositEventStatus,
+    withdrawEventStatus,
+    setWithdrawEventStatus,
+  } = useMultiVault();
 
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [inputAmount, setInputAmount] = useState<string>("");
@@ -79,7 +90,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   const [transactionMonitors, setTransactionMonitors] = useState<
     Map<string, NodeJS.Timeout>
   >(new Map());
-  
+
   // Refs to avoid stale values inside backend monitoring interval
   const pendingDepositAssetsRef = useRef<bigint>(pendingDepositAssets ?? 0n);
   const pendingRedeemSharesRef = useRef<bigint>(pendingRedeemShares ?? 0n);
@@ -91,7 +102,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     pendingRedeemSharesRef.current = pendingRedeemShares ?? 0n;
   }, [pendingRedeemShares]);
-  
 
   // Create a transaction entry in the local panel history
   const addPendingTransaction = useCallback(
@@ -159,14 +169,20 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           previousStatus = tx.status as TxStatus;
 
           if (!isProgression(previousStatus, nextStatus)) {
-            console.warn(
-              "Ignored invalid status transition",
-              { id, type: tx.type, from: previousStatus, to: nextStatus }
-            );
+            console.warn("Ignored invalid status transition", {
+              id,
+              type: tx.type,
+              from: previousStatus,
+              to: nextStatus,
+            });
             return tx; // no change
           }
 
-          const updatedTx = { ...tx, status: nextStatus, ...(hash && { hash }) };
+          const updatedTx = {
+            ...tx,
+            status: nextStatus,
+            ...(hash && { hash }),
+          };
           changedTx = updatedTx;
           becameTerminal = isTerminal(nextStatus);
 
@@ -195,7 +211,8 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             current: string | undefined,
             next: TxStatus
           ) => {
-            const currentRank = STATUS_ORDER[(current as TxStatus) || "idle"] ?? 0;
+            const currentRank =
+              STATUS_ORDER[(current as TxStatus) || "idle"] ?? 0;
             const nextRank = STATUS_ORDER[next];
             return nextRank >= currentRank;
           };
@@ -272,8 +289,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   );
 
   // Fallback: when global event status reaches settled, force-settle local txs
-  const prevDepositEventStatusRef = useRef<string | undefined>(depositEventStatus);
-  const prevWithdrawEventStatusRef = useRef<string | undefined>(withdrawEventStatus);
+  const prevDepositEventStatusRef = useRef<string | undefined>(
+    depositEventStatus
+  );
+  const prevWithdrawEventStatusRef = useRef<string | undefined>(
+    withdrawEventStatus
+  );
 
   useEffect(() => {
     const prev = prevDepositEventStatusRef.current;
@@ -334,7 +355,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           updateTransactionStatus(id, status, hash);
 
           if (status === "submitted") {
-            setLatestTransactions(currentTransactions => currentTransactions.map((tx) => (tx.id === id ? { ...tx, status } : tx)));
+            setLatestTransactions((currentTransactions) =>
+              currentTransactions.map((tx) =>
+                tx.id === id ? { ...tx, status } : tx
+              )
+            );
 
             // Attempt to parse request info and start backend monitoring
             try {
@@ -360,7 +385,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 
                   if (backendId) {
                     updateBackendRequestInfo(backendId, requestId, controller);
-                    startBackendMonitoring(backendId, "deposit", requestId, controller);
+                    startBackendMonitoring(
+                      backendId,
+                      "deposit",
+                      requestId,
+                      controller
+                    );
                   } else if (userAddress) {
                     const newBackendId = addPendingTransaction(
                       "deposit",
@@ -370,12 +400,26 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                       requestId,
                       controller
                     );
-                    startBackendMonitoring(newBackendId, "deposit", requestId, controller);
+                    startBackendMonitoring(
+                      newBackendId,
+                      "deposit",
+                      requestId,
+                      controller
+                    );
                   }
                 } else if (userAddress) {
                   if (backendId) {
-                    updateBackendRequestInfo(backendId, 0n, userAddress as Address);
-                    startBackendMonitoring(backendId, "deposit", 0n, userAddress as Address);
+                    updateBackendRequestInfo(
+                      backendId,
+                      0n,
+                      userAddress as Address
+                    );
+                    startBackendMonitoring(
+                      backendId,
+                      "deposit",
+                      0n,
+                      userAddress as Address
+                    );
                   } else {
                     const newBackendId = addPendingTransaction(
                       "deposit",
@@ -385,7 +429,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                       0n,
                       userAddress as Address
                     );
-                    startBackendMonitoring(newBackendId, "deposit", 0n, userAddress as Address);
+                    startBackendMonitoring(
+                      newBackendId,
+                      "deposit",
+                      0n,
+                      userAddress as Address
+                    );
                   }
                 }
               } else if (actionType === "withdraw") {
@@ -407,7 +456,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 
                   if (backendId) {
                     updateBackendRequestInfo(backendId, requestId, controller);
-                    startBackendMonitoring(backendId, "withdraw", requestId, controller);
+                    startBackendMonitoring(
+                      backendId,
+                      "withdraw",
+                      requestId,
+                      controller
+                    );
                   } else if (userAddress) {
                     const newBackendId = addPendingTransaction(
                       "withdraw",
@@ -417,12 +471,26 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                       requestId,
                       controller
                     );
-                    startBackendMonitoring(newBackendId, "withdraw", requestId, controller);
+                    startBackendMonitoring(
+                      newBackendId,
+                      "withdraw",
+                      requestId,
+                      controller
+                    );
                   }
                 } else if (userAddress) {
                   if (backendId) {
-                    updateBackendRequestInfo(backendId, 0n, userAddress as Address);
-                    startBackendMonitoring(backendId, "withdraw", 0n, userAddress as Address);
+                    updateBackendRequestInfo(
+                      backendId,
+                      0n,
+                      userAddress as Address
+                    );
+                    startBackendMonitoring(
+                      backendId,
+                      "withdraw",
+                      0n,
+                      userAddress as Address
+                    );
                   } else {
                     const newBackendId = addPendingTransaction(
                       "withdraw",
@@ -432,7 +500,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                       0n,
                       userAddress as Address
                     );
-                    startBackendMonitoring(newBackendId, "withdraw", 0n, userAddress as Address);
+                    startBackendMonitoring(
+                      newBackendId,
+                      "withdraw",
+                      0n,
+                      userAddress as Address
+                    );
                   }
                 }
               }
@@ -555,14 +628,69 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // check pending transaction on page refresh
   useEffect(() => {
-    // Local SettleDeposit watcher removed. Events monitored centrally in useMultiVault.
-  }, [publicClient, vaultId, updateTransactionStatus]);
+    const addDepositPendingTransactions = () => {
+      if ((pendingDepositAssets ?? 0n) > 0n) {
+        const depositTx: PendingTransaction = {
+          id: `backend-deposit-${Date.now()}`,
+          type: "deposit",
+          amount: formatUnits(pendingDepositAssets, 6),
+          status: "settling",
+          origin: "backend",
+          timestamp: Date.now(),
+        };
+        setLatestTransactions((prev) => {
+          if (!prev.some((tx) => tx.id === depositTx.id)) {
+            return [...prev, depositTx];
+          }
+          return prev;
+        });
+      }
+    };
 
-  // Watch SettleRedeem to mark backend withdrawal transactions as settled (settled/claimable)
+    addDepositPendingTransactions();
+  }, [pendingDepositAssets]);
+
   useEffect(() => {
-    // Local SettleRedeem watcher removed. Events monitored centrally in useMultiVault.
-  }, [publicClient, vaultId, updateTransactionStatus]);
+    const addWithdrawPendingTransactions = () => {
+      if ((pendingRedeemShares ?? 0n) > 0n) {
+        const withdrawTx: PendingTransaction = {
+          id: `backend-withdraw-${Date.now()}`,
+          type: "withdraw",
+          amount: formatUnits(pendingRedeemShares, 18),
+          status: "settling",
+          origin: "backend",
+          timestamp: Date.now(),
+        };
+        setLatestTransactions((prev) => {
+          // Avoid duplicate entries
+          if (!prev.some((tx) => tx.id === withdrawTx.id)) {
+            return [...prev, withdrawTx];
+          }
+          return prev;
+        });
+      }
+    };
+
+    addWithdrawPendingTransactions();
+  }, [pendingRedeemShares]);
+
+  // Remove backend-origin transactions when pending values return to 0
+  useEffect(() => {
+    const removeBackendPendingTransactions = () => {
+      if (
+        (pendingDepositAssets ?? 0n) === 0n &&
+        (pendingRedeemShares ?? 0n) === 0n
+      ) {
+        setLatestTransactions((prev) =>
+          prev.filter((tx) => tx.origin !== "backend")
+        );
+      }
+    };
+
+    removeBackendPendingTransactions();
+  }, [pendingDepositAssets, pendingRedeemShares]);
 
   const handleDeposit = async (amount: string) => {
     let depositId: string | null = null;
@@ -794,7 +922,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             : activeTab === "withdraw" &&
               (isWithdrawTransacting ? "Withdrawing..." : "Withdraw")}
         </Button>
-        
+
         {latestTransactions.length > 0 && (
           <div className="mt-2 space-y-1">
             <h4 className="text-sm font-medium text-muted-foreground mb-2">
@@ -822,8 +950,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                   const getStatusText = () => {
                     if (tx.status === "submitted")
                       return "Transaction submitted";
-                    if (tx.status === "settling")
-                      return "Awaiting settlement";
+                    if (tx.status === "settling") return "Awaiting settlement";
                     if (tx.status === "settled") return "Transaction settled";
                     if (tx.status === "failed") return "Failed";
                     return "Awaiting confirmation";
