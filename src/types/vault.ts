@@ -5,7 +5,6 @@ export interface VaultData {
   currentNetAPR: number;
   tvl: number;
   totalRequestedAssets: number;
-  pendingDepositAssets: number;
 
   // User-specific data
   userDeposits: number;
@@ -25,6 +24,10 @@ export interface VaultData {
   poolNetAPRs: number[];
   poolTVLs: number[];
   poolAddresses: `0x${string}`[];
+
+  // Pending transaction tracking
+  pendingDepositAssets?: bigint;
+  pendingRedeemShares?: bigint;
 }
 
 export interface VaultMetrics {
@@ -33,7 +36,6 @@ export interface VaultMetrics {
   currentNetAPR: number;
   tvl: number;
   totalRequestedAssets: number;
-  pendingDepositAssets: number;
   userDeposits: number;
   userShares: number;
   compoundedYield: number;
