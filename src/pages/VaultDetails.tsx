@@ -257,8 +257,20 @@ const VaultDetails = () => {
 
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
 
+  const [claimableDepositAssets, setClaimableDepositAssets] =
+    useState<number>(0);
   const [claimableWithdrawAssets, setClaimableWithdrawAssets] =
     useState<number>(0);
+
+  const refreshClaimableDeposit = useCallback(async () => {
+    try {
+      const amount = await getClaimableDepositAmount?.();
+      setClaimableDepositAssets(amount || 0);
+    } catch (e) {
+      console.log("error refreshing withdraw claimable", e);
+    }
+  }, [getClaimableDepositAmount]);
+
   const refreshClaimableWithdraw = useCallback(async () => {
     try {
       const amount = await getClaimableRedeemAmount?.();
@@ -270,6 +282,7 @@ const VaultDetails = () => {
 
   // Initial refresh and on vault/auth changes
   useEffect(() => {
+    refreshClaimableDeposit();
     refreshClaimableWithdraw();
   }, [vaultId, authenticated, refreshClaimableWithdraw]);
 
@@ -282,6 +295,16 @@ const VaultDetails = () => {
       return () => clearInterval(t);
     }
   }, [pendingRedeemShares, refreshClaimableWithdraw]);
+
+  useEffect(() => {
+    if (pendingDepositAssets > 0n) {
+      refreshClaimableDeposit();
+      const t = setInterval(() => {
+        refreshClaimableDeposit();
+      }, 30000);
+      return () => clearInterval(t);
+    }
+  }, [pendingDepositAssets, refreshClaimableDeposit]);
 
   const timeframes = ["7D", "1M"] as const;
 
@@ -364,7 +387,7 @@ const VaultDetails = () => {
         </div>
         <div className="flex gap-3">
           {/* Pending Deposits Section */}
-          {pendingDepositAssets > 0n && (
+          {(pendingDepositAssets > 0n || claimableDepositAssets > 0) && (
             <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
                 <div className="h-full bg-primary/60 animate-progress" />
@@ -970,6 +993,7 @@ const VaultDetails = () => {
               onRequireAccess={() => setShowAccessCodeModal(true)}
               pendingDepositAssets={pendingDepositAssets}
               pendingRedeemShares={pendingRedeemShares}
+              claimableDepositAssets={claimableDepositAssets}
               claimableWithdrawAssets={claimableWithdrawAssets}
             />
 
