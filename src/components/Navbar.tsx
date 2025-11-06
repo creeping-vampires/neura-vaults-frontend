@@ -40,10 +40,6 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
 
   const { hasAccess, isLoading } = useUserAccess();
 
-  // useEffect(() => {
-  // console.log("Wallet Test: ", {wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user});
-  // },[wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet, authenticated, ready, user])
-
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
@@ -116,7 +112,11 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   }, [wallet]);
 
   useEffect(() => {
-    if (shouldRedirectAfterLogin && authenticated) {
+    if (
+      shouldRedirectAfterLogin &&
+      authenticated &&
+      location.pathname === "/"
+    ) {
       navigate("/vaults", { replace: true });
       setShouldRedirectAfterLogin(false);
     }

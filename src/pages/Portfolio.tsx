@@ -135,8 +135,6 @@ const Portfolio = () => {
     change7d: 0,
   });
 
-  const [shouldRedirectAfterLogin, setShouldRedirectAfterLogin] = useState(false);
-
   useEffect(() => {
     const calculatePortfolioData = async () => {
       try {
@@ -325,13 +323,6 @@ const Portfolio = () => {
     }
   }, [authenticated, userAddress, refreshAllData]);
 
-  useEffect(() => {
-    if (shouldRedirectAfterLogin && authenticated) {
-      navigate('/vaults', { replace: true });
-      setShouldRedirectAfterLogin(false);
-    }
-  }, [shouldRedirectAfterLogin, authenticated, navigate]);
-
   if (!authenticated) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
@@ -344,18 +335,12 @@ const Portfolio = () => {
             className="w-40 px-6 py-2"
             onClick={async () => {
               try {
-                localStorage.setItem('POST_LOGIN_REDIRECT_PATH', '/vaults');
-                setShouldRedirectAfterLogin(true);
                 await login();
                 if (authenticated) {
-                  navigate('/vaults', { replace: true });
-                  setShouldRedirectAfterLogin(false);
-                  localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
+                  navigate("/vaults", { replace: true });
                 }
               } catch (error) {
-                setShouldRedirectAfterLogin(false);
-                console.error('Login failed:', error);
-                localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
+                console.error("Login failed:", error);
               }
             }}
           >

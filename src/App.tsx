@@ -16,10 +16,10 @@ import { hyperliquid } from "@/lib/privyConfig";
 import { useMultiVault } from "./hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
-import { useMetaMaskMonitor } from "@/hooks/useMetaMaskMonitor";
 import SkeletonLoader from "@/components/skeleton";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import { useMetaMaskMonitor } from "./hooks/useMetaMaskMonitor";
 const AppContainer = lazy(() => import("./pages/AppContainer"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Vaults = lazy(() => import("./pages/Vaults"));
@@ -123,6 +123,7 @@ function App() {
       <PrivyProvider
         appId={privyAppId}
         config={{
+          defaultChain: hyperliquid,
           supportedChains: [hyperliquid],
           loginMethods: ["email", "wallet"],
           embeddedWallets: {
