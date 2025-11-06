@@ -694,9 +694,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         (pendingRedeemShares ?? 0n) === 0n &&
         claimableWithdrawAssets === 0
       ) {
-        setLatestTransactions((prev) =>
-          prev.filter((tx) => tx.origin !== "backend")
-        );
+        setTimeout(() => {
+          setLatestTransactions((prev) =>
+            prev.filter((tx) => tx.origin !== "backend")
+          );
+        }, 5 * 60 * 1000);
       }
     };
 
