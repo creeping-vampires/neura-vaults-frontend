@@ -8,14 +8,14 @@ import {
   Navigate,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PrivyProvider, usePrivy } from "@privy-io/react-auth";
+import { PrivyProvider } from "@privy-io/react-auth";
 import { WagmiProvider } from "@privy-io/wagmi";
-import { wagmiConfig } from "./lib/wagmiConfig";
+import { hyperliquid, wagmiConfig } from "./lib/privyConfig";
 import React, { Suspense, useEffect, useState, lazy } from "react";
-import { hyperliquid } from "@/lib/privyConfig";
 import { useMultiVault } from "./hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import SkeletonLoader from "@/components/skeleton";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
@@ -58,14 +58,15 @@ const Loader = () => (
 const AppRoutes = () => {
   const { isLoading: isVaultsLoading, error: vaultsError } = useMultiVault();
   const { isPriceLoading, priceError } = usePrice();
-  const { authenticated } = usePrivy();
+  const { userAddress } = useActiveWallet();
+  const isConnected = Boolean(userAddress);
   const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
 
   const isLoading =
-    isVaultsLoading || isPriceLoading || (authenticated && isTxLoading);
+    isVaultsLoading || isPriceLoading || (isConnected && isTxLoading);
 
   const hasError = Boolean(
-    vaultsError || priceError || (authenticated && txError)
+    vaultsError || priceError || (isConnected && txError)
   );
 
   if (isLoading || hasError) {
@@ -115,20 +116,15 @@ function App() {
   }
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <PrivyProvider
-        appId={privyAppId}
-        config={{
-          defaultChain: hyperliquid,
-          supportedChains: [hyperliquid],
-          loginMethods: ["email", "wallet"],
-          embeddedWallets: {
-            ethereum: {
-              createOnLogin: "all-users",
-            },
-          },
-        }}
-      >
+    <PrivyProvider
+      appId={privyAppId}
+      config={{
+        defaultChain: hyperliquid,
+        supportedChains: [hyperliquid],
+        loginMethods: ["wallet"],
+      }}
+    >
+      <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
           <TooltipProvider>
             <AppContent />
@@ -136,8 +132,8 @@ function App() {
             <Sonner position="top-center" />
           </TooltipProvider>
         </WagmiProvider>
-      </PrivyProvider>
-    </QueryClientProvider>
+      </QueryClientProvider>
+    </PrivyProvider>
   );
 }
 

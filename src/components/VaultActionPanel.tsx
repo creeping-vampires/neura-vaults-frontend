@@ -10,6 +10,8 @@ import { usePublicClient } from "wagmi";
 import { Address, formatUnits, parseAbiItem } from "viem";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useMultiVault } from "@/hooks/useMultiVault";
+import { useWalletConnection } from '@/hooks/useWalletConnection';
+import { useLocation } from 'react-router-dom';
 
 // User-initiated tx: pending -> submitted -> (confirmed) or failed
 // Backend-initiated tx: settling -> settled
@@ -45,8 +47,7 @@ interface VaultActionPanelProps {
   isWithdrawTransacting: boolean;
   vaultId?: string;
   refreshData: () => void | Promise<void>;
-  authenticated: boolean;
-  login: (...args: any[]) => any;
+  isConnected: boolean;
   hasAccess: boolean;
   onRequireAccess: () => void;
   pendingDepositAssets: bigint;
@@ -65,8 +66,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   isWithdrawTransacting,
   vaultId,
   refreshData,
-  authenticated,
-  login,
+  isConnected,
   hasAccess,
   onRequireAccess,
   pendingDepositAssets,
@@ -562,8 +562,16 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             }
           } else {
             if (pendingRedeemSharesRef.current > 0n) {
+              console.debug("[BackendMonitor] Withdraw still settling", {
+                id,
+                pendingRedeemShares: pendingRedeemSharesRef.current.toString(),
+              });
               updateTransactionStatus(id, "settling");
             } else {
+              console.debug("[BackendMonitor] Withdraw settled", {
+                id,
+                pendingRedeemShares: pendingRedeemSharesRef.current.toString(),
+              });
               updateTransactionStatus(id, "settled");
               clearInterval(monitor);
               setTransactionMonitors((prev) => {
@@ -613,15 +621,13 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           if (
             tx.origin === "backend" &&
             tx.status === "settling" &&
-            tx.requestId !== undefined &&
-            tx.controller &&
             (tx.type === "deposit" || tx.type === "withdraw")
           ) {
             startBackendMonitoring(
               tx.id,
               tx.type as "deposit" | "withdraw",
-              tx.requestId!,
-              tx.controller as Address
+              tx.requestId ?? 0n,
+              (tx.controller as Address) || (userAddress as Address)
             );
           }
         });
@@ -651,6 +657,14 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             timestamp: Date.now(),
           };
           setLatestTransactions((prev) => [...prev, depositTx]);
+          if (userAddress) {
+            startBackendMonitoring(
+              depositTx.id,
+              "deposit",
+              0n,
+              userAddress as Address
+            );
+          }
         }
       }
     };
@@ -678,6 +692,14 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             timestamp: Date.now(),
           };
           setLatestTransactions((prev) => [...prev, withdrawTx]);
+          if (userAddress) {
+            startBackendMonitoring(
+              withdrawTx.id,
+              "withdraw",
+              0n,
+              userAddress as Address
+            );
+          }
         }
       }
     };
@@ -698,7 +720,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           setLatestTransactions((prev) =>
             prev.filter((tx) => tx.origin !== "backend")
           );
-        }, 5 * 60 * 1000);
+        }, 15 * 60 * 1000);
       }
     };
 
@@ -805,17 +827,16 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     setInputAmount(amount);
   };
 
+  const { connectWithFallback } = useWalletConnection();
+  const location = useLocation();
+
   const handleAction = async () => {
     if (!inputAmount || parseFloat(inputAmount) <= 0) return;
 
     try {
       if (activeTab === "deposit") {
-        if (!authenticated) {
-          localStorage.setItem("POST_LOGIN_REDIRECT_PATH", location.pathname);
-          const maybeLogin = login();
-          if (maybeLogin && typeof (maybeLogin as any).then === "function") {
-            await maybeLogin;
-          }
+        if (!isConnected) {
+          await connectWithFallback(location.pathname);
           return;
         } else if (!hasAccess) {
           onRequireAccess();
@@ -824,12 +845,8 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           await handleDeposit(inputAmount);
         }
       } else {
-        if (!authenticated) {
-          localStorage.setItem("POST_LOGIN_REDIRECT_PATH", location.pathname);
-          const maybeLogin = login();
-          if (maybeLogin && typeof (maybeLogin as any).then === "function") {
-            await maybeLogin;
-          }
+        if (!isConnected) {
+          await connectWithFallback(location.pathname);
           return;
         }
         await handleWithdraw(inputAmount);

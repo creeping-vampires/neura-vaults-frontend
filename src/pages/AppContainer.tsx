@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import UnicornStudioEmbed from "@/components/ChromaBGs-Vyun";
 import ComingSoon from "@/components/ComingSoon";
-import { usePrivy } from "@privy-io/react-auth";
+import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface AppContainerProps {
@@ -13,7 +13,8 @@ interface AppContainerProps {
 const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { authenticated } = usePrivy();
+  const { userAddress } = useActiveWallet();
+  const isConnected = Boolean(userAddress);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isSmallMobile, setIsSmallMobile] = useState(false);
@@ -34,7 +35,7 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
     try {
       const key = 'POST_LOGIN_REDIRECT_PATH';
       const target = localStorage.getItem(key);
-      if (target && authenticated) {
+      if (target && isConnected) {
         if (location.pathname !== target) {
           navigate(target, { replace: true });
         }
@@ -43,7 +44,7 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
     } catch (e) {
       console.log("error",e)
     }
-  }, [authenticated, navigate, location.pathname]);
+  }, [isConnected, navigate, location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

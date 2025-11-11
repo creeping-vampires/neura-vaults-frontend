@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
-import { usePrivy } from "@privy-io/react-auth";
+// Removed usePrivy login; wallet connection is derived from useActiveWallet
 import { useUserAccess } from "@/hooks/useUserAccess";
 import { getExplorerTxUrl } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
@@ -137,7 +137,7 @@ const VaultDetails = () => {
     ...vaultData
   } = vaultDataObject;
 
-  const { authenticated, login } = usePrivy();
+  // Use wallet connection state instead of Privy authentication
   const { hasAccess } = useUserAccess();
 
   const [totalAUM, setTotalAUM] = useState(0);
@@ -281,10 +281,11 @@ const VaultDetails = () => {
   }, [getClaimableRedeemAmount]);
 
   // Initial refresh and on vault/auth changes
+  const isConnected = Boolean(userAddress);
   useEffect(() => {
     refreshClaimableDeposit();
     refreshClaimableWithdraw();
-  }, [vaultId, authenticated, refreshClaimableWithdraw]);
+  }, [vaultId, isConnected, refreshClaimableWithdraw]);
 
   useEffect(() => {
     if (pendingRedeemShares > 0n) {
@@ -436,8 +437,8 @@ const VaultDetails = () => {
                 onClick={async () => {
                   try {
                     await claimRedeem?.();
-                    refreshData();
                     await refreshClaimableWithdraw();
+                    refreshData();
                   } catch (error: any) {
                     console.error("Error claiming withdraw:", error);
                     toast({
@@ -987,8 +988,7 @@ const VaultDetails = () => {
               isWithdrawTransacting={isWithdrawTransacting}
               vaultId={vaultId}
               refreshData={refreshData}
-              authenticated={authenticated}
-              login={login}
+              isConnected={isConnected}
               hasAccess={hasAccess}
               onRequireAccess={() => setShowAccessCodeModal(true)}
               pendingDepositAssets={pendingDepositAssets}

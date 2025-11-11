@@ -150,6 +150,15 @@ src/
 - WalletConnect
 - Privy (Email/SSO)
 
+## 🔐 Authentication & Wallet Connection
+
+- Connection is wallet-driven. The app gates content by wallet connection (`isConnected`) rather than Privy authentication.
+- Use the `Connect Wallet` button in the Navbar to initiate `connectWallet()` via Privy. External wallets (e.g., MetaMask) are supported alongside embedded wallets.
+- Disconnect using the `Disconnect` button in the Navbar, which calls Wagmi's `useDisconnect` to safely end the session and clear caches.
+- Post-connection redirect restores your intended route if you tried to access a gated page before connecting.
+- Portfolio, Dashboard, and Vault Details pages will prompt to connect your wallet before showing balances or enabling actions.
+- Error handling provides user-friendly toasts; if connection fails or the wrong network is detected, prompts guide you to resolve it.
+
 ## 🚀 Deployment
 
 ### Production Build
