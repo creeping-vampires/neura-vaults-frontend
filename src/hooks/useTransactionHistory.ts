@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useActiveWallet } from '@/hooks/useActiveWallet';
 import { useLocation } from "react-router-dom";
 
 export interface Transaction {
@@ -21,7 +21,8 @@ export interface Transaction {
 let transactionsCache: Transaction[] | null = null;
 
 export const useTransactionHistory = () => {
-  const { authenticated } = usePrivy();
+  const { userAddress } = useActiveWallet();
+  const isConnected = Boolean(userAddress);
   const location = useLocation();
   const [transactions, setTransactions] = useState<Transaction[]>(
     transactionsCache || []
@@ -31,7 +32,7 @@ export const useTransactionHistory = () => {
   const [hasFetched, setHasFetched] = useState(false);
 
   // const fetchTransactionHistory = useCallback(async () => {
-  //   if (!authenticated) {
+  //   if (!isConnected) {
   //     return;
   //   }
 
@@ -54,7 +55,7 @@ export const useTransactionHistory = () => {
   //   } finally {
   //     setIsLoading(false);
   //   }
-  // }, [authenticated]);
+  // }, [isConnected]);
 
   const clearTransactions = useCallback(() => {
     setTransactions([]);
@@ -65,10 +66,10 @@ export const useTransactionHistory = () => {
   useEffect(() => {
     const isVaultDetailsPage = /^\/vaults\/[^/]+$/.test(location.pathname);
 
-    if (isVaultDetailsPage && authenticated && !hasFetched) {
+    if (isVaultDetailsPage && isConnected && !hasFetched) {
       // fetchTransactionHistory();
     }
-  }, [location.pathname, authenticated, hasFetched]);
+  }, [location.pathname, isConnected, hasFetched]);
 
   return {
     transactions,

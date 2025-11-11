@@ -11,21 +11,21 @@ export interface ActiveWalletInfo {
 }
 
 export const useActiveWallet = (): ActiveWalletInfo => {
-  const { user, authenticated } = usePrivy();
+  const { user } = usePrivy();
   const { wallets } = useWallets();
 
 
   useEffect(() => {
-    // console.log("Wallet Authenticated: ", {authenticated, user, wallets});
+    // console.log("Wallet state: ", { user, wallets });
     
-    // Additional check for MetaMask connection when user is authenticated
-    if (authenticated && user?.linkedAccounts?.some(account => account.type === "wallet")) {
+    // Additional check for MetaMask connection when user has a linked wallet
+    if (user?.linkedAccounts?.some(account => account.type === "wallet")) {
       const checkMetaMaskConnection = async () => {
         if (window.ethereum) {
           try {
             const accounts = await window.ethereum.request({ method: 'eth_accounts' });
             if (accounts.length === 0) {
-              console.log("MetaMask not connected but user authenticated with wallet");
+              console.log("MetaMask not connected but user has a linked wallet");
             }
           } catch (error) {
             console.error("Error checking MetaMask accounts:", error);
@@ -35,7 +35,7 @@ export const useActiveWallet = (): ActiveWalletInfo => {
       
       checkMetaMaskConnection();
     }
-  }, [authenticated, user, wallets]);
+  }, [user?.linkedAccounts, wallets]);
 
   return useMemo(() => {
     // Check if user has email login

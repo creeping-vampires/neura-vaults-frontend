@@ -12,7 +12,7 @@ import {
   Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePrivy, useLogout } from "@privy-io/react-auth";
+import { usePrivy } from "@privy-io/react-auth";
 import { formatAddress, switchToChain } from "@/lib/utils";
 import { AddressDisplay } from "@/components/shared/AddressDisplay";
 import { ethers } from "ethers";
@@ -21,6 +21,7 @@ import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDisconnect } from "wagmi";
+import { useWalletConnection } from "@/hooks/useWalletConnection";
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -28,15 +29,12 @@ interface NavbarProps {
 }
 
 const Navbar = ({ onToggleSidebar }: NavbarProps) => {
-  const { login, authenticated, exportWallet } = usePrivy();
-  const { logout } = useLogout();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
   const { disconnect } = useDisconnect();
 
-  const { wallet, userAddress, hasEmailLogin, isPrivyWallet } =
-    useActiveWallet();
+  const { wallet, userAddress } = useActiveWallet();
 
   const { hasAccess, isLoading } = useUserAccess();
 
@@ -48,6 +46,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [shouldRedirectAfterLogin, setShouldRedirectAfterLogin] =
     useState(false);
+  const { isConnecting, connectWithFallback } = useWalletConnection();
 
   const checkCurrentNetwork = async () => {
     if (!window.ethereum) return;
@@ -62,8 +61,8 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
     }
   };
 
-  const isWrongNetwork =
-    authenticated && wallet && !isPrivyWallet && currentChainId !== "0x3e7";
+  const isConnected = Boolean(userAddress);
+  const isWrongNetwork = isConnected && wallet && currentChainId !== "0x3e7";
 
   // Get chain label from chain ID
   const getChainLabel = (chainId: string | null) => {
@@ -93,7 +92,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
 
   // Check network on wallet connection and listen for network changes
   useEffect(() => {
-    if (window.ethereum && wallet && !isPrivyWallet) {
+    if (window.ethereum && wallet) {
       checkCurrentNetwork();
 
       // Listen for network changes using ethers.js
@@ -112,15 +111,11 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   }, [wallet]);
 
   useEffect(() => {
-    if (
-      shouldRedirectAfterLogin &&
-      authenticated &&
-      location.pathname === "/"
-    ) {
+    if (shouldRedirectAfterLogin && isConnected && location.pathname === "/") {
       navigate("/vaults", { replace: true });
       setShouldRedirectAfterLogin(false);
     }
-  }, [shouldRedirectAfterLogin, authenticated, navigate]);
+  }, [shouldRedirectAfterLogin, isConnected, navigate]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard
@@ -134,62 +129,47 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
       });
   };
 
-  const handleExportWallet = async () => {
-    try {
-      await exportWallet();
-    } catch (error) {
-      console.error("Error exporting wallet:", error);
-    }
-  };
-
   const handleLogout = async () => {
     try {
-      await logout();
-    } catch (error) {
-      console.error("Error logging out:", error);
-    } finally {
+      await disconnect();
       try {
-        await disconnect();
-      } catch (e) {
-        console.warn("Error disconnecting wagmi connectors:", e);
-      }
-      try {
-        // Clear app storage and caches
-        localStorage.clear();
-        sessionStorage.clear();
-        queryClient.clear();
-        if (typeof caches !== "undefined") {
-          const keys = await caches.keys();
-          await Promise.all(keys.map((k) => caches.delete(k)));
-        }
-        try {
-          const anyIndexedDB = indexedDB as any;
-          if (anyIndexedDB?.databases) {
-            const dbs = await anyIndexedDB.databases();
-            await Promise.all(
-              (dbs || []).map(
-                (db: any) =>
-                  new Promise<void>((resolve) => {
-                    const req = indexedDB.deleteDatabase(db.name);
-                    req.onsuccess = req.onerror = req.onblocked = () => resolve();
-                  })
-              )
-            );
-          }
-        } catch (e) {
-        console.warn("Error clearing app data:", e);
-        }
-      } catch (e) {
-        console.error("Error clearing app data:", e);
-      }
-      setShowWalletModal(false);
-      navigate("/", { replace: true });
-      setTimeout(() => {
-        try {
-          window.location.reload();
-        } catch {}
-      }, 0);
+        const { logConnectionEvent } = await import("@/services/walletService");
+        logConnectionEvent({ type: "disconnect" });
+      } catch {}
+    } catch (e) {
+      console.warn("Error disconnecting wagmi connectors:", e);
     }
+    try {
+      // Clear app storage and caches (preserve security & session hygiene)
+      localStorage.clear();
+      sessionStorage.clear();
+      queryClient.clear();
+      if (typeof caches !== "undefined") {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      try {
+        const anyIndexedDB = indexedDB as any;
+        if (anyIndexedDB?.databases) {
+          const dbs = await anyIndexedDB.databases();
+          await Promise.all(
+            (dbs || []).map(
+              (db: any) =>
+                new Promise<void>((resolve) => {
+                  const req = indexedDB.deleteDatabase(db.name);
+                  req.onsuccess = req.onerror = req.onblocked = () => resolve();
+                })
+            )
+          );
+        }
+      } catch (e) {
+        console.warn("Error clearing IndexedDB:", e);
+      }
+    } catch (e) {
+      console.error("Error clearing app data:", e);
+    }
+    setShowWalletModal(false);
+    navigate("/", { replace: true });
   };
 
   useEffect(() => {
@@ -271,7 +251,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
 
             {/* Wallet Connection */}
             <div className="flex items-center space-x-3">
-              {authenticated ? (
+              {isConnected ? (
                 <>
                   {!hasAccess && (
                     <Button
@@ -303,30 +283,20 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
               ) : (
                 <Button
                   onClick={async () => {
-                    try {
-                      const desiredPath = location.pathname.startsWith('/vaults/')
-                        ? location.pathname
-                        : '/vaults';
-                      localStorage.setItem('POST_LOGIN_REDIRECT_PATH', desiredPath);
-                      setShouldRedirectAfterLogin(true);
-                      await login();
-                      if (authenticated) {
-                         const desiredPath = localStorage.getItem('POST_LOGIN_REDIRECT_PATH') || '/vaults';
-                         navigate(desiredPath, { replace: true });
-                         setShouldRedirectAfterLogin(false);
-                         localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
-                       }
-                    } catch (error) {
-                      setShouldRedirectAfterLogin(false);
-                      console.error("Login failed:", error);
-                      localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
-                    }
+                    const desiredPath = location.pathname.startsWith("/vaults/")
+                      ? location.pathname
+                      : "/vaults";
+                    setShouldRedirectAfterLogin(true);
+                    await connectWithFallback(desiredPath);
                   }}
+                  disabled={isConnecting}
                   variant="wallet"
                   className="space-x-2"
                 >
                   <LogIn className="h-4 w-4" />
-                  <span className="font-medium font-libertinus">Login</span>
+                  <span className="font-medium font-libertinus">
+                    {isConnecting ? "Connecting..." : "Connect Wallet"}
+                  </span>
                 </Button>
               )}
             </div>
@@ -363,9 +333,9 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
             </div>
           )}
 
-          <div className="space-y-3">
-            {/* Network Status and Switch Button */}
-            {wallet && !isPrivyWallet && (
+          {wallet && (
+            <div className="space-y-3">
+              {/* Network Status and Switch Button */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-libertinus text-muted-foreground">
@@ -383,42 +353,32 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
                   </div>
                 </div>
               </div>
-            )}
-            {isWrongNetwork && (
-              <Button
-                onClick={switchToChain}
-                variant="destructive"
-                className="w-full space-x-2"
-                title={`Current: ${getChainLabel(
-                  currentChainId
-                )} — Click to switch to Hyper EVM`}
-              >
-                <Triangle className="h-4 w-4" />
-                <span className="font-medium font-libertinus">
-                  Switch Network
-                </span>
-              </Button>
-            )}
+              {isWrongNetwork && (
+                <Button
+                  onClick={switchToChain}
+                  variant="destructive"
+                  className="w-full space-x-2"
+                  title={`Current: ${getChainLabel(
+                    currentChainId
+                  )} — Click to switch to Hyper EVM`}
+                >
+                  <Triangle className="h-4 w-4" />
+                  <span className="font-medium font-libertinus">
+                    Switch Network
+                  </span>
+                </Button>
+              )}
 
-            {hasEmailLogin && (
               <Button
-                onClick={handleExportWallet}
+                onClick={handleLogout}
                 variant="wallet"
                 className="w-full flex items-center justify-between space-x-2"
               >
-                <span className="font-libertinus">Export Wallet</span>
-                <Upload className="h-4 w-4" />
+                <span className="font-libertinus">Log Out</span>
+                <LogOut className="h-4 w-4" />
               </Button>
-            )}
-            <Button
-              onClick={handleLogout}
-              variant="wallet"
-              className="w-full flex items-center justify-between space-x-2"
-            >
-              <span className="font-libertinus">Log Out</span>
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
+            </div>
+          )}
         </div>
       )}
 

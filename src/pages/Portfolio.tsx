@@ -28,7 +28,8 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useWallets } from "@privy-io/react-auth";
+import { useWalletConnection } from '@/hooks/useWalletConnection';
 
 const Portfolio = () => {
   const navigate = useNavigate();
@@ -314,37 +315,32 @@ const Portfolio = () => {
     return generatePerformanceData(selectedTimeframe);
   }, [selectedTimeframe, portfolioData.totalDeposits]);
 
-  const { authenticated, login } = usePrivy();
+  const { isConnecting, connectWithFallback } = useWalletConnection();
   const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
+  const isConnected = Boolean(userAddress);
 
   useEffect(() => {
-    if (authenticated && userAddress) {
+    if (isConnected && userAddress) {
       refreshAllData();
     }
-  }, [authenticated, userAddress, refreshAllData]);
+  }, [isConnected, userAddress, refreshAllData]);
 
-  if (!authenticated) {
+  if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
         <div className="bg-gradient-to-br from-card/50 to-background/50 border border-border rounded-2xl p-8 max-w-sm w-full text-center shadow-lg">
           <h3 className="text-muted-foreground text-md font-medium mb-5">
-            Login to view your portfolio balance
+            Connect your wallet to view your portfolio balance
           </h3>
           <Button
             variant="wallet"
             className="w-40 px-6 py-2"
             onClick={async () => {
-              try {
-                await login();
-                if (authenticated) {
-                  navigate("/vaults", { replace: true });
-                }
-              } catch (error) {
-                console.error("Login failed:", error);
-              }
+              await connectWithFallback('/vaults');
             }}
+            disabled={isConnecting}
           >
-            Login
+            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
           </Button>
         </div>
       </div>

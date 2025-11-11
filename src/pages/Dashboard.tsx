@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, DollarSign, Percent, Rocket } from "lucide-react";
 import { usePrice } from "@/hooks/usePrice";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import { useWallets } from "@privy-io/react-auth";
+import { useWalletConnection } from '@/hooks/useWalletConnection';
 import { fetchHypeBalance } from "@/lib/utils";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
@@ -17,9 +18,10 @@ const Dashboard = () => {
     // usdt0Vault,
     refreshAllData,
   } = useMultiVault();
-  const { authenticated, login } = usePrivy();
+  const { isConnecting, connectWithFallback } = useWalletConnection();
   const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
   const navigate = useNavigate();
+  const isConnected = Boolean(userAddress);
 
   const primaryVault = useMemo(() => {
     const vaults = getAllVaults();
@@ -33,14 +35,14 @@ const Dashboard = () => {
 
   const fetchBalances = useCallback(async () => {
     try {
-      if (!authenticated || !userAddress) return;
+      if (!isConnected || !userAddress) return;
 
       const hype = await fetchHypeBalance(userAddress);
       setHypeBalance(hype);
     } catch (err) {
       setHypeBalance(0);
     }
-  }, [authenticated, userAddress]);
+  }, [isConnected, userAddress]);
 
   useEffect(() => {
     fetchBalances();
@@ -105,11 +107,11 @@ const Dashboard = () => {
   }, [getAllVaults, getTotalTVL]);
 
   useEffect(() => {
-    if (shouldRedirectAfterLogin && authenticated) {
+    if (shouldRedirectAfterLogin && isConnected) {
       navigate('/vaults', { replace: true });
       setShouldRedirectAfterLogin(false);
     }
-  }, [shouldRedirectAfterLogin, authenticated, navigate]);
+  }, [shouldRedirectAfterLogin, isConnected, navigate]);
 
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen relative">
@@ -209,7 +211,7 @@ const Dashboard = () => {
             </div>
           </CardHeader>
           <CardContent className="w-full flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-6 pt-0 sm:pt-0">
-            {authenticated ? (
+            {isConnected ? (
               <>
                 <div className="w-full to-primary/10 p-3 sm:p-4 rounded-xl border border-border">
                   <div className="flex items-center justify-between mb-2">
@@ -266,30 +268,23 @@ const Dashboard = () => {
               <div className="w-full flex flex-col items-center justify-center py-8 space-y-4">
                 <div className="text-center">
                   <p className="text-muted-foreground text-sm mb-2">
-                    Please log in to view your token balances
+                    Connect your wallet to view your token balances
                   </p>
                 </div>
                 <Button
                   onClick={async () => {
                     try {
-                      localStorage.setItem('POST_LOGIN_REDIRECT_PATH', '/vaults');
                       setShouldRedirectAfterLogin(true);
-                      await login();
-                      if (authenticated) {
-                        navigate('/vaults', { replace: true });
-                        setShouldRedirectAfterLogin(false);
-                        localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
-                      }
+                      await connectWithFallback('/vaults');
                     } catch (error) {
                       setShouldRedirectAfterLogin(false);
-                      console.error('Login failed:', error);
-                      localStorage.removeItem('POST_LOGIN_REDIRECT_PATH');
                     }
                   }}
+                  disabled={isConnecting}
                   variant="wallet"
                   className="w-40 px-6 py-2"
                 >
-                  <span>Login</span>
+                  <span>{isConnecting ? 'Connecting...' : 'Connect Wallet'}</span>
                 </Button>
               </div>
             )}

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useEffect, useState } from 'react';
-import { usePublicClient, useWalletClient } from 'wagmi';
-import { useWallets } from "@privy-io/react-auth";
+import { usePublicClient, useReconnect, useWalletClient } from "wagmi";
+import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
   parseUnits,
   formatUnits,
@@ -8,8 +8,8 @@ import {
   parseAbiItem,
   maxUint256,
   Address,
+  WalletClient,
 } from "viem";
-import { hyperliquid } from "@/lib/privyConfig";
 import { usePrice } from "@/hooks/usePrice";
 import {
   getMultiVaultBatchClient,
@@ -20,6 +20,7 @@ import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { toast } from "@/hooks/use-toast";
 import { switchToChain } from "@/lib/utils";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { hyperliquid } from '@/lib/privyConfig';
 
 // Multi-vault cache to prevent unnecessary re-fetching
 let multiVaultCache: {
@@ -46,6 +47,7 @@ export const useMultiVault = () => {
   const { data: wagmiWalletClient } = useWalletClient();
   const { wallets } = useWallets();
   const { allVaultData } = usePrice();
+  const { reconnect } = useReconnect();
 
   const [pendingDepositAssets, setPendingDepositAssets] = useState<bigint>(0n);
   const [pendingRedeemShares, setPendingRedeemShares] = useState<bigint>(0n);
@@ -528,20 +530,24 @@ export const useMultiVault = () => {
 
   // Wallet client helper
   const getWalletClient = useCallback(async () => {
+    // 1) Prefer wagmi wallet client
     if (wagmiWalletClient) {
       return wagmiWalletClient;
     }
 
-    // Fallback to privy wallet
-    const privyWallet = isPrivyWallet
-      ? wallet
-      : wallets.find((w) => w.walletClientType === "privy");
-    if (privyWallet) {
-      const { createWalletClient, custom } = await import("viem");
-      return createWalletClient({
-        chain: hyperliquid,
-        transport: custom(await privyWallet.getEthereumProvider()),
-      });
+    // 2) Prefer a native browser wallet extension via window.ethereum (Rabby Wallet extension)
+    try {
+      const eth: any =
+        (typeof window !== "undefined" && (window as any).ethereum) || null;
+      if (eth) {
+        const { createWalletClient, custom } = await import("viem");
+        return createWalletClient({
+          chain: hyperliquid,
+          transport: custom(eth),
+        });
+      }
+    } catch (e) {
+      // Ignore and try next fallback
     }
 
     throw new Error("No wallet client available");
