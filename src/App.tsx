@@ -19,7 +19,6 @@ import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import SkeletonLoader from "@/components/skeleton";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
-import { useMetaMaskMonitor } from "./hooks/useMetaMaskMonitor";
 const AppContainer = lazy(() => import("./pages/AppContainer"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Vaults = lazy(() => import("./pages/Vaults"));
@@ -61,9 +60,6 @@ const AppRoutes = () => {
   const { isPriceLoading, priceError } = usePrice();
   const { authenticated } = usePrivy();
   const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
-
-  // Monitor MetaMask connection and auto-logout when disconnected
-  useMetaMaskMonitor();
 
   const isLoading =
     isVaultsLoading || isPriceLoading || (authenticated && isTxLoading);
