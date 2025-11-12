@@ -137,8 +137,8 @@ const VaultDetails = () => {
     ...vaultData
   } = vaultDataObject;
 
-  // Use wallet connection state instead of Privy authentication
   const { hasAccess } = useUserAccess();
+  const [txCanceled,setTxCanceled] = useState(false);
 
   const [totalAUM, setTotalAUM] = useState(0);
 
@@ -401,6 +401,56 @@ const VaultDetails = () => {
                   Deposit settlement in progress. Shares will be available
                   shortly after confirmation.
                 </p>
+              </div>
+              {/* Cancel / Claim UX */}
+              <div className="ml-auto flex items-center gap-2">
+                {pendingDepositAssets > 0n && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-xs border border-primary/40 hover:border-primary"
+                    onClick={async () => {
+                      try {
+                        const vc = multiVaultData.getVaultClientByAddress(vaultId || "");
+                        await vc.cancelDepositRequest?.();
+                        setTxCanceled(true);
+                        await refreshData?.();
+                        await multiVaultData.refreshAllData?.();
+                      } catch (error: any) {
+                        toast({
+                          variant: "destructive",
+                          title: "Cancel Failed",
+                          description: error?.message || "Unable to cancel pending deposit.",
+                        });
+                      }
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                )}
+                {claimableDepositAssets > 0 && (
+                  <Button
+                    size="sm"
+                    variant="wallet"
+                    className="text-xs border-2 border-primary/60 hover:border-primary"
+                    onClick={async () => {
+                      try {
+                        const vc = multiVaultData.getVaultClientByAddress(vaultId || "");
+                        await vc.claimDeposit?.();
+                        await refreshData?.();
+                        await multiVaultData.refreshAllData?.();
+                      } catch (error: any) {
+                        toast({
+                          variant: "destructive",
+                          title: "Claim Failed",
+                          description: error?.message || "Unable to claim deposit shares.",
+                        });
+                      }
+                    }}
+                  >
+                    Claim Shares
+                  </Button>
+                )}
               </div>
             </Card>
           )}
@@ -990,6 +1040,7 @@ const VaultDetails = () => {
               refreshData={refreshData}
               isConnected={isConnected}
               hasAccess={hasAccess}
+              txCanceled={txCanceled}
               onRequireAccess={() => setShowAccessCodeModal(true)}
               pendingDepositAssets={pendingDepositAssets}
               pendingRedeemShares={pendingRedeemShares}

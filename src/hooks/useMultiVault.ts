@@ -989,6 +989,73 @@ export const useMultiVault = () => {
     [getWalletClient, userAddress, refreshAllData, publicClient]
   );
 
+  // Allow user to cancel an active deposit request if contract permits
+  const cancelDepositRequest = useCallback(
+    async (vaultAddress: string) => {
+      const walletClient = await getWalletClient();
+      if (!walletClient || !userAddress) {
+        throw new Error("Wallet not connected");
+      }
+      try {
+        const chainSwitched = await switchToChain();
+        if (!chainSwitched) {
+          throw new Error("Failed to switch to Hyper EVM chain");
+        }
+        setIsTransacting(true);
+        setTransactionHash(null);
+
+        const gas = await publicClient.estimateContractGas({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "cancelRequestDeposit",
+          account: userAddress as `0x${string}`,
+        });
+
+        const tx = await walletClient.writeContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "cancelRequestDeposit",
+          chain: hyperliquid,
+          account: userAddress as `0x${string}`,
+          gas: (gas * 200n) / 100n,
+        });
+        setTransactionHash(tx);
+        await publicClient.waitForTransactionReceipt({ hash: tx });
+
+        toast({
+          variant: "success",
+          title: "✅ Deposit Request Canceled",
+          description: "Your pending deposit request has been canceled.",
+        });
+
+        // Refresh pending deposit state after cancel
+        await checkPendingDepositRequest();
+        await refreshAllData();
+        return tx;
+      } catch (error: any) {
+        const msg = error?.message || String(error);
+        if (msg?.includes("RequestNotCancelable")) {
+          toast({
+            variant: "default",
+            title: "Cannot Cancel",
+            description:
+              "This deposit request is no longer cancelable. It may be in processing.",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "❌ Cancel Failed",
+            description: msg,
+          });
+        }
+        throw error;
+      } finally {
+        setIsTransacting(false);
+      }
+    },
+    [getWalletClient, userAddress, refreshAllData, publicClient, checkPendingDepositRequest]
+  );
+
   const claimRedeem = useCallback(
     async (vaultAddress: string) => {
       const walletClient = await getWalletClient();
@@ -1122,6 +1189,7 @@ export const useMultiVault = () => {
         deposit: (amount: string) => deposit(addr, amount),
         withdraw: (amount: string) => withdraw(addr, amount),
         claimDeposit: () => claimDeposit(addr),
+        cancelDepositRequest: () => cancelDepositRequest(addr),
         claimRedeem: () => claimRedeem(addr),
         getClaimableDepositAmount: () => getClaimableDepositAmount(addr),
         getClaimableRedeemAmount: () => getClaimableRedeemAmount(addr),
@@ -1178,6 +1246,7 @@ export const useMultiVault = () => {
     deposit,
     withdraw,
     claimDeposit,
+    cancelDepositRequest,
     claimRedeem,
     getClaimableDepositAmount,
     getClaimableRedeemAmount,
