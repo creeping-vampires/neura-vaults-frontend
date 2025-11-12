@@ -7,11 +7,13 @@ import { getExplorerTxUrl } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 import { usePublicClient } from "wagmi";
-import { Address, formatUnits, parseAbiItem } from "viem";
+import { Address, formatUnits, parseAbiItem, parseUnits, parseAbi } from "viem";
+import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
+import { getSupplyCapsForVault } from "@/services/supplyCaps";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useMultiVault } from "@/hooks/useMultiVault";
-import { useWalletConnection } from '@/hooks/useWalletConnection';
-import { useLocation } from 'react-router-dom';
+import { useWalletConnection } from "@/hooks/useWalletConnection";
+import { useLocation } from "react-router-dom";
 
 // User-initiated tx: pending -> submitted -> (confirmed) or failed
 // Backend-initiated tx: settling -> settled
@@ -21,7 +23,8 @@ type TxStatus =
   | "submitted"
   | "failed"
   | "settling"
-  | "settled";
+  | "settled"
+  | "canceled";
 type TxType = "deposit" | "withdraw" | string;
 type TxOrigin = "user" | "backend";
 
@@ -49,6 +52,7 @@ interface VaultActionPanelProps {
   refreshData: () => void | Promise<void>;
   isConnected: boolean;
   hasAccess: boolean;
+  txCanceled: boolean;
   onRequireAccess: () => void;
   pendingDepositAssets: bigint;
   pendingRedeemShares: bigint;
@@ -68,6 +72,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   refreshData,
   isConnected,
   hasAccess,
+  txCanceled,
   onRequireAccess,
   pendingDepositAssets,
   pendingRedeemShares,
@@ -92,6 +97,15 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   const [transactionMonitors, setTransactionMonitors] = useState<
     Map<string, NodeJS.Timeout>
   >(new Map());
+
+  // Deposit validation state (caps + request-state)
+  const [isValidatingDeposit, setIsValidatingDeposit] = useState(false);
+  const [depositEligibility, setDepositEligibility] = useState<{
+    eligible: boolean;
+    reason?: string;
+    userHeadroom?: string; // human units
+    vaultHeadroom?: string; // human units
+  }>({ eligible: true });
 
   // Refs to avoid stale values inside backend monitoring interval
   const pendingDepositAssetsRef = useRef<bigint>(pendingDepositAssets ?? 0n);
@@ -141,6 +155,141 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     []
   );
 
+  // Evaluate deposit guard
+  const evaluateDepositGuard = useCallback(async (): Promise<{
+    eligible: boolean;
+    reason?: string;
+    userHeadroom?: string;
+    vaultHeadroom?: string;
+  }> => {
+    if (!publicClient || !vaultId || !userAddress || !inputAmount) {
+      const res = {
+        eligible: false,
+        reason: "Connect wallet and enter amount.",
+      };
+      setDepositEligibility(res);
+      return res;
+    }
+    try {
+      setIsValidatingDeposit(true);
+
+      // Read vault asset and decimals
+      const assetAddress = (await publicClient.readContract({
+        address: vaultId as `0x${string}`,
+        abi: YieldAllocatorVaultABI,
+        functionName: "asset",
+      })) as `0x${string}`;
+      const assetDecimals = (await publicClient.readContract({
+        address: assetAddress,
+        abi: parseAbi(["function decimals() view returns (uint8)"]),
+        functionName: "decimals",
+      })) as number;
+
+      const { perUserCapUnits, vaultCapUnits } = getSupplyCapsForVault(
+        Number(assetDecimals)
+      );
+      const requestedAssets = parseUnits(inputAmount, Number(assetDecimals));
+
+      // Live state reads
+      const [vaultSupplied, userShares] = await Promise.all([
+        publicClient.readContract({
+          address: vaultId as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "totalAssets",
+        }) as Promise<bigint>,
+        publicClient.readContract({
+          address: vaultId as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "balanceOf",
+          args: [userAddress as `0x${string}`],
+        }) as Promise<bigint>,
+      ]);
+      const userSupplied = (await publicClient.readContract({
+        address: vaultId as `0x${string}`,
+        abi: YieldAllocatorVaultABI,
+        functionName: "convertToAssets",
+        args: [userShares],
+      })) as bigint;
+
+      const userClaimableAssets = (await publicClient.readContract({
+        address: vaultId as `0x${string}`,
+        abi: YieldAllocatorVaultABI,
+        functionName: "claimableDepositRequest",
+        args: [0n, userAddress as `0x${string}`],
+      })) as bigint;
+
+      // Request-state guard
+      if ((pendingDepositAssets ?? 0n) > 0n) {
+        const res = {
+          eligible: false,
+          reason:
+            "A deposit request is already pending—settle or cancel first.",
+        };
+        setDepositEligibility(res);
+        return res;
+      }
+
+      if ((userClaimableAssets ?? 0n) > 0n) {
+        const res = {
+          eligible: false,
+          reason:
+            "You have a claimable deposit—wait for agent to claim shares or claim.",
+        };
+        setDepositEligibility(res);
+        return res;
+      }
+
+      // Caps guard
+      const userEffective = (userSupplied ?? 0n) + (pendingDepositAssets ?? 0n);
+      const userHeadroomUnits =
+        perUserCapUnits > userEffective ? perUserCapUnits - userEffective : 0n;
+      const vaultHeadroomUnits =
+        vaultCapUnits > (vaultSupplied ?? 0n)
+          ? vaultCapUnits - (vaultSupplied ?? 0n)
+          : 0n;
+
+      if (requestedAssets > userHeadroomUnits) {
+        const res = {
+          eligible: false,
+          reason: "Requested amount exceeds per-user cap headroom.",
+          userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
+          vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
+        };
+        setDepositEligibility(res);
+        return res;
+      }
+
+      if (requestedAssets > vaultHeadroomUnits) {
+        const res = {
+          eligible: false,
+          reason: "Requested amount exceeds vault cap headroom.",
+          userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
+          vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
+        };
+        setDepositEligibility(res);
+        return res;
+      }
+
+      const res = {
+        eligible: true,
+        userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
+        vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
+      };
+      setDepositEligibility(res);
+      return res;
+    } catch (e) {
+      console.warn("Deposit guard evaluation failed:", e);
+      const res = {
+        eligible: false,
+        reason: "Unable to validate deposit right now.",
+      };
+      setDepositEligibility(res);
+      return res;
+    } finally {
+      setIsValidatingDeposit(false);
+    }
+  }, [publicClient, vaultId, userAddress, inputAmount]);
+
   const updateTransactionStatus = useCallback(
     (id: string, nextStatus: TxStatus, hash?: string) => {
       // Status order for validation and progression gating
@@ -150,13 +299,16 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         submitted: 2,
         settling: 3,
         settled: 4,
-        failed: 5, // Treat failed as terminal; higher to avoid accidental overwrite
+        canceled: 5,
+        failed: 6,
       };
 
-      const isTerminal = (s: TxStatus) => s === "failed" || s === "settled";
+      const isTerminal = (s: TxStatus) =>
+        s === "failed" || s === "settled" || s === "canceled";
       const isProgression = (from: TxStatus, to: TxStatus) => {
         if (from === to) return true;
         if (to === "failed" && from !== "settled") return true;
+        if (to === "canceled" && from !== "settled") return true;
         return (STATUS_ORDER[to] ?? 0) > (STATUS_ORDER[from] ?? 0);
       };
 
@@ -732,6 +884,26 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     claimableWithdrawAssets,
   ]);
 
+  // Monitor txCanceled to update local UI state only
+  const prevTxCanceledRef = useRef<boolean>(txCanceled);
+  useEffect(() => {
+    const prev = prevTxCanceledRef.current;
+    if (txCanceled && !prev) {
+      // Mark all backend-origin deposit transactions as canceled if not terminal
+      const targets = latestTransactions.filter(
+        (tx) =>
+          tx.type === "deposit" &&
+          tx.origin === "backend" &&
+          tx.status !== "settled" &&
+          tx.status !== "failed" &&
+          tx.status !== "canceled"
+      );
+
+      targets.forEach((tx) => updateTransactionStatus(tx.id, "canceled"));
+    }
+    prevTxCanceledRef.current = txCanceled;
+  }, [txCanceled, latestTransactions, updateTransactionStatus]);
+
   const handleDeposit = async (amount: string) => {
     let depositId: string | null = null;
 
@@ -818,13 +990,14 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     }
   };
 
-  const handlePercentageClick = (percent: number) => {
+  const handlePercentageClick = async (percent: number) => {
     const maxAmount =
       activeTab === "deposit"
         ? availableAssetBalance || 0
         : availableUserDeposits || 0;
     const amount = ((maxAmount * percent) / 100).toString();
     setInputAmount(amount);
+    await evaluateDepositGuard();
   };
 
   const { connectWithFallback } = useWalletConnection();
@@ -842,6 +1015,17 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           onRequireAccess();
           return;
         } else {
+          const result = await evaluateDepositGuard();
+          if (!result.eligible) {
+            toast({
+              variant: "destructive",
+              title: "Deposit Blocked",
+              description:
+                depositEligibility.reason ||
+                "Deposit validation failed. Please check supply caps and pending requests.",
+            });
+            return;
+          }
           await handleDeposit(inputAmount);
         }
       } else {
@@ -919,10 +1103,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               type="number"
               min="0"
               value={inputAmount}
-              onChange={(e) => {
+              onChange={async (e) => {
                 const value = e.target.value;
                 if (value === "" || Number(value) >= 0) {
                   setInputAmount(value);
+                  await evaluateDepositGuard();
                 }
               }}
               placeholder="Enter amount"
@@ -941,7 +1126,9 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               ? isDepositTransacting ||
                 !inputAmount ||
                 parseFloat(inputAmount) <= 0 ||
-                (availableAssetBalance ?? 0) <= 0
+                (availableAssetBalance ?? 0) <= 0 ||
+                isValidatingDeposit 
+                // || depositEligibility.eligible
               : isWithdrawTransacting ||
                 !inputAmount ||
                 parseFloat(inputAmount) <= 0 ||
@@ -953,10 +1140,46 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           {activeTab === "deposit"
             ? isDepositTransacting
               ? "Depositing..."
+              : isValidatingDeposit
+              ? "Validating..."
               : "Deposit"
             : activeTab === "withdraw" &&
               (isWithdrawTransacting ? "Withdrawing..." : "Withdraw")}
         </Button>
+
+        {activeTab === "deposit" && (
+          <div className="mt-2 text-xs text-muted-foreground">
+            {depositEligibility.reason ? (
+              <div>
+                {depositEligibility.userHeadroom !== undefined &&
+                  depositEligibility.vaultHeadroom !== undefined && (
+                    <div className="mt-1">
+                      <div>
+                        Personal deposit limit left:{" "}
+                        {depositEligibility.userHeadroom} {currentVault}
+                      </div>
+                      <div>
+                        Space left in vault: {depositEligibility.vaultHeadroom}{" "}
+                        {currentVault}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            ) : depositEligibility.userHeadroom !== undefined &&
+              depositEligibility.vaultHeadroom !== undefined ? (
+              <div>
+                <div>
+                  You can still deposit up to {depositEligibility.userHeadroom}{" "}
+                  {currentVault}
+                </div>
+                <div>
+                  Space left in vault: {depositEligibility.vaultHeadroom}{" "}
+                  {currentVault}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
 
         {latestTransactions.length > 0 && (
           <div className="mt-2 space-y-1">
@@ -977,6 +1200,8 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                       return <CheckCircle className="h-4 w-4 text-primary" />;
                     if (tx.status === "failed")
                       return <XCircle className="h-4 w-4 text-red-500" />;
+                    if (tx.status === "canceled")
+                      return <XCircle className="h-4 w-4 text-red-500" />;
                     return (
                       <Loader2 className="h-4 w-4 text-orange-400 animate-spin" />
                     );
@@ -988,6 +1213,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                     if (tx.status === "settling") return "Awaiting settlement";
                     if (tx.status === "settled") return "Transaction settled";
                     if (tx.status === "failed") return "Failed";
+                    if (tx.status === "canceled") return "Transaction canceled";
                     return "Awaiting confirmation";
                   };
 
@@ -996,6 +1222,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                     if (tx.status === "settling") return "text-orange-400";
                     if (tx.status === "settled") return "text-primary";
                     if (tx.status === "failed") return "text-red-500";
+                    if (tx.status === "canceled") return "text-red-500";
                     return "text-orange-400";
                   };
 
