@@ -1048,9 +1048,9 @@ const VaultDetails = () => {
               claimableWithdrawAssets={claimableWithdrawAssets}
             />
 
-            <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[180px]">
-              <CardContent className="p-4 sm:p-6">
-                <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[115px]">
+              <CardContent className="py-3 px-4 sm:py-4 sm:px-6">
+                <div className="flex items-center justify-between mb-2">
                   <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
                     Next vault settlement
                   </h3>

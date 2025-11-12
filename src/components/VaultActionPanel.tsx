@@ -14,6 +14,7 @@ import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { useLocation } from "react-router-dom";
+import SupplyCapHeadroom from "@/components/shared/SupplyCapHeadroom";
 
 // User-initiated tx: pending -> submitted -> (confirmed) or failed
 // Backend-initiated tx: settling -> settled
@@ -290,9 +291,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     }
   }, [publicClient, vaultId, userAddress, inputAmount]);
 
-useEffect(() => {
-  evaluateDepositGuard();
-}, [evaluateDepositGuard]);
+  // Headroom calculation moved into SupplyCapHeadroom component
 
   const updateTransactionStatus = useCallback(
     (id: string, nextStatus: TxStatus, hash?: string) => {
@@ -1001,7 +1000,6 @@ useEffect(() => {
         : availableUserDeposits || 0;
     const amount = ((maxAmount * percent) / 100).toString();
     setInputAmount(amount);
-    await evaluateDepositGuard();
   };
 
   const { connectWithFallback } = useWalletConnection();
@@ -1019,8 +1017,7 @@ useEffect(() => {
           onRequireAccess();
           return;
         } else {
-          const result = await evaluateDepositGuard();
-          if (!result.eligible) {
+          if (!depositEligibility.eligible) {
             toast({
               variant: "destructive",
               title: "Deposit Blocked",
@@ -1045,7 +1042,7 @@ useEffect(() => {
 
   return (
     <Card
-      className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl sm:min-h-[435px]"
+      className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl sm:min-h-[500px]"
       style={{ height: "calc(100vh - 315px)" }}
     >
       <CardContent className="p-4 pt-2">
@@ -1107,11 +1104,10 @@ useEffect(() => {
               type="number"
               min="0"
               value={inputAmount}
-              onChange={async (e) => {
+              onChange={(e) => {
                 const value = e.target.value;
                 if (value === "" || Number(value) >= 0) {
                   setInputAmount(value);
-                  await evaluateDepositGuard();
                 }
               }}
               placeholder="Enter amount"
@@ -1131,9 +1127,9 @@ useEffect(() => {
                 !inputAmount ||
                 parseFloat(inputAmount) <= 0 ||
                 (availableAssetBalance ?? 0) <= 0 ||
-                isValidatingDeposit 
-                // || depositEligibility.eligible
-              : isWithdrawTransacting ||
+                isValidatingDeposit
+              : // || depositEligibility.eligible
+                isWithdrawTransacting ||
                 !inputAmount ||
                 parseFloat(inputAmount) <= 0 ||
                 (availableUserDeposits ?? 0) <= 0
@@ -1151,38 +1147,16 @@ useEffect(() => {
               (isWithdrawTransacting ? "Withdrawing..." : "Withdraw")}
         </Button>
 
-        {activeTab === "deposit" && (
-          <div className="mt-2 text-xs text-muted-foreground">
-            {depositEligibility.reason ? (
-              <div>
-                {depositEligibility.userHeadroom !== undefined &&
-                  depositEligibility.vaultHeadroom !== undefined && (
-                    <div className="mt-1">
-                      <div>
-                        Personal deposit limit left:{" "}
-                        {depositEligibility.userHeadroom} {currentVault}
-                      </div>
-                      <div>
-                        Space left in vault: {depositEligibility.vaultHeadroom}{" "}
-                        {currentVault}
-                      </div>
-                    </div>
-                  )}
-              </div>
-            ) : depositEligibility.userHeadroom !== undefined &&
-              depositEligibility.vaultHeadroom !== undefined ? (
-              <div>
-                <div>
-                  You can still deposit up to {depositEligibility.userHeadroom}{" "}
-                  {currentVault}
-                </div>
-                <div>
-                  Space left in vault: {depositEligibility.vaultHeadroom}{" "}
-                  {currentVault}
-                </div>
-              </div>
-            ) : null}
-          </div>
+        {activeTab === "deposit" && vaultId && (
+          <SupplyCapHeadroom
+            vaultId={vaultId}
+            assetSymbol={currentVault}
+            inputAmount={inputAmount}
+            pendingDepositAssets={pendingDepositAssets}
+            claimableDepositAssets={claimableDepositAssets}
+            claimableWithdrawAssets={claimableWithdrawAssets}
+            onComputed={(res) => setDepositEligibility(res)}
+          />
         )}
 
         {latestTransactions.length > 0 && (
