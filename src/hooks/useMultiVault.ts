@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect, useState } from 'react';
+import { useCallback, useMemo, useEffect, useState } from "react";
 import { usePublicClient, useReconnect, useWalletClient } from "wagmi";
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import {
@@ -20,7 +20,7 @@ import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { toast } from "@/hooks/use-toast";
 import { switchToChain } from "@/lib/utils";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
-import { hyperliquid } from '@/lib/privyConfig';
+import { hyperliquid } from "@/lib/privyConfig";
 
 // Multi-vault cache to prevent unnecessary re-fetching
 let multiVaultCache: {
@@ -384,8 +384,7 @@ export const useMultiVault = () => {
             const owners = logs
               .map((l) => (l as any)?.args?.owner as Address | undefined)
               .filter(Boolean) as Address[];
-
-            if (owners.length > 0) {
+            if (owners.length > 0 && owners.includes(userAddress as Address)) {
               fetchAllVaultData(true);
               try {
                 checkPendingDepositRequest();
@@ -416,12 +415,10 @@ export const useMultiVault = () => {
           eventName: "Withdraw",
           onLogs: (logs) => {
             if (!logs || logs.length === 0) return;
-
             const owners = logs
               .map((l) => (l as any)?.args?.owner as Address | undefined)
               .filter(Boolean) as Address[];
-
-            if (owners.length > 0) {
+            if (owners.length > 0 && owners.includes(userAddress as Address)) {
               fetchAllVaultData(true);
 
               try {
@@ -1053,7 +1050,13 @@ export const useMultiVault = () => {
         setIsTransacting(false);
       }
     },
-    [getWalletClient, userAddress, refreshAllData, publicClient, checkPendingDepositRequest]
+    [
+      getWalletClient,
+      userAddress,
+      refreshAllData,
+      publicClient,
+      checkPendingDepositRequest,
+    ]
   );
 
   const claimRedeem = useCallback(
