@@ -290,6 +290,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     }
   }, [publicClient, vaultId, userAddress, inputAmount]);
 
+useEffect(() => {
+  evaluateDepositGuard();
+}, [evaluateDepositGuard]);
+
   const updateTransactionStatus = useCallback(
     (id: string, nextStatus: TxStatus, hash?: string) => {
       // Status order for validation and progression gating
