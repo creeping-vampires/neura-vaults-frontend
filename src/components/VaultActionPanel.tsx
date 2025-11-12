@@ -42,7 +42,8 @@ export interface PendingTransaction {
 }
 
 interface VaultActionPanelProps {
-  currentVault: string;
+  currentVaultSymbol: string;
+  currentVaultAssetAddress: string;
   availableAssetBalance?: number;
   availableUserDeposits?: number;
   deposit: (amount: string) => Promise<string>;
@@ -62,7 +63,8 @@ interface VaultActionPanelProps {
 }
 
 const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
-  currentVault,
+  currentVaultSymbol,
+  currentVaultAssetAddress,
   availableAssetBalance,
   availableUserDeposits,
   deposit,
@@ -155,143 +157,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     },
     []
   );
-
-  // Evaluate deposit guard
-  const evaluateDepositGuard = useCallback(async (): Promise<{
-    eligible: boolean;
-    reason?: string;
-    userHeadroom?: string;
-    vaultHeadroom?: string;
-  }> => {
-    if (!publicClient || !vaultId || !userAddress || !inputAmount) {
-      const res = {
-        eligible: false,
-        reason: "Connect wallet and enter amount.",
-      };
-      setDepositEligibility(res);
-      return res;
-    }
-    try {
-      setIsValidatingDeposit(true);
-
-      // Read vault asset and decimals
-      const assetAddress = (await publicClient.readContract({
-        address: vaultId as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "asset",
-      })) as `0x${string}`;
-      const assetDecimals = (await publicClient.readContract({
-        address: assetAddress,
-        abi: parseAbi(["function decimals() view returns (uint8)"]),
-        functionName: "decimals",
-      })) as number;
-
-      const { perUserCapUnits, vaultCapUnits } = getSupplyCapsForVault(
-        Number(assetDecimals)
-      );
-      const requestedAssets = parseUnits(inputAmount, Number(assetDecimals));
-
-      // Live state reads
-      const [vaultSupplied, userShares] = await Promise.all([
-        publicClient.readContract({
-          address: vaultId as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "totalAssets",
-        }) as Promise<bigint>,
-        publicClient.readContract({
-          address: vaultId as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "balanceOf",
-          args: [userAddress as `0x${string}`],
-        }) as Promise<bigint>,
-      ]);
-      const userSupplied = (await publicClient.readContract({
-        address: vaultId as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "convertToAssets",
-        args: [userShares],
-      })) as bigint;
-
-      const userClaimableAssets = (await publicClient.readContract({
-        address: vaultId as `0x${string}`,
-        abi: YieldAllocatorVaultABI,
-        functionName: "claimableDepositRequest",
-        args: [0n, userAddress as `0x${string}`],
-      })) as bigint;
-
-      // Request-state guard
-      if ((pendingDepositAssets ?? 0n) > 0n) {
-        const res = {
-          eligible: false,
-          reason:
-            "A deposit request is already pending—settle or cancel first.",
-        };
-        setDepositEligibility(res);
-        return res;
-      }
-
-      if ((userClaimableAssets ?? 0n) > 0n) {
-        const res = {
-          eligible: false,
-          reason:
-            "You have a claimable deposit—wait for agent to claim shares or claim.",
-        };
-        setDepositEligibility(res);
-        return res;
-      }
-
-      // Caps guard
-      const userEffective = (userSupplied ?? 0n) + (pendingDepositAssets ?? 0n);
-      const userHeadroomUnits =
-        perUserCapUnits > userEffective ? perUserCapUnits - userEffective : 0n;
-      const vaultHeadroomUnits =
-        vaultCapUnits > (vaultSupplied ?? 0n)
-          ? vaultCapUnits - (vaultSupplied ?? 0n)
-          : 0n;
-
-      if (requestedAssets > userHeadroomUnits) {
-        const res = {
-          eligible: false,
-          reason: "Requested amount exceeds per-user cap headroom.",
-          userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
-          vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
-        };
-        setDepositEligibility(res);
-        return res;
-      }
-
-      if (requestedAssets > vaultHeadroomUnits) {
-        const res = {
-          eligible: false,
-          reason: "Requested amount exceeds vault cap headroom.",
-          userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
-          vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
-        };
-        setDepositEligibility(res);
-        return res;
-      }
-
-      const res = {
-        eligible: true,
-        userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
-        vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
-      };
-      setDepositEligibility(res);
-      return res;
-    } catch (e) {
-      console.warn("Deposit guard evaluation failed:", e);
-      const res = {
-        eligible: false,
-        reason: "Unable to validate deposit right now.",
-      };
-      setDepositEligibility(res);
-      return res;
-    } finally {
-      setIsValidatingDeposit(false);
-    }
-  }, [publicClient, vaultId, userAddress, inputAmount]);
-
-  // Headroom calculation moved into SupplyCapHeadroom component
 
   const updateTransactionStatus = useCallback(
     (id: string, nextStatus: TxStatus, hash?: string) => {
@@ -407,7 +272,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           if (nextStatus === "failed") {
             toast({
               title: "Transaction failed",
-              description: `Your ${changedTx.type} of ${changedTx.amount} ${currentVault} failed.`,
+              description: `Your ${changedTx.type} of ${changedTx.amount} ${currentVaultSymbol} failed.`,
               variant: "destructive",
             });
           } else if (nextStatus === "settled") {
@@ -430,7 +295,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       setWithdrawEventStatus,
       vaultId,
       userAddress,
-      currentVault,
+      currentVaultSymbol,
       toast,
     ]
   );
@@ -680,7 +545,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     [
       updateTransactionStatus,
       refreshData,
-      currentVault,
+      currentVaultSymbol,
       publicClient,
       vaultId,
       userAddress,
@@ -1080,8 +945,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             <span className="text-muted-foreground text-sm">Available</span>
             <span className="text-foreground font-medium">
               {activeTab === "deposit"
-                ? `${(availableAssetBalance ?? 0).toFixed(2)} ${currentVault}`
-                : `${(availableUserDeposits ?? 0).toFixed(2)} ${currentVault}`}
+                ? `${(availableAssetBalance ?? 0).toFixed(
+                    2
+                  )} ${currentVaultSymbol}`
+                : `${(availableUserDeposits ?? 0).toFixed(
+                    2
+                  )} ${currentVaultSymbol}`}
             </span>
           </div>
         </div>
@@ -1114,7 +983,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               className="w-full h-12 px-4 py-3 bg-gradient-to-br from-card to-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground text-sm">
-              {currentVault}
+              {currentVaultSymbol}
             </span>
           </div>
         </div>
@@ -1147,10 +1016,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               (isWithdrawTransacting ? "Withdrawing..." : "Withdraw")}
         </Button>
 
-        {activeTab === "deposit" && vaultId && (
+        {vaultId && (
           <SupplyCapHeadroom
+            show={activeTab === "deposit"}
             vaultId={vaultId}
-            assetSymbol={currentVault}
+            assetAddress={currentVaultAssetAddress}
             inputAmount={inputAmount}
             pendingDepositAssets={pendingDepositAssets}
             claimableDepositAssets={claimableDepositAssets}
@@ -1217,7 +1087,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                             {tx.amount &&
                               `${parseFloat(tx.amount).toFixed(
                                 4
-                              )} ${currentVault}`}
+                              )} ${currentVaultSymbol}`}
                           </span>
                           <span className={`text-xs ${getStatusColor()}`}>
                             {getStatusText()}

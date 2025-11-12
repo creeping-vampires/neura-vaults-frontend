@@ -138,7 +138,7 @@ const VaultDetails = () => {
   } = vaultDataObject;
 
   const { hasAccess } = useUserAccess();
-  const [txCanceled,setTxCanceled] = useState(false);
+  const [txCanceled, setTxCanceled] = useState(false);
 
   const [totalAUM, setTotalAUM] = useState(0);
 
@@ -164,8 +164,6 @@ const VaultDetails = () => {
     isPriceLoading,
     get24APY,
     get7APY,
-    // Add dynamic vault helpers
-    allVaultData,
     getVaultDataByAddress,
     priceData,
   } = usePrice();
@@ -173,15 +171,17 @@ const VaultDetails = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<"7D" | "1M">("7D");
   const [chartData, setChartData] = useState([]);
 
-  // Derive current vault symbol dynamically from live data
-  const currentVault =
-    (vaultId && getVaultDataByAddress(vaultId)?.symbol) ||
-    priceData.token ||
-    "";
-  const currentVaultName =
-    (vaultId && getVaultDataByAddress(vaultId)?.name) ||
-    currentVault ||
-    "Vault";
+  const [currentVaultSymbol, setCurrentVaultSymbol] = useState("");
+  const [currentVaultName, setCurrentVaultName] = useState("");
+  const [currentVaultAssetAddress, setCurrentVaultAssetAddress] = useState("");
+
+  useEffect(() => {
+    if (!vaultId) return;
+    const currentVaultData = getVaultDataByAddress(vaultId);
+    setCurrentVaultSymbol(currentVaultData?.symbol || "");
+    setCurrentVaultName(currentVaultData?.name || "");
+    setCurrentVaultAssetAddress(currentVaultData?.underlying || "");
+  }, [vaultId, getVaultDataByAddress]);
 
   const { userAddress } = useActiveWallet();
 
@@ -319,7 +319,7 @@ const VaultDetails = () => {
       return [];
     }
 
-    const vaultSymbol = currentVault || "USDC";
+    const vaultSymbol = currentVaultSymbol;
 
     const validPools = vaultData.poolAddresses
       .map((address, index) => {
@@ -381,7 +381,7 @@ const VaultDetails = () => {
                 variant="secondary"
                 className="bg-primary/10 text-primary border-primary/20 text-xs"
               >
-                {currentVault}
+                {currentVaultSymbol}
               </Badge>
             </div>
           </div>
@@ -404,38 +404,16 @@ const VaultDetails = () => {
               </div>
               {/* Cancel / Claim UX */}
               <div className="ml-auto flex items-center gap-2">
-                {pendingDepositAssets > 0n && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-xs border border-primary/40 hover:border-primary"
-                    onClick={async () => {
-                      try {
-                        const vc = multiVaultData.getVaultClientByAddress(vaultId || "");
-                        await vc.cancelDepositRequest?.();
-                        setTxCanceled(true);
-                        await refreshData?.();
-                        await multiVaultData.refreshAllData?.();
-                      } catch (error: any) {
-                        toast({
-                          variant: "destructive",
-                          title: "Cancel Failed",
-                          description: error?.message || "Unable to cancel pending deposit.",
-                        });
-                      }
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                )}
-                {claimableDepositAssets > 0 && (
+                {claimableDepositAssets > 0 ? (
                   <Button
                     size="sm"
                     variant="wallet"
                     className="text-xs border-2 border-primary/60 hover:border-primary"
                     onClick={async () => {
                       try {
-                        const vc = multiVaultData.getVaultClientByAddress(vaultId || "");
+                        const vc = multiVaultData.getVaultClientByAddress(
+                          vaultId || ""
+                        );
                         await vc.claimDeposit?.();
                         await refreshData?.();
                         await multiVaultData.refreshAllData?.();
@@ -443,13 +421,44 @@ const VaultDetails = () => {
                         toast({
                           variant: "destructive",
                           title: "Claim Failed",
-                          description: error?.message || "Unable to claim deposit shares.",
+                          description:
+                            error?.message || "Unable to claim deposit shares.",
                         });
                       }
                     }}
                   >
                     Claim Shares
                   </Button>
+                ) : (
+                  pendingDepositAssets > 0n && (
+                    <Button
+                      size="sm"
+                      variant="wallet"
+                      className="text-xs border border-primary/40 hover:border-primary"
+                      onClick={async () => {
+                        try {
+                          const vc = multiVaultData.getVaultClientByAddress(
+                            vaultId || ""
+                          );
+                          await vc.cancelDepositRequest?.();
+                          setTxCanceled(true);
+                          await refreshData?.();
+                          await multiVaultData.refreshAllData?.();
+                        } catch (error: any) {
+                          toast({
+                            variant: "destructive",
+                            title: "Cancel Failed",
+                            description:
+                              error?.message ||
+                              "Unable to cancel pending deposit.",
+                          });
+                        }
+                      }}
+                      disabled={claimableDepositAssets > 0}
+                    >
+                      Cancel
+                    </Button>
+                  )
                 )}
               </div>
             </Card>
@@ -522,59 +531,49 @@ const VaultDetails = () => {
                   </h3>
                   <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                 </div>
-                {vaultData?.isLoading ? (
-                  <div className="text-muted-foreground text-sm">
-                    Loading...
-                  </div>
-                ) : vaultData?.error ? (
-                  <div className="text-red-500 text-sm">{vaultData.error}</div>
-                ) : (
-                  <>
-                    <p className="text-xl sm:text-2xl font-bold text-foreground">
-                      $
-                      {totalAUM.toLocaleString(undefined, {
-                        maximumFractionDigits: 4,
-                      })}
-                    </p>
-                    <div className="flex items-center mt-1">
-                      <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
-                      <span className="text-primary text-xs sm:text-sm font-medium">
-                        {isPriceLoading ? "Loading..." : get24APY().toFixed(2)}%
-                        APY (24h)
-                      </span>
-                      <div className="flex items-center gap-1 relative">
-                        <div className="h-6 w-6 group relative flex items-center justify-center rounded-md">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="14"
-                            height="14"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-foreground"
-                          >
-                            <circle cx="12" cy="12" r="10" />
-                            <path d="M12 16v-4" />
-                            <path d="M12 8h.01" />
-                          </svg>
-                          <div className="flex items-center gap-1 absolute top-8 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                            <div className="font-medium text-muted-foreground">
-                              7-Day APY
-                            </div>
-                            <div className="font-medium text-foreground">:</div>
-                            <div className="font-medium ml-1 text-foreground">
-                              {get7APY() ? get7APY().toFixed(2) : "-"}
-                            </div>
-                            <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
-                          </div>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">
+                  $
+                  {totalAUM.toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}
+                </p>
+                <div className="flex items-center mt-1">
+                  <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
+                  <span className="text-primary text-xs sm:text-sm font-medium">
+                    {isPriceLoading ? "Loading..." : get24APY().toFixed(2)}% APY
+                    (24h)
+                  </span>
+                  <div className="flex items-center gap-1 relative">
+                    <div className="h-6 w-6 group relative flex items-center justify-center rounded-md">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-foreground"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                      </svg>
+                      <div className="flex items-center gap-1 absolute top-8 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        <div className="font-medium text-muted-foreground">
+                          7-Day APY
                         </div>
+                        <div className="font-medium text-foreground">:</div>
+                        <div className="font-medium ml-1 text-foreground">
+                          {get7APY() ? get7APY().toFixed(2) : "-"}
+                        </div>
+                        <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                       </div>
                     </div>
-                  </>
-                )}
+                  </div>
+                </div>
               </CardContent>
             </Card>
 
@@ -730,7 +729,7 @@ const VaultDetails = () => {
                                   typeof value === "number"
                                     ? value
                                     : parseFloat(String(value));
-                                const label = `${currentVault} Share Price`;
+                                const label = `${currentVaultSymbol} Share Price`;
                                 return [numValue?.toFixed(4), label];
                               }
                               return [value, name];
@@ -738,7 +737,7 @@ const VaultDetails = () => {
                           />
                         }
                         labelFormatter={(label, payload) => {
-                          return `${currentVault} - Share Price`;
+                          return `${currentVaultSymbol} - Share Price`;
                         }}
                       />
                       <Area
@@ -795,10 +794,11 @@ const VaultDetails = () => {
                   </CardHeader>
                   <CardContent className="space-y-3 sm:space-y-4 pt-0">
                     <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
-                      Autonomous Liquidity {currentVault} is a tokenized AI
-                      yield optimization strategy that maximizes risk-adjusted
-                      returns on stablecoin investments across numerous DeFi
-                      protocols. By continuously scanning the DeFi.
+                      Autonomous Liquidity {currentVaultSymbol} is a tokenized
+                      AI yield optimization strategy that maximizes
+                      risk-adjusted returns on stablecoin investments across
+                      numerous DeFi protocols. By continuously scanning the
+                      DeFi.
                     </p>
 
                     {/* <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
@@ -808,7 +808,7 @@ const VaultDetails = () => {
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
                           {vaultData.pendingDepositAssets?.toFixed(4) || "0.00"}{" "}
-                          {currentVault}
+                          {currentVaultSymbol}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -817,7 +817,7 @@ const VaultDetails = () => {
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
                           {vaultData.totalRequestedAssets?.toFixed(4) || "0.00"}{" "}
-                          {currentVault}
+                          {currentVaultSymbol}
                         </span>
                       </div>
                     </div> */}
@@ -857,7 +857,7 @@ const VaultDetails = () => {
                 >
                   <VaultActivity
                     vaultId={vaultId}
-                    currentVault={currentVault}
+                    currentVault={currentVaultSymbol}
                   />
                 </Suspense>
               </div>
@@ -1029,7 +1029,8 @@ const VaultDetails = () => {
         <div className="w-full lg:w-80 flex-shrink-0 space-y-4 sm:space-y-6">
           <div className="sticky top-6 space-y-4 sm:space-y-6">
             <VaultActionPanel
-              currentVault={currentVault}
+              currentVaultSymbol={currentVaultSymbol}
+              currentVaultAssetAddress={currentVaultAssetAddress}
               availableAssetBalance={vaultData?.assetBalance}
               availableUserDeposits={vaultData?.userDeposits}
               deposit={deposit}
@@ -1068,7 +1069,7 @@ const VaultDetails = () => {
         </div>
       </div>
 
-      <AgentConsole vaultId={vaultId} currentVault={currentVault} />
+      <AgentConsole vaultId={vaultId} currentVault={currentVaultSymbol} />
 
       <AccessCodeModal
         isOpen={showAccessCodeModal}

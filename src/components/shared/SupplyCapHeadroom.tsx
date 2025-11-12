@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Address, formatUnits, parseAbi, parseUnits } from "viem";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { formatUnits, parseAbi, parseUnits } from "viem";
 import { usePublicClient } from "wagmi";
 import { useActiveWallet } from "@/hooks/useActiveWallet";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
@@ -9,13 +9,14 @@ import { formatCurrency } from "@/utils/currency";
 interface EligibilityState {
   eligible: boolean;
   reason?: string;
-  userHeadroom?: string; 
-  vaultHeadroom?: string; 
+  userHeadroom?: string;
+  vaultHeadroom?: string;
 }
 
 interface SupplyCapHeadroomProps {
-  vaultId?: string; 
-  assetSymbol: string;
+  show: boolean;
+  vaultId?: string;
+  assetAddress: string;
   inputAmount?: string;
   pendingDepositAssets?: bigint;
   claimableDepositAssets?: number;
@@ -25,8 +26,9 @@ interface SupplyCapHeadroomProps {
 }
 
 const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
+  show,
   vaultId,
-  assetSymbol,
+  assetAddress,
   inputAmount,
   pendingDepositAssets,
   claimableDepositAssets,
@@ -43,19 +45,42 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   const [validating, setValidating] = useState(true);
   const [assetDecimals, setAssetDecimals] = useState<number | null>(null);
 
+  // Cached base chain state to avoid re-reading on every input change
+  const vaultSuppliedRef = useRef<bigint | null>(null);
+  const userSuppliedRef = useRef<bigint | null>(null);
+  const userClaimableAssetsRef = useRef<bigint | null>(null);
+  const [baseReady, setBaseReady] = useState(false);
+
+  // Debounce input amount to reduce frequent evaluations during typing
+  const [debouncedAmount, setDebouncedAmount] = useState<string | undefined>(
+    undefined
+  );
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedAmount(inputAmount), 250);
+    return () => clearTimeout(t);
+  }, [inputAmount]);
+
+  // Memoized caps and requested amount
+  const caps = useMemo(() => {
+    return assetDecimals != null
+      ? getSupplyCapsForVault(Number(assetDecimals))
+      : null;
+  }, [assetDecimals]);
+  const requestedAssets = useMemo(() => {
+    if (assetDecimals == null) return 0n;
+    return debouncedAmount
+      ? parseUnits(debouncedAmount, Number(assetDecimals))
+      : 0n;
+  }, [debouncedAmount, assetDecimals]);
+
   // Fetch asset decimals once per vault
   useEffect(() => {
     let cancelled = false;
     const readDecimals = async () => {
       try {
         if (!publicClient || !vaultId) return;
-        const assetAddress = (await publicClient.readContract({
-          address: vaultId as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "asset",
-        })) as `0x${string}`;
         const decimals = (await publicClient.readContract({
-          address: assetAddress,
+          address: assetAddress as `0x${string}`,
           abi: parseAbi(["function decimals() view returns (uint8)"]),
           functionName: "decimals",
         })) as number;
@@ -68,7 +93,76 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [publicClient, vaultId]);
+  }, [publicClient, assetAddress]);
+
+  // Fetch and cache base state on identity/decimals change
+  useEffect(() => {
+    let cancelled = false;
+    const fetchBaseState = async () => {
+      setBaseReady(false);
+      vaultSuppliedRef.current = null;
+      userSuppliedRef.current = null;
+      userClaimableAssetsRef.current = null;
+
+      try {
+        if (!publicClient || !vaultId || !userAddress || assetDecimals == null)
+          return;
+
+        const [vaultSupplied, userShares] = await Promise.all([
+          publicClient.readContract({
+            address: vaultId as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "totalAssets",
+          }) as Promise<bigint>,
+          publicClient.readContract({
+            address: vaultId as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "balanceOf",
+            args: [userAddress as `0x${string}`],
+          }) as Promise<bigint>,
+        ]);
+
+        const userSupplied = (await publicClient.readContract({
+          address: vaultId as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "convertToAssets",
+          args: [userShares],
+        })) as bigint;
+
+        let userClaimableAssets: bigint = 0n;
+        if (!(claimableDepositAssets ?? 0)) {
+          userClaimableAssets = (await publicClient.readContract({
+            address: vaultId as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "claimableDepositRequest",
+            args: [0n, userAddress as `0x${string}`],
+          })) as bigint;
+        }
+
+        if (!cancelled) {
+          vaultSuppliedRef.current = vaultSupplied;
+          userSuppliedRef.current = userSupplied;
+          userClaimableAssetsRef.current = userClaimableAssets;
+          setBaseReady(true);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setBaseReady(false);
+        }
+      }
+    };
+    fetchBaseState();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    publicClient,
+    vaultId,
+    userAddress,
+    assetDecimals,
+    claimableDepositAssets,
+    claimableWithdrawAssets,
+  ]);
 
   const status = useMemo<"info" | "warning" | "error">(() => {
     const r = (eligibility.reason || "").toLowerCase();
@@ -91,57 +185,29 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     return "info";
   }, [eligibility.reason]);
 
-  // Calculate and update supply cap headroom
+  // Calculate and update supply cap headroom (uses cached base state)
   useEffect(() => {
     let cancelled = false;
     const evaluate = async () => {
+      setValidating(true);
       if (!publicClient || !vaultId || !userAddress || !assetDecimals) {
         const res = {
           eligible: false,
           reason: "",
         } as EligibilityState;
-        if (!cancelled) {
-          setEligibility(res);
-          onComputed?.(res);
-        }
+        // Keep validating until base state is ready
         return;
       }
       try {
-        // Caps and requested amount
-        const { perUserCapUnits, vaultCapUnits } = getSupplyCapsForVault(
-          Number(assetDecimals)
-        );
-        const requestedAssets = inputAmount
-          ? parseUnits(inputAmount, Number(assetDecimals))
-          : 0n;
+        if (!baseReady || caps == null) {
+          return; // Wait until base state and caps are ready
+        }
+        const perUserCapUnits = caps.perUserCapUnits;
+        const vaultCapUnits = caps.vaultCapUnits;
 
-        // Live reads
-        const [vaultSupplied, userShares] = await Promise.all([
-          publicClient.readContract({
-            address: vaultId as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "totalAssets",
-          }) as Promise<bigint>,
-          publicClient.readContract({
-            address: vaultId as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "balanceOf",
-            args: [userAddress as `0x${string}`],
-          }) as Promise<bigint>,
-        ]);
-        const userSupplied = (await publicClient.readContract({
-          address: vaultId as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "convertToAssets",
-          args: [userShares],
-        })) as bigint;
-
-        const userClaimableAssets = (await publicClient.readContract({
-          address: vaultId as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "claimableDepositRequest",
-          args: [0n, userAddress as `0x${string}`],
-        })) as bigint;
+        const vaultSupplied = vaultSuppliedRef.current ?? 0n;
+        const userSupplied = userSuppliedRef.current ?? 0n;
+        const userClaimableAssets = userClaimableAssetsRef.current ?? 0n;
 
         // Request-state guards
         if ((pendingDepositAssets ?? 0n) > 0n) {
@@ -163,8 +229,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ),
           } as EligibilityState;
           if (!cancelled) {
-            setEligibility(res);
-            onComputed?.(res);
+            const shouldUpdate =
+              eligibility.eligible !== res.eligible ||
+              eligibility.reason !== res.reason ||
+              eligibility.userHeadroom !== res.userHeadroom ||
+              eligibility.vaultHeadroom !== res.vaultHeadroom;
+            if (shouldUpdate) {
+              setEligibility(res);
+              onComputed?.(res);
+            }
+            setValidating(false);
           }
           return;
         }
@@ -191,8 +265,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ),
           } as EligibilityState;
           if (!cancelled) {
-            setEligibility(res);
-            onComputed?.(res);
+            const shouldUpdate =
+              eligibility.eligible !== res.eligible ||
+              eligibility.reason !== res.reason ||
+              eligibility.userHeadroom !== res.userHeadroom ||
+              eligibility.vaultHeadroom !== res.vaultHeadroom;
+            if (shouldUpdate) {
+              setEligibility(res);
+              onComputed?.(res);
+            }
+            setValidating(false);
           }
           return;
         }
@@ -220,8 +302,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ),
           } as EligibilityState;
           if (!cancelled) {
-            setEligibility(res);
-            onComputed?.(res);
+            const shouldUpdate =
+              eligibility.eligible !== res.eligible ||
+              eligibility.reason !== res.reason ||
+              eligibility.userHeadroom !== res.userHeadroom ||
+              eligibility.vaultHeadroom !== res.vaultHeadroom;
+            if (shouldUpdate) {
+              setEligibility(res);
+              onComputed?.(res);
+            }
+            setValidating(false);
           }
           return;
         }
@@ -237,8 +327,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ),
           } as EligibilityState;
           if (!cancelled) {
-            setEligibility(res);
-            onComputed?.(res);
+            const shouldUpdate =
+              eligibility.eligible !== res.eligible ||
+              eligibility.reason !== res.reason ||
+              eligibility.userHeadroom !== res.userHeadroom ||
+              eligibility.vaultHeadroom !== res.vaultHeadroom;
+            if (shouldUpdate) {
+              setEligibility(res);
+              onComputed?.(res);
+            }
+            setValidating(false);
           }
           return;
         }
@@ -249,8 +347,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
           vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
         } as EligibilityState;
         if (!cancelled) {
-          setEligibility(res);
-          onComputed?.(res);
+          const shouldUpdate =
+            eligibility.eligible !== res.eligible ||
+            eligibility.reason !== res.reason ||
+            eligibility.userHeadroom !== res.userHeadroom ||
+            eligibility.vaultHeadroom !== res.vaultHeadroom;
+          if (shouldUpdate) {
+            setEligibility(res);
+            onComputed?.(res);
+          }
+          setValidating(false);
         }
       } catch (e) {
         const res = {
@@ -258,8 +364,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
           reason: "Unable to validate deposit right now.",
         } as EligibilityState;
         if (!cancelled) {
-          setEligibility(res);
-          onComputed?.(res);
+          const shouldUpdate =
+            eligibility.eligible !== res.eligible ||
+            eligibility.reason !== res.reason ||
+            eligibility.userHeadroom !== res.userHeadroom ||
+            eligibility.vaultHeadroom !== res.vaultHeadroom;
+          if (shouldUpdate) {
+            setEligibility(res);
+            onComputed?.(res);
+          }
+          setValidating(false);
         }
       }
     };
@@ -272,11 +386,10 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     vaultId,
     userAddress,
     assetDecimals,
-    inputAmount,
+    requestedAssets,
     pendingDepositAssets,
     claimableDepositAssets,
-    claimableWithdrawAssets,
-    onComputed,
+    baseReady,
   ]);
 
   const colorClass = useMemo(() => {
@@ -291,24 +404,33 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   }, [status]);
 
   return (
-    <div
-      className={"mt-2 text-xs" + (className ?? "")}
-      role="status"
-      aria-live="polite"
-    >
-      {/* {eligibility.reason && (
-        <div className={colorClass}>{eligibility.reason}</div>
-      )} */}
-      {(!validating||(eligibility.userHeadroom !== undefined &&
-        eligibility.vaultHeadroom !== undefined)) ? (
+    show && (
+      <div
+        className={"mt-2 text-xs" + (className ?? "")}
+        role="status"
+        aria-live="polite"
+      >
+        {!validating ||
+        (eligibility.userHeadroom !== undefined &&
+          eligibility.vaultHeadroom !== undefined) ? (
           <div className="mt-3 text-muted-foreground flex gap-3 text-center w-full">
-            <div className={`w-full flex flex-col items-center justify-center gap-1 p-2 py-1 border rounded-md ${status==="error"?"border-red-500":"border-border "}`}>
+            <div
+              className={`w-full flex flex-col items-center justify-center gap-1 p-2 py-1 border rounded-md ${
+                status === "error" ? "border-red-500" : "border-border "
+              }`}
+            >
               <div>Your remaining quota:</div>
               <div className="text-sm text-white">
                 {Number(eligibility.userHeadroom).toFixed(2)}
-                <span className="text-base text-muted-foreground" style={{lineHeight:"60%"}}>{" "}/</span>
+                <span
+                  className="text-base text-muted-foreground"
+                  style={{ lineHeight: "60%" }}
+                >
+                  {" "}
+                  /
+                </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatCurrency(RAW_CAPS.perUser, '')}
+                  {formatCurrency(RAW_CAPS.perUser, "")}
                 </span>
               </div>
             </div>
@@ -316,36 +438,33 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
               <div>Vault Capacity:</div>
               <div className="text-sm text-white">
                 {Number(eligibility.vaultHeadroom).toFixed(2)}
-                <span className="text-base text-muted-foreground" style={{lineHeight:"60%"}}>{" "}/</span>
+                <span
+                  className="text-base text-muted-foreground"
+                  style={{ lineHeight: "60%" }}
+                >
+                  {" "}
+                  /
+                </span>
                 <span className="text-xs text-muted-foreground">
-                  {formatCurrency(RAW_CAPS.vault, '')}
+                  {formatCurrency(RAW_CAPS.vault, "")}
                 </span>
               </div>
             </div>
           </div>
-        ):
-        <div className="mt-3 text-muted-foreground flex gap-3 text-center w-full">
-          <div className="w-full flex flex-col items-center justify-center gap-1 p-2 py-1 bg-gradient-to-br from-card to-background border border-border rounded-md animate-pulse">
-            <div className="h-4 w-24 bg-muted rounded" />
-            <div className="h-4 w-24 bg-muted rounded" />
+        ) : (
+          <div className="mt-3 text-muted-foreground flex gap-3 text-center w-full">
+            <div className="w-full flex flex-col items-center justify-center gap-1 p-2 py-1 bg-gradient-to-br from-card to-background border border-border rounded-md animate-pulse">
+              <div className="h-4 w-24 bg-muted rounded" />
+              <div className="h-4 w-24 bg-muted rounded" />
+            </div>
+            <div className="w-full flex flex-col items-center justify-center gap-1 p-2 py-1 bg-gradient-to-br from-card to-background border border-border rounded-md animate-pulse">
+              <div className="h-4 w-24 bg-muted rounded" />
+              <div className="h-4 w-24 bg-muted rounded" />
+            </div>
           </div>
-          <div className="w-full flex flex-col items-center justify-center gap-1 p-2 py-1 bg-gradient-to-br from-card to-background border border-border rounded-md animate-pulse">
-            <div className="h-4 w-24 bg-muted rounded" />
-            <div className="h-4 w-24 bg-muted rounded" />
-          </div>
-        </div>
-        }
-        {/* <div className="mt-3 text-muted-foreground flex gap-3 text-center w-full">
-          <div className="w-full flex flex-col items-center justify-center gap-1 p-2 py-1 bg-gradient-to-br from-card to-background border border-border rounded-md animate-pulse">
-            <div className="h-4 w-24 bg-muted rounded" />
-            <div className="h-4 w-24 bg-muted rounded" />
-          </div>
-          <div className="w-full flex flex-col items-center justify-center gap-1 p-2 py-1 bg-gradient-to-br from-card to-background border border-border rounded-md animate-pulse">
-            <div className="h-4 w-24 bg-muted rounded" />
-            <div className="h-4 w-24 bg-muted rounded" />
-          </div>
-        </div> */}
-    </div>
+        )}
+      </div>
+    )
   );
 };
 
