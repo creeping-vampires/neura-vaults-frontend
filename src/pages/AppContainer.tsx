@@ -3,7 +3,7 @@ import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import UnicornStudioEmbed from "@/components/ChromaBGs-Vyun";
 import ComingSoon from "@/components/ComingSoon";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface AppContainerProps {
@@ -13,7 +13,7 @@ interface AppContainerProps {
 const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const isConnected = Boolean(userAddress);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -26,14 +26,14 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
     };
 
     checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
- useEffect(() => {
+  useEffect(() => {
     try {
-      const key = 'POST_LOGIN_REDIRECT_PATH';
+      const key = "POST_LOGIN_REDIRECT_PATH";
       const target = localStorage.getItem(key);
       if (target && isConnected) {
         if (location.pathname !== target) {
@@ -42,7 +42,7 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
         localStorage.removeItem(key);
       }
     } catch (e) {
-      console.log("error",e)
+      console.log("error", e);
     }
   }, [isConnected, navigate, location.pathname]);
 
@@ -50,14 +50,17 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
     const handleClickOutside = (event: MouseEvent) => {
       if (isMobile && isSidebarOpen) {
         const target = event.target as HTMLElement;
-        if (!target.closest('.sidebar-container') && !target.closest('.burger-menu')) {
+        if (
+          !target.closest(".sidebar-container") &&
+          !target.closest(".burger-menu")
+        ) {
           setIsSidebarOpen(false);
         }
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isMobile, isSidebarOpen]);
 
   const toggleSidebar = () => {
@@ -72,25 +75,24 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
     <div className="h-screen flex flex-row relative">
       {/* Overlay for mobile */}
       {isMobile && isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
+      <Sidebar
+        isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
         isMobile={isMobile}
       />
-      
+
       {/* Main content area */}
-      <div className={`w-full flex flex-col overflow-hidden transition-all duration-300`}>
-        <Navbar 
-          onToggleSidebar={toggleSidebar}
-          isMobile={isMobile}
-        />
+      <div
+        className={`w-full flex flex-col overflow-hidden transition-all duration-300`}
+      >
+        <Navbar onToggleSidebar={toggleSidebar} isMobile={isMobile} />
         {/* Main content */}
         <div className="h-full absolute inset-0">
           <UnicornStudioEmbed projectId="lHlDvoJDIXCxxXVqTNOC" />

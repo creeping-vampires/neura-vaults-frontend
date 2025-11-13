@@ -12,11 +12,10 @@ import {
   Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { usePrivy } from "@privy-io/react-auth";
 import { formatAddress, switchToChain } from "@/lib/utils";
 import { AddressDisplay } from "@/components/shared/AddressDisplay";
 import { ethers } from "ethers";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useQueryClient } from "@tanstack/react-query";
@@ -34,7 +33,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const queryClient = useQueryClient();
   const { disconnect } = useDisconnect();
 
-  const { wallet, userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
 
   const { hasAccess, isLoading } = useUserAccess();
 
@@ -62,7 +61,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   };
 
   const isConnected = Boolean(userAddress);
-  const isWrongNetwork = isConnected && wallet && currentChainId !== "0x3e7";
+  const isWrongNetwork = isConnected && currentChainId !== "0x3e7";
 
   // Get chain label from chain ID
   const getChainLabel = (chainId: string | null) => {
@@ -92,7 +91,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
 
   // Check network on wallet connection and listen for network changes
   useEffect(() => {
-    if (window.ethereum && wallet) {
+    if (window.ethereum && userAddress) {
       checkCurrentNetwork();
 
       // Listen for network changes using ethers.js
@@ -108,7 +107,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
         };
       }
     }
-  }, [wallet]);
+  }, [userAddress]);
 
   useEffect(() => {
     if (shouldRedirectAfterLogin && isConnected && location.pathname === "/") {
@@ -333,7 +332,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
             </div>
           )}
 
-          {wallet && (
+          {isConnected && (
             <div className="space-y-3">
               {/* Network Status and Switch Button */}
               <div className="space-y-2">

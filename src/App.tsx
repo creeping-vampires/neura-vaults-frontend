@@ -15,7 +15,7 @@ import React, { Suspense, useEffect, useState, lazy } from "react";
 import { useMultiVault } from "./hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 import SkeletonLoader from "@/components/skeleton";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
@@ -58,7 +58,7 @@ const Loader = () => (
 const AppRoutes = () => {
   const { isLoading: isVaultsLoading, error: vaultsError } = useMultiVault();
   const { isPriceLoading, priceError } = usePrice();
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const isConnected = Boolean(userAddress);
   const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
 

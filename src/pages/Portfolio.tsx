@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMultiVault } from '@/hooks/useMultiVault';
-import { useActiveWallet } from '@/hooks/useActiveWallet';
+import { useAccount } from "wagmi";
 import { usePrice } from "@/hooks/usePrice";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import { getExplorerTxUrl } from "@/lib/utils";
@@ -28,8 +28,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from "recharts";
-import { useWallets } from "@privy-io/react-auth";
-import { useWalletConnection } from '@/hooks/useWalletConnection';
+import { useWalletConnection } from "@/hooks/useWalletConnection";
 
 const Portfolio = () => {
   const navigate = useNavigate();
@@ -87,7 +86,13 @@ const Portfolio = () => {
   const { getAllVaults, getTotalTVL, getTotalUserDeposits, refreshAllData } =
     useMultiVault();
 
-  const { priceData, getHighest7APY, get24APY, get7APY, getVaultDataByAddress } = usePrice();
+  const {
+    priceData,
+    getHighest7APY,
+    get24APY,
+    get7APY,
+    getVaultDataByAddress,
+  } = usePrice();
   const {
     transactions,
     isLoading: isLoadingTransactions,
@@ -316,7 +321,7 @@ const Portfolio = () => {
   }, [selectedTimeframe, portfolioData.totalDeposits]);
 
   const { isConnecting, connectWithFallback } = useWalletConnection();
-  const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const isConnected = Boolean(userAddress);
 
   useEffect(() => {
@@ -336,11 +341,11 @@ const Portfolio = () => {
             variant="wallet"
             className="w-40 px-6 py-2"
             onClick={async () => {
-              await connectWithFallback('/vaults');
+              await connectWithFallback("/vaults");
             }}
             disabled={isConnecting}
           >
-            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+            {isConnecting ? "Connecting..." : "Connect Wallet"}
           </Button>
         </div>
       </div>

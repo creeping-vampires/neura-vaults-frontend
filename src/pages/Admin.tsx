@@ -11,7 +11,7 @@ import { Plus, Key, Users, Copy, Check, Trash2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { userService, InviteCode as ApiInviteCode } from "@/services/userService";
 import type { AccessRequest } from "@/services/userService";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 import { formatAddress } from "@/lib/utils";
 
 interface InviteCode {
@@ -64,7 +64,7 @@ const Admin: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   const [requestsSort, setRequestsSort] = useState<{
     key: keyof AccessRequest;

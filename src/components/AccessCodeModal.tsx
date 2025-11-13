@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { X, Lock } from 'lucide-react';
 import { Button } from './ui/button';
 import { isAddress } from 'viem';
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 import { userService } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import { useUserAccess } from "@/hooks/useUserAccess";
@@ -38,7 +38,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
   const [isWaitlistLoading, setIsWaitlistLoading] = useState(false);
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const { toast } = useToast();
   const { refreshUserAccess } = useUserAccess();
 
@@ -78,7 +78,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
       });
 
       refreshUserAccess();
-      window.location.reload()
+      window.location.reload();
       onClose();
     } catch (error: any) {
       toast({
@@ -105,20 +105,19 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
 
   const normalizeTwitterHandle = (handle: string) => {
     const trimmed = handle.trim();
-    const noAt = trimmed.startsWith('@') ? trimmed.slice(1) : trimmed;
+    const noAt = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
     return noAt;
   };
 
   const validateWaitlistForm = (): { ok: boolean; message?: string } => {
-
     const handle = normalizeTwitterHandle(twitterHandle);
     if (!handle) {
-      return { ok: false, message: 'Twitter handle is required.' };
+      return { ok: false, message: "Twitter handle is required." };
     }
 
     const twitterRegex = /^[A-Za-z0-9_]{1,15}$/;
     if (!twitterRegex.test(handle)) {
-      return { ok: false, message: 'Enter a valid Twitter handle.' };
+      return { ok: false, message: "Enter a valid Twitter handle." };
     }
 
     return { ok: true };
@@ -131,11 +130,13 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
 
     const validation = validateWaitlistForm();
     if (!validation.ok) {
-      setWaitlistError(validation.message || 'Invalid input.');
+      setWaitlistError(validation.message || "Invalid input.");
       toast({
-        title: 'Invalid Waitlist Details',
-        description: validation.message || 'Please check your wallet connection and Twitter handle.',
-        variant: 'destructive',
+        title: "Invalid Waitlist Details",
+        description:
+          validation.message ||
+          "Please check your wallet connection and Twitter handle.",
+        variant: "destructive",
       });
       return;
     }
@@ -150,16 +151,17 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
 
       setWaitlistSuccess(true);
       toast({
-        title: 'Request Submitted',
-        description: 'You have been added to the waitlist. We will reach out via Twitter.',
+        title: "Request Submitted",
+        description:
+          "You have been added to the waitlist. We will reach out via Twitter.",
       });
     } catch (error: any) {
-      const message = 'Failed to submit waitlist request.';
+      const message = "Failed to submit waitlist request.";
       setWaitlistError(message);
       toast({
-        title: 'Submission Failed',
+        title: "Submission Failed",
         description: message,
-        variant: 'destructive',
+        variant: "destructive",
       });
     } finally {
       setIsWaitlistLoading(false);
@@ -194,7 +196,9 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
             <DialogDescription className="text-muted-foreground text-base">
               {hasAccess
                 ? "You already have access to Neura Vaults. No need to redeem another invite code."
-                : !showWaitlist?description:"Enter Twitter handle to join the waitlist."}
+                : !showWaitlist
+                ? description
+                : "Enter Twitter handle to join the waitlist."}
             </DialogDescription>
           </DialogHeader>
 
@@ -234,23 +238,29 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
           {!hasAccess && showWaitlist && (
             <form onSubmit={handleWaitlistSubmit} className="w-full space-y-4">
               <div className="space-y-2">
-              <div className="relative">
-                <span className="absolute left-0 w-10 flex items-center justify-center h-full top-1/2 -translate-y-1/2 text-lg text-muted-foreground">@</span>
-                <Input
-                  type="text"
-                  placeholder="Enter Twitter handle"
-                  value={twitterHandle}
-                  onChange={(e) => setTwitterHandle(normalizeTwitterHandle(e.target.value))}
-                  className="h-12 text-base transition-all duration-200 pl-10"
-                  disabled={isWaitlistLoading}
-                  maxLength={15}
-                />
+                <div className="relative">
+                  <span className="absolute left-0 w-10 flex items-center justify-center h-full top-1/2 -translate-y-1/2 text-lg text-muted-foreground">
+                    @
+                  </span>
+                  <Input
+                    type="text"
+                    placeholder="Enter Twitter handle"
+                    value={twitterHandle}
+                    onChange={(e) =>
+                      setTwitterHandle(normalizeTwitterHandle(e.target.value))
+                    }
+                    className="h-12 text-base transition-all duration-200 pl-10"
+                    disabled={isWaitlistLoading}
+                    maxLength={15}
+                  />
                 </div>
                 {waitlistError && (
                   <p className="text-xs text-red-500 mt-1">{waitlistError}</p>
                 )}
                 {waitlistSuccess && (
-                  <p className="text-xs text-green-500 mt-1">Successfully joined the waitlist.</p>
+                  <p className="text-xs text-green-500 mt-1">
+                    Successfully joined the waitlist.
+                  </p>
                 )}
               </div>
 
@@ -267,7 +277,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
                       <span>Submitting...</span>
                     </div>
                   ) : (
-                    'Join Waitlist'
+                    "Join Waitlist"
                   )}
                 </Button>
                 <Button
@@ -275,7 +285,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
                   variant="wallet"
                   onClick={() => {
                     setShowWaitlist(false);
-                    setTwitterHandle('');
+                    setTwitterHandle("");
                     setWaitlistError(null);
                     setWaitlistSuccess(false);
                   }}
@@ -309,9 +319,10 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
                   onClick={() => {
                     if (!userAddress) {
                       toast({
-                        title: 'Wallet Required',
-                        description: 'Please connect your wallet first to join the waitlist.',
-                        variant: 'destructive',
+                        title: "Wallet Required",
+                        description:
+                          "Please connect your wallet first to join the waitlist.",
+                        variant: "destructive",
                       });
                     }
                     setShowWaitlist(true);
