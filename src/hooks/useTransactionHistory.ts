@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useActiveWallet } from '@/hooks/useActiveWallet';
+import { useAccount } from "wagmi";
 import { useLocation } from "react-router-dom";
 
 export interface Transaction {
@@ -21,7 +21,7 @@ export interface Transaction {
 let transactionsCache: Transaction[] | null = null;
 
 export const useTransactionHistory = () => {
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const isConnected = Boolean(userAddress);
   const location = useLocation();
   const [transactions, setTransactions] = useState<Transaction[]>(

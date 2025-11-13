@@ -45,7 +45,7 @@ import {
 import { explorerUrl } from "@/utils/constant";
 import AgentConsole from "@/components/AgentConsole";
 import AccessCodeModal from "@/components/AccessCodeModal";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 import VaultActionPanel from "@/components/VaultActionPanel";
@@ -183,7 +183,7 @@ const VaultDetails = () => {
     setCurrentVaultAssetAddress(currentVaultData?.underlying || "");
   }, [vaultId, getVaultDataByAddress]);
 
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
 
   useEffect(() => {
     if (!selectedTimeframe || !vaultId) {

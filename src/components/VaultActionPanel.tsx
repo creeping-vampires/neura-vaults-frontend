@@ -10,7 +10,7 @@ import { usePublicClient } from "wagmi";
 import { Address, formatUnits, parseAbiItem, parseUnits, parseAbi } from "viem";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { getSupplyCapsForVault } from "@/services/supplyCaps";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { useLocation } from "react-router-dom";
@@ -83,7 +83,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   claimableWithdrawAssets,
 }) => {
   const publicClient = usePublicClient();
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const {
     depositEventStatus,
     setDepositEventStatus,

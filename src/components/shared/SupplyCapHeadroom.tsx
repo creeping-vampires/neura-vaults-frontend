@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, parseAbi, parseUnits } from "viem";
-import { usePublicClient } from "wagmi";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { usePublicClient, useAccount } from "wagmi";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { getSupplyCapsForVault, RAW_CAPS } from "@/services/supplyCaps";
 import { formatCurrency } from "@/utils/currency";
@@ -37,7 +36,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   onComputed,
 }) => {
   const publicClient = usePublicClient();
-  const { userAddress } = useActiveWallet();
+  const { address: userAddress } = useAccount();  
 
   const [eligibility, setEligibility] = useState<EligibilityState>({
     eligible: true,
@@ -164,16 +163,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     claimableWithdrawAssets,
   ]);
 
-  const status = useMemo<"info" | "warning" | "error">(() => {
+  const status = useMemo<
+    "info" | "warning" | "user_error" | "vault_error"
+  >(() => {
     const r = (eligibility.reason || "").toLowerCase();
     if (!r) return "info";
-    if (
-      r.includes("exceed") ||
-      r.includes("unable") ||
-      r.includes("fail") ||
-      r.includes("error")
-    ) {
-      return "error";
+    if (r.includes("exceeds per-user cap")) {
+      return "user_error";
+    }
+    if (r.includes("exceeds vault cap")) {
+      return "vault_error";
     }
     if (
       r.includes("pending") ||
@@ -291,10 +290,10 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ? vaultCapUnits - (vaultSupplied ?? 0n)
             : 0n;
 
-        if (requestedAssets > userHeadroomUnits) {
+        if (requestedAssets > vaultHeadroomUnits) {
           const res = {
             eligible: false,
-            reason: "Requested amount exceeds per-user cap headroom.",
+            reason: "Requested amount exceeds vault cap headroom.",
             userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
             vaultHeadroom: formatUnits(
               vaultHeadroomUnits,
@@ -316,10 +315,10 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
           return;
         }
 
-        if (requestedAssets > vaultHeadroomUnits) {
+        if (requestedAssets > userHeadroomUnits) {
           const res = {
             eligible: false,
-            reason: "Requested amount exceeds vault cap headroom.",
+            reason: "Requested amount exceeds per-user cap headroom.",
             userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
             vaultHeadroom: formatUnits(
               vaultHeadroomUnits,
@@ -394,7 +393,9 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
 
   const colorClass = useMemo(() => {
     switch (status) {
-      case "error":
+      case "user_error":
+        return "text-red-600";
+      case "vault_error":
         return "text-red-600";
       case "warning":
         return "text-amber-600";
@@ -416,7 +417,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
           <div className="mt-3 text-muted-foreground flex gap-3 text-center w-full">
             <div
               className={`w-full flex flex-col items-center justify-center gap-1 p-2 py-1 border rounded-md ${
-                status === "error" ? "border-red-500" : "border-border "
+                status === "user_error" ? "border-red-500" : "border-border"
               }`}
             >
               <div>Your remaining quota:</div>
@@ -434,7 +435,11 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
                 </span>
               </div>
             </div>
-            <div className="w-full flex flex-col items-center justify-center gap-1 p-2 py-1 bg-gradient-to-br from-card to-background border border-border rounded-md">
+            <div
+              className={`w-full flex flex-col items-center justify-center gap-1 p-2 py-1 border rounded-md ${
+                status === "vault_error" ? "border-red-500" : "border-border"
+              }`}
+            >
               <div>Vault Capacity:</div>
               <div className="text-sm text-white">
                 {Number(eligibility.vaultHeadroom).toFixed(2)}

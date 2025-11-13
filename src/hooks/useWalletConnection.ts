@@ -7,17 +7,17 @@ function getInjectedProviderName(): string | undefined {
   const eth: any = (window as any).ethereum;
   if (!eth) return undefined;
   // Try primary provider first
+  if ((eth as any).isRabby) return "Rabby";
   if (eth.isMetaMask) return 'MetaMask';
   if (eth.isBraveWallet) return 'BraveWallet';
-  if (eth.isCoinbaseWallet) return 'CoinbaseWallet';
-  if ((eth as any).isRabby) return 'Rabby';
+  if (eth.isCoinbaseWallet) return "CoinbaseWallet";
   // If multiple providers exist, pick a known flag
   const providers: any[] = Array.isArray(eth.providers) ? eth.providers : [];
   for (const p of providers) {
+    if (p?.isRabby) return "Rabby";
     if (p?.isMetaMask) return 'MetaMask';
     if (p?.isBraveWallet) return 'BraveWallet';
-    if (p?.isCoinbaseWallet) return 'CoinbaseWallet';
-    if (p?.isRabby) return 'Rabby';
+    if (p?.isCoinbaseWallet) return "CoinbaseWallet";
   }
   return 'unknown';
 }
@@ -73,7 +73,7 @@ export function useWalletConnection() {
         setIsConnecting(false);
       }
     },
-    [connectWallet, toast]
+    [connectWallet]
   );
 
   return { isConnecting, connectWithFallback };

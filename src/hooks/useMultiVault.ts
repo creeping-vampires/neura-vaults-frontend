@@ -1,6 +1,10 @@
 import { useCallback, useMemo, useEffect, useState } from "react";
-import { usePublicClient, useReconnect, useWalletClient } from "wagmi";
-import { usePrivy, useWallets } from "@privy-io/react-auth";
+import {
+  usePublicClient,
+  useReconnect,
+  useWalletClient,
+  useAccount,
+} from "wagmi";
 import {
   parseUnits,
   formatUnits,
@@ -19,7 +23,6 @@ import { VaultData } from "@/types/vault";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { toast } from "@/hooks/use-toast";
 import { switchToChain } from "@/lib/utils";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
 import { hyperliquid } from "@/lib/privyConfig";
 
 // Multi-vault cache to prevent unnecessary re-fetching
@@ -45,9 +48,7 @@ const deserializeBigInt = (key: string, value: any) => {
 export const useMultiVault = () => {
   const publicClient = usePublicClient();
   const { data: wagmiWalletClient } = useWalletClient();
-  const { wallets } = useWallets();
   const { allVaultData } = usePrice();
-  const { reconnect } = useReconnect();
 
   const [pendingDepositAssets, setPendingDepositAssets] = useState<bigint>(0n);
   const [pendingRedeemShares, setPendingRedeemShares] = useState<bigint>(0n);
@@ -103,8 +104,7 @@ export const useMultiVault = () => {
   const [isWithdrawTransacting, setIsWithdrawTransacting] = useState(false);
   const [transactionHash, setTransactionHash] = useState<string | null>(null);
 
-  const { wallet, userAddress, hasEmailLogin, hasWalletLogin, isPrivyWallet } =
-    useActiveWallet();
+  const { address: userAddress } = useAccount();
 
   const fetchAllVaultData = useCallback(
     async (silentRefresh = false) => {
@@ -548,7 +548,7 @@ export const useMultiVault = () => {
     }
 
     throw new Error("No wallet client available");
-  }, [wagmiWalletClient, wallets, wallet, isPrivyWallet]);
+  }, [wagmiWalletClient]);
 
   // Transaction functions
   const deposit = useCallback(

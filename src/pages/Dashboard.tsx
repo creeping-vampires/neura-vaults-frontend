@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, DollarSign, Percent, Rocket } from "lucide-react";
 import { usePrice } from "@/hooks/usePrice";
-import { useWallets } from "@privy-io/react-auth";
-import { useWalletConnection } from '@/hooks/useWalletConnection';
+import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { fetchHypeBalance } from "@/lib/utils";
 import { useMultiVault } from "@/hooks/useMultiVault";
-import { useActiveWallet } from "@/hooks/useActiveWallet";
+import { useAccount } from "wagmi";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
@@ -19,7 +18,7 @@ const Dashboard = () => {
     refreshAllData,
   } = useMultiVault();
   const { isConnecting, connectWithFallback } = useWalletConnection();
-  const { wallet, userAddress, hasEmailLogin } = useActiveWallet();
+  const { address: userAddress } = useAccount();
   const navigate = useNavigate();
   const isConnected = Boolean(userAddress);
 
@@ -56,7 +55,8 @@ const Dashboard = () => {
     totalSupply: 0,
   });
 
-  const [shouldRedirectAfterLogin, setShouldRedirectAfterLogin] = useState(false);
+  const [shouldRedirectAfterLogin, setShouldRedirectAfterLogin] =
+    useState(false);
 
   useEffect(() => {
     const calculateDashboardData = async () => {
@@ -108,7 +108,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (shouldRedirectAfterLogin && isConnected) {
-      navigate('/vaults', { replace: true });
+      navigate("/vaults", { replace: true });
       setShouldRedirectAfterLogin(false);
     }
   }, [shouldRedirectAfterLogin, isConnected, navigate]);
@@ -167,7 +167,8 @@ const Dashboard = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="space-y-1 sm:space-y-2">
-              <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">     {dashboardData.currentAPY.toFixed(2)} %
+              <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
+                {dashboardData.currentAPY.toFixed(2)} %
                 <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                   <div className="font-medium text-muted-foreground">
                     7-Day APY
@@ -226,7 +227,8 @@ const Dashboard = () => {
                     </Badge>
                   </div>
                   <p className="text-foreground font-bold text-xl sm:text-2xl">
-                    {Number(primaryVault?.data?.assetBalance || 0).toFixed(4)} {primaryVault?.symbol || ""}
+                    {Number(primaryVault?.data?.assetBalance || 0).toFixed(4)}{" "}
+                    {primaryVault?.symbol || ""}
                   </p>
                 </div>
 
@@ -275,7 +277,7 @@ const Dashboard = () => {
                   onClick={async () => {
                     try {
                       setShouldRedirectAfterLogin(true);
-                      await connectWithFallback('/vaults');
+                      await connectWithFallback("/vaults");
                     } catch (error) {
                       setShouldRedirectAfterLogin(false);
                     }
@@ -284,7 +286,9 @@ const Dashboard = () => {
                   variant="wallet"
                   className="w-40 px-6 py-2"
                 >
-                  <span>{isConnecting ? 'Connecting...' : 'Connect Wallet'}</span>
+                  <span>
+                    {isConnecting ? "Connecting..." : "Connect Wallet"}
+                  </span>
                 </Button>
               </div>
             )}
