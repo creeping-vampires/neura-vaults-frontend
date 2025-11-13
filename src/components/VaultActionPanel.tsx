@@ -7,9 +7,7 @@ import { getExplorerTxUrl } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 
 import { usePublicClient } from "wagmi";
-import { Address, formatUnits, parseAbiItem, parseUnits, parseAbi } from "viem";
-import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
-import { getSupplyCapsForVault } from "@/services/supplyCaps";
+import { Address, formatUnits, parseAbiItem } from "viem";
 import { useAccount } from "wagmi";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
@@ -110,6 +108,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     vaultHeadroom?: string; // human units
   }>({ eligible: true });
 
+  // Withdraw validation state (request-state guards)
+  const [withdrawEligibility, setWithdrawEligibility] = useState<{
+    eligible: boolean;
+    reason?: string;
+  }>({ eligible: true });
+
   // Refs to avoid stale values inside backend monitoring interval
   const pendingDepositAssetsRef = useRef<bigint>(pendingDepositAssets ?? 0n);
   const pendingRedeemSharesRef = useRef<bigint>(pendingRedeemShares ?? 0n);
@@ -121,6 +125,103 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     pendingRedeemSharesRef.current = pendingRedeemShares ?? 0n;
   }, [pendingRedeemShares]);
+
+  // Evaluate withdraw request-state guards locally in the panel
+  useEffect(() => {
+    const hasPendingWithdraw = (pendingRedeemShares ?? 0n) > 0n;
+    const hasClaimableWithdraw = (claimableWithdrawAssets ?? 0) > 0;
+
+    if (hasPendingWithdraw) {
+      setWithdrawEligibility({
+        eligible: false,
+        reason:
+          "A withdrawal request is already pending—Wait for settle & claim asset.",
+      });
+      return;
+    }
+
+    if (hasClaimableWithdraw) {
+      setWithdrawEligibility({
+        eligible: false,
+        reason:
+          "You have a claimable withdrawal—wait for agent to claim assets or claim.",
+      });
+      return;
+    }
+
+    setWithdrawEligibility({ eligible: true });
+  }, [pendingRedeemShares, claimableWithdrawAssets]);
+
+  useEffect(() => {
+    setIsValidatingDeposit(true);
+    const amountNum = inputAmount ? parseFloat(inputAmount) : 0;
+    const hasPendingDeposit = (pendingDepositAssets ?? 0n) > 0n;
+    const hasClaimableDeposit = (claimableDepositAssets ?? 0) > 0;
+
+    if (hasPendingDeposit) {
+      setDepositEligibility((prev) => ({
+        ...prev,
+        eligible: false,
+        reason:
+          "A deposit request is already pending—Wait for settle & claim shares or cancel.",
+      }));
+      setIsValidatingDeposit(false);
+      return;
+    }
+
+    if (hasClaimableDeposit) {
+      setDepositEligibility((prev) => ({
+        ...prev,
+        eligible: false,
+        reason:
+          "You have a claimable deposit—wait for agent to claim shares or claim.",
+      }));
+      setIsValidatingDeposit(false);
+      return;
+    }
+
+    const userHeadroomNum = depositEligibility.userHeadroom
+      ? parseFloat(depositEligibility.userHeadroom)
+      : undefined;
+    const vaultHeadroomNum = depositEligibility.vaultHeadroom
+      ? parseFloat(depositEligibility.vaultHeadroom)
+      : undefined;
+
+    if (userHeadroomNum === undefined || vaultHeadroomNum === undefined) {
+      setDepositEligibility((prev) => ({ ...prev, eligible: false, reason: "" }));
+      setIsValidatingDeposit(false);
+      return;
+    }
+
+    if (amountNum > vaultHeadroomNum) {
+      setDepositEligibility((prev) => ({
+        ...prev,
+        eligible: false,
+        reason: "Requested amount exceeds vault cap headroom.",
+      }));
+      setIsValidatingDeposit(false);
+      return;
+    }
+
+    if (amountNum > userHeadroomNum) {
+      setDepositEligibility((prev) => ({
+        ...prev,
+        eligible: false,
+        reason: "Requested amount exceeds per-user cap headroom.",
+      }));
+      setIsValidatingDeposit(false);
+      return;
+    }
+
+    setDepositEligibility((prev) => ({ ...prev, eligible: true, reason: undefined }));
+    setIsValidatingDeposit(false);
+  }, [
+    inputAmount,
+    pendingDepositAssets,
+    claimableDepositAssets,
+    depositEligibility.userHeadroom,
+    depositEligibility.vaultHeadroom,
+  ]);
 
   // Create a transaction entry in the local panel history
   const addPendingTransaction = useCallback(
@@ -898,6 +999,15 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         if (!isConnected) {
           await connectWithFallback(location.pathname);
           return;
+        } else if (!withdrawEligibility.eligible) {
+          toast({
+            variant: "destructive",
+            title: "Withdraw Blocked",
+            description:
+              withdrawEligibility.reason ||
+              "Withdraw validation failed. Please check pending requests.",
+          });
+          return;
         }
         await handleWithdraw(inputAmount);
       }
@@ -997,11 +1107,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                 parseFloat(inputAmount) <= 0 ||
                 (availableAssetBalance ?? 0) <= 0 ||
                 isValidatingDeposit
-              : // || depositEligibility.eligible
+              : // Withdraw button disabled when guards fail
                 isWithdrawTransacting ||
                 !inputAmount ||
                 parseFloat(inputAmount) <= 0 ||
                 (availableUserDeposits ?? 0) <= 0
+                // !withdrawEligibility.eligible
           }
           className="w-full mt-4"
           variant="wallet"
@@ -1025,7 +1136,13 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             pendingDepositAssets={pendingDepositAssets}
             claimableDepositAssets={claimableDepositAssets}
             claimableWithdrawAssets={claimableWithdrawAssets}
-            onComputed={(res) => setDepositEligibility(res)}
+            onHeadroomComputed={(res) =>
+              setDepositEligibility((prev) => ({
+                ...prev,
+                userHeadroom: res.userHeadroom,
+                vaultHeadroom: res.vaultHeadroom,
+              }))
+            }
           />
         )}
 
