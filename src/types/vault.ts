@@ -14,7 +14,9 @@ export interface VaultData {
   pricePerShare: number;
 
   // Technical data
+  assetAddress: `0x${string}`;
   assetDecimals: number;
+  assetSymbol: string; 
 
   // UI state
   isLoading: boolean;
