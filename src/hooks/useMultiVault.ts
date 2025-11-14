@@ -144,7 +144,9 @@ export const useMultiVault = () => {
             compoundedYield: (metrics as any).compoundedYield || 0,
             assetBalance: (metrics as any).assetBalance || 0,
             pricePerShare: (metrics as any).pricePerShare || 1,
+            assetAddress: (rawData as any).assetAddress,
             assetDecimals: Number((rawData as any).assetDecimals),
+            assetSymbol: (rawData as any).symbol,
             totalRequestedAssets: metrics.totalRequestedAssets,
             pendingDepositAssets: pendingDepositAssets,
             isLoading: false,
@@ -213,7 +215,9 @@ export const useMultiVault = () => {
               compoundedYield: 0,
               assetBalance: 0,
               pricePerShare: 1,
+              assetAddress: "0x",
               assetDecimals: 18,
+              assetSymbol: "",
               totalRequestedAssets: 0,
               pendingDepositAssets: 0n,
               isLoading: false,
@@ -558,11 +562,6 @@ export const useMultiVault = () => {
         throw new Error("Wallet not connected");
       }
 
-      const vaultInfo = (allVaultData || []).find(
-        (v: any) => v.address?.toLowerCase() === vaultAddress?.toLowerCase()
-      );
-      const vaultSymbol = vaultInfo?.symbol || "Vault";
-
       try {
         const chainSwitched = await switchToChain();
         if (!chainSwitched) {
@@ -571,28 +570,11 @@ export const useMultiVault = () => {
         setIsDepositTransacting(true);
         setTransactionHash(null);
 
-        // Validate vault interface
-        let assetAddress: `0x${string}`;
-        try {
-          assetAddress = (await publicClient.readContract({
-            address: vaultAddress as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "asset",
-          })) as `0x${string}`;
-        } catch (e) {
-          throw new Error(
-            "Invalid vault address - does not implement vault interface"
-          );
-        }
-        const assetDecimals = await publicClient.readContract({
-          address: assetAddress as `0x${string}`,
-          abi: parseAbi(["function decimals() view returns (uint8)"]),
-          functionName: "decimals",
-        });
-        const amountBigInt = parseUnits(
-          amount,
-          Number(assetDecimals as number)
-        );
+        const vaultSymbol = vaultData[vaultAddress]?.assetSymbol;
+        let assetAddress: `0x${string}` = vaultData[vaultAddress]?.assetAddress;
+        let assetDecimals: number | undefined =
+          vaultData[vaultAddress]?.assetDecimals;
+        const amountBigInt = parseUnits(amount, Number(assetDecimals));
 
         const currentAllowance = await publicClient.readContract({
           address: assetAddress as `0x${string}`,
@@ -738,7 +720,14 @@ export const useMultiVault = () => {
         setIsDepositTransacting(false);
       }
     },
-    [getWalletClient, userAddress, refreshAllData, publicClient, allVaultData]
+    [
+      getWalletClient,
+      userAddress,
+      refreshAllData,
+      publicClient,
+      allVaultData,
+      vaultData,
+    ]
   );
 
   const withdraw = useCallback(
@@ -748,11 +737,6 @@ export const useMultiVault = () => {
         throw new Error("Wallet not connected");
       }
 
-      const vaultInfo = (allVaultData || []).find(
-        (v: any) => v.address?.toLowerCase() === vaultAddress?.toLowerCase()
-      );
-      const vaultSymbol = vaultInfo?.symbol || "Vault";
-
       try {
         const chainSwitched = await switchToChain();
         if (!chainSwitched) {
@@ -761,54 +745,24 @@ export const useMultiVault = () => {
         setIsWithdrawTransacting(true);
         setTransactionHash(null);
 
-        // Validate vault interface
-        let assetAddress: `0x${string}`;
-        try {
-          assetAddress = (await publicClient.readContract({
-            address: vaultAddress as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "asset",
-          })) as `0x${string}`;
-        } catch (e) {
-          throw new Error(
-            "Invalid vault address - does not implement vault interface"
-          );
-        }
-        const assetDecimals = await publicClient.readContract({
-          address: assetAddress as `0x${string}`,
-          abi: parseAbi(["function decimals() view returns (uint8)"]),
-          functionName: "decimals",
-        });
-        const amountBigInt = parseUnits(
-          amount,
-          Number(assetDecimals as number)
+        const vaultSymbol = vaultData[vaultAddress]?.assetSymbol;
+        let assetDecimals: number | undefined =
+          vaultData[vaultAddress]?.assetDecimals;
+        const amountBigInt = parseUnits(amount, Number(assetDecimals));
+
+        const userShares = vaultData[vaultAddress]?.userShares;
+        const userAssets = vaultData[vaultAddress]?.userDeposits;
+        const userAssetsBigInt = parseUnits(
+          userAssets.toString(),
+          Number(assetDecimals)
         );
-
-        // Read share balance
-        const userShares = await publicClient.readContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "balanceOf",
-          args: [userAddress as `0x${string}`],
-        });
-
-        // Read asset balance
-        const userAssets = await publicClient.readContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "convertToAssets",
-          args: [userShares],
-        });
-
-        console.log("userShares", userShares);
-        console.log("userAssets", userAssets);
 
         // For full withdrawals, use actual shares
         const isFullWithdrawal =
-          amountBigInt >= ((userAssets as bigint) * 99n) / 100n; // 99% threshold
+          amountBigInt >= ((userAssetsBigInt as bigint) * 99n) / 100n; // 99% threshold
 
         const shares = isFullWithdrawal
-          ? (userShares as bigint)
+          ? (userAssetsBigInt as bigint)
           : ((await publicClient.readContract({
               address: vaultAddress as `0x${string}`,
               abi: YieldAllocatorVaultABI,

@@ -1107,12 +1107,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                 parseFloat(inputAmount) <= 0 ||
                 (availableAssetBalance ?? 0) <= 0 ||
                 isValidatingDeposit
-              : // Withdraw button disabled when guards fail
-                isWithdrawTransacting ||
+              : isWithdrawTransacting ||
                 !inputAmount ||
                 parseFloat(inputAmount) <= 0 ||
                 (availableUserDeposits ?? 0) <= 0
-                // !withdrawEligibility.eligible
           }
           className="w-full mt-4"
           variant="wallet"
