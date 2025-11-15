@@ -24,8 +24,8 @@ const Dashboard = () => {
 
   const primaryVault = useMemo(() => {
     const vaults = getAllVaults();
-    const usdc = vaults.find((v) => v.symbol === "USDC");
-    return usdc || vaults[0];
+    const usdt0 = vaults.find((v) => v.symbol === "USD₮0");
+    return usdt0 || vaults[0];
   }, [getAllVaults]);
 
   const { get24APY, getHighest7APY } = usePrice();

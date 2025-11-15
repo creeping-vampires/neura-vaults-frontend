@@ -31,7 +31,8 @@ const Vaults = () => {
     isLoading: isVaultsLoading,
     error: vaultsError,
   } = useMultiVault();
-  const { get24APY, get7APY, getHighest24APY, getVaultDataByAddress } = usePrice();
+  const { get24APY, get7APY, getHighest24APY, getVaultDataByAddress } =
+    usePrice();
 
   const marketData: MarketItem[] = useMemo(() => {
     const allVaults = getAllVaults();

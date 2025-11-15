@@ -132,6 +132,9 @@ export const useMultiVault = () => {
         const processedVaultData: Record<string, VaultData> = {} as any;
 
         Object.entries(rawVaultData).forEach(([address, rawData]) => {
+          const apiItem = (allVaultData || []).find(
+            (v: any) => v.address?.toLowerCase() === address?.toLowerCase()
+          );
           const userDataForVault = (userData as any)[address];
           const metrics = calculateVaultMetrics(rawData, userDataForVault);
           processedVaultData[address] = {
@@ -145,8 +148,9 @@ export const useMultiVault = () => {
             assetBalance: (metrics as any).assetBalance || 0,
             pricePerShare: (metrics as any).pricePerShare || 1,
             assetAddress: (rawData as any).assetAddress,
-            assetDecimals: Number((rawData as any).assetDecimals),
-            assetSymbol: (rawData as any).symbol,
+            assetDecimals:
+              (apiItem as any)?.underlyingDecimals,
+            assetSymbol: (apiItem as any)?.underlyingSymbol,
             totalRequestedAssets: metrics.totalRequestedAssets,
             pendingDepositAssets: pendingDepositAssets,
             isLoading: false,
@@ -338,7 +342,7 @@ export const useMultiVault = () => {
   const getAllVaults = useCallback(() => {
     return (allVaultData || []).map((v: any) => ({
       address: v.address,
-      symbol: v.symbol,
+      symbol: v.underlyingSymbol,
       name: v.name,
       data: vaultData[v.address],
     }));
@@ -473,24 +477,14 @@ export const useMultiVault = () => {
           functionName: "maxDeposit",
           args: [userAddress as `0x${string}`],
         })) as bigint;
-
-        // Format by asset decimals
-        const asset = (await publicClient.readContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "asset",
-        })) as `0x${string}`;
-        const decimals = (await publicClient.readContract({
-          address: asset,
-          abi: parseAbi(["function decimals() view returns (uint8)"]),
-          functionName: "decimals",
-        })) as number;
+        const decimals =
+          (vaultData[vaultAddress]?.assetDecimals as number) ?? 6;
         return Number(formatUnits(max, Number(decimals)));
       } catch (e) {
         console.log("error", e);
       }
     },
-    [publicClient, userAddress]
+    [publicClient, userAddress, vaultData]
   );
 
   const getClaimableRedeemAmount = useCallback(
@@ -510,23 +504,14 @@ export const useMultiVault = () => {
           functionName: "convertToAssets",
           args: [maxShares],
         })) as bigint;
-
-        const asset = (await publicClient.readContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "asset",
-        })) as `0x${string}`;
-        const decimals = (await publicClient.readContract({
-          address: asset,
-          abi: parseAbi(["function decimals() view returns (uint8)"]),
-          functionName: "decimals",
-        })) as number;
+        const decimals =
+          (vaultData[vaultAddress]?.assetDecimals as number) ?? 6;
         return Number(formatUnits(assets, Number(decimals)));
       } catch (e) {
         console.log("error", e);
       }
     },
-    [publicClient, userAddress]
+    [publicClient, userAddress, vaultData]
   );
 
   // Wallet client helper
@@ -1141,7 +1126,7 @@ export const useMultiVault = () => {
 
       return {
         ...data,
-        symbol: info?.symbol || "Vault",
+        symbol: (info as any)?.underlyingSymbol,
         refreshData: refreshAllData,
         deposit: (amount: string) => deposit(addr, amount),
         withdraw: (amount: string) => withdraw(addr, amount),
@@ -1177,19 +1162,6 @@ export const useMultiVault = () => {
     ]
   );
 
-  // Backwards-compatible: expose a default USDC vault client if present
-  const defaultVaultAddress = useMemo(() => {
-    const usdc = (allVaultData || []).find((v: any) => v.symbol === "USDC");
-    return usdc?.address || (allVaultData && allVaultData[0]?.address) || "";
-  }, [allVaultData]);
-
-  const usdcVault = useMemo(() => {
-    if (!defaultVaultAddress) {
-      return getVaultClientByAddress("");
-    }
-    return getVaultClientByAddress(defaultVaultAddress);
-  }, [defaultVaultAddress, getVaultClientByAddress]);
-
   return {
     vaultData,
     isLoading,
@@ -1212,8 +1184,6 @@ export const useMultiVault = () => {
     isDepositTransacting,
     isWithdrawTransacting,
     transactionHash,
-    // Individual vault access
-    usdcVault,
     // Dynamic vault client by address
     getVaultClientByAddress,
     // Pending trxns tracking

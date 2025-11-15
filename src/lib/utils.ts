@@ -41,24 +41,17 @@ export const formatToken = (
 
 export const fetchTokenBalance = async (
   tokenAddress: string,
-  walletAddress: string
+  walletAddress: string,
+  decimalsOverride?: number
 ) => {
   try {
-
-    const [value, decimals] = await Promise.all([
-      publicClient.readContract({
-        address: tokenAddress as `0x${string}`,
-        abi: parseAbi(["function balanceOf(address) view returns (uint256)"]),
-        functionName: "balanceOf",
-        args: [walletAddress as `0x${string}`],
-      }),
-
-      publicClient.readContract({
-        address: tokenAddress as `0x${string}`,
-        abi: parseAbi(["function decimals() view returns (uint8)"]),
-        functionName: "decimals",
-      }),
-    ]);
+    const value = await publicClient.readContract({
+      address: tokenAddress as `0x${string}`,
+      abi: parseAbi(["function balanceOf(address) view returns (uint256)"]),
+      functionName: "balanceOf",
+      args: [walletAddress as `0x${string}`],
+    });
+    const decimals = decimalsOverride ?? 6;
     return Number(formatUnits(value as bigint, decimals));
   } catch (error) {
     console.error(`Error fetching balance for token ${tokenAddress}:`, error);

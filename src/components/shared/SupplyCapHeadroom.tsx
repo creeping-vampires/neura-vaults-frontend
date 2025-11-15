@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { formatUnits, parseAbi, parseUnits } from "viem";
 import { usePublicClient, useAccount } from "wagmi";
+import { usePrice } from "@/hooks/usePrice";
 import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 import { getSupplyCapsForVault, RAW_CAPS } from "@/services/supplyCaps";
 import { formatCurrency } from "@/utils/currency";
@@ -34,7 +35,8 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   onHeadroomComputed,
 }) => {
   const publicClient = usePublicClient();
-  const { address: userAddress } = useAccount();  
+  const { address: userAddress } = useAccount();
+  const { getVaultDataByAddress } = usePrice();
 
   const [headroom, setHeadroom] = useState<HeadroomState>({});
   const [validating, setValidating] = useState(true);
@@ -68,27 +70,11 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
       : 0n;
   }, [debouncedAmount, assetDecimals]);
 
-  // Fetch asset decimals once per vault
   useEffect(() => {
-    let cancelled = false;
-    const readDecimals = async () => {
-      try {
-        if (!publicClient || !vaultId) return;
-        const decimals = (await publicClient.readContract({
-          address: assetAddress as `0x${string}`,
-          abi: parseAbi(["function decimals() view returns (uint8)"]),
-          functionName: "decimals",
-        })) as number;
-        if (!cancelled) setAssetDecimals(Number(decimals));
-      } catch (e) {
-        if (!cancelled) setAssetDecimals(null);
-      }
-    };
-    readDecimals();
-    return () => {
-      cancelled = true;
-    };
-  }, [publicClient, assetAddress]);
+    const info = getVaultDataByAddress?.(vaultId || "");
+    const d = (info as any)?.underlyingDecimals ?? 6;
+    setAssetDecimals(Number(d));
+  }, [vaultId, getVaultDataByAddress]);
 
   // Fetch and cache base state on identity/decimals change
   useEffect(() => {
@@ -163,8 +149,12 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     "info" | "warning" | "user_error" | "vault_error"
   >(() => {
     const amt = debouncedAmount ? parseFloat(debouncedAmount) : 0;
-    const userH = headroom.userHeadroom ? parseFloat(headroom.userHeadroom) : Infinity;
-    const vaultH = headroom.vaultHeadroom ? parseFloat(headroom.vaultHeadroom) : Infinity;
+    const userH = headroom.userHeadroom
+      ? parseFloat(headroom.userHeadroom)
+      : Infinity;
+    const vaultH = headroom.vaultHeadroom
+      ? parseFloat(headroom.vaultHeadroom)
+      : Infinity;
     if (amt > vaultH) return "vault_error";
     if (amt > userH) return "user_error";
     return "info";
@@ -187,11 +177,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
         const vaultSupplied = vaultSuppliedRef.current ?? 0n;
         const userSupplied = userSuppliedRef.current ?? 0n;
 
-        const userEffective = (userSupplied ?? 0n) + (pendingDepositAssets ?? 0n);
+        const userEffective =
+          (userSupplied ?? 0n) + (pendingDepositAssets ?? 0n);
         const userHeadroomUnits =
-          perUserCapUnits > userEffective ? perUserCapUnits - userEffective : 0n;
+          perUserCapUnits > userEffective
+            ? perUserCapUnits - userEffective
+            : 0n;
         const vaultHeadroomUnits =
-          vaultCapUnits > (vaultSupplied ?? 0n) ? vaultCapUnits - (vaultSupplied ?? 0n) : 0n;
+          vaultCapUnits > (vaultSupplied ?? 0n)
+            ? vaultCapUnits - (vaultSupplied ?? 0n)
+            : 0n;
 
         const res: HeadroomState = {
           userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),

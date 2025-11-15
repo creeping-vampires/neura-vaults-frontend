@@ -47,7 +47,7 @@ export const usePrice = (targetToken?: string) => {
   const [priceError, setPriceError] = useState<string | null>(null);
 
   const fetchPriceChart = useCallback(
-    async (params: { timeframe: '7D' | '1M'; address: string }) => {
+    async (params: { timeframe: "7D" | "1M"; address: string }) => {
       const key = `${params.address}|${params.timeframe}`;
 
       if (priceChartCache.has(key)) {
@@ -60,17 +60,22 @@ export const usePrice = (targetToken?: string) => {
       try {
         setError(null);
         const response: LatestPriceChartResponse =
-          await yieldMonitorService.getPriceChart(params.address, params.timeframe);
+          await yieldMonitorService.getPriceChart(
+            params.address,
+            params.timeframe
+          );
 
         // Transform latest response to the TokenPriceData[] structure expected by UI
         const tokenSeparatedData: TokenPriceData[] = [];
         const points = response?.data?.dataPoints || [];
-        
+
         const transformed = points.map((pt: LatestPriceChartPoint) => {
-          const safeBigInt = (v: string | number | undefined | null): bigint | null => {
+          const safeBigInt = (
+            v: string | number | undefined | null
+          ): bigint | null => {
             try {
               if (v === undefined || v === null) return null;
-              if (typeof v === 'number') return BigInt(Math.floor(v));
+              if (typeof v === "number") return BigInt(Math.floor(v));
               const s = String(v).trim();
               if (!/^-?\d+$/.test(s)) return null;
               return BigInt(s);
@@ -79,22 +84,22 @@ export const usePrice = (targetToken?: string) => {
             }
           };
 
-       const computeSharePrice = (): string => {
+          const computeSharePrice = (): string => {
             const assets = safeBigInt(pt.totalAssets);
             const supply = safeBigInt(pt.totalSupply);
             if (assets !== null && supply !== null && supply > 0n) {
               const scaled = (assets * 10n ** 18n) / supply;
               return formatUnits(scaled, 18);
             }
-            
+
             const sp = pt.sharePrice;
-            if (typeof sp === 'string' && sp.length > 0) {
+            if (typeof sp === "string" && sp.length > 0) {
               const spBig = safeBigInt(sp);
               if (spBig !== null) return formatUnits(spBig, 18);
-              const parsed = Number(sp.replace(/[^0-9.\-]/g, ''));
-              return isNaN(parsed) ? '0' : String(parsed);
+              const parsed = Number(sp.replace(/[^0-9.\-]/g, ""));
+              return isNaN(parsed) ? "0" : String(parsed);
             }
-            return '0';
+            return "0";
           };
 
           const sharePriceStr = computeSharePrice();
@@ -103,7 +108,7 @@ export const usePrice = (targetToken?: string) => {
           return {
             timestamp: Number(pt.timestamp),
             share_price_formatted: isNaN(sharePriceNum)
-              ? '0.000000'
+              ? "0.000000"
               : sharePriceNum.toFixed(6),
             pool_apy: Number(pt.apy ?? pt.apy7d ?? pt.apy30d ?? 0),
           };
@@ -111,13 +116,20 @@ export const usePrice = (targetToken?: string) => {
 
         // Sort by timestamp ascending
         const sortedData = transformed.sort((a, b) => {
-          const ta = typeof a.timestamp === 'string' ? Date.parse(a.timestamp) : Number(a.timestamp);
-          const tb = typeof b.timestamp === 'string' ? Date.parse(b.timestamp) : Number(b.timestamp);
+          const ta =
+            typeof a.timestamp === "string"
+              ? Date.parse(a.timestamp)
+              : Number(a.timestamp);
+          const tb =
+            typeof b.timestamp === "string"
+              ? Date.parse(b.timestamp)
+              : Number(b.timestamp);
           return ta - tb;
         });
 
         // Label series by vault name or address
-        const label = response?.data?.vaultName || response?.data?.vaultAddress || 'Vault';
+        const label =
+          response?.data?.vaultName || response?.data?.vaultAddress || "Vault";
         tokenSeparatedData.push({ token: label, data: sortedData });
 
         // Cache and update state
@@ -127,9 +139,9 @@ export const usePrice = (targetToken?: string) => {
         const message =
           err?.response?.data?.detail ||
           err?.message ||
-          'Failed to fetch price chart data';
+          "Failed to fetch price chart data";
         setError(message);
-        console.error('Error fetching price chart data (latest):', err);
+        console.error("Error fetching price chart data (latest):", err);
         if (!priceChartCache.has(key)) {
           setChartData([]);
         }
@@ -156,7 +168,9 @@ export const usePrice = (targetToken?: string) => {
       // Select vault data based on target token (symbol) or use first as default
       let vaultData: LatestVaultItem | undefined;
       if (targetToken) {
-        vaultData = vaults.find((item) => item.symbol === targetToken) || vaults[0];
+        vaultData =
+          vaults.find((item) => item.underlyingSymbol === targetToken) ||
+          vaults[0];
       } else {
         vaultData = vaults[0];
       }
@@ -196,13 +210,19 @@ export const usePrice = (targetToken?: string) => {
         }
 
         const apyCandidate =
-          vaultData.apy?.apy ?? vaultData.apy?.apy7d ?? vaultData.apy?.apy30d ?? 0;
+          vaultData.apy?.apy ??
+          vaultData.apy?.apy7d ??
+          vaultData.apy?.apy30d ??
+          0;
 
         const tsSec = Number(vaultData.currentData?.timestamp ?? 0);
         const tsMs = tsSec > 0 ? tsSec * 1000 : 0;
-        const lastUpdatedIso = tsMs ? new Date(tsMs).toISOString() : '';
+        const lastUpdatedIso = tsMs ? new Date(tsMs).toISOString() : "";
 
-        const protocolName = vaultData.allocations?.[0]?.name || vaultData.allocations?.[0]?.protocol || '';
+        const protocolName =
+          vaultData.allocations?.[0]?.name ||
+          vaultData.allocations?.[0]?.protocol ||
+          "";
 
         next = {
           id: 0,
@@ -212,10 +232,10 @@ export const usePrice = (targetToken?: string) => {
             const n = parseFloat(sharePriceStr);
             return isNaN(n) ? "0.000000" : n.toFixed(6);
           })(),
-          totalAssets: vaultData.currentData?.totalAssets ?? '0',
-          totalSupply: vaultData.currentData?.totalSupply ?? '0',
+          totalAssets: vaultData.currentData?.totalAssets ?? "0",
+          totalSupply: vaultData.currentData?.totalSupply ?? "0",
           vaultAddress: vaultData.address,
-          token: vaultData.symbol,
+          token: vaultData.underlyingSymbol || vaultData.symbol,
           protocol: protocolName,
           lastUpdated: lastUpdatedIso,
         };
@@ -224,9 +244,9 @@ export const usePrice = (targetToken?: string) => {
       priceDataCache = next;
       setPriceData(next);
     } catch (error) {
-      console.error('Error fetching price data:', error);
+      console.error("Error fetching price data:", error);
       setPriceError(
-        error instanceof Error ? error.message : 'Failed to fetch price data'
+        error instanceof Error ? error.message : "Failed to fetch price data"
       );
     } finally {
       setIsPriceLoading(false);
@@ -243,7 +263,7 @@ export const usePrice = (targetToken?: string) => {
 
   const getVaultDataByToken = useCallback(
     (token: string) => {
-      return allVaultData.find((item) => item.symbol === token);
+      return allVaultData.find((item) => item.underlyingSymbol === token);
     },
     [allVaultData]
   );
@@ -258,7 +278,7 @@ export const usePrice = (targetToken?: string) => {
   const getAverageAPY = useCallback(() => {
     const apys = allVaultData
       .map((item) => item.apy?.apy ?? item.apy?.apy7d ?? item.apy?.apy30d)
-      .filter((v) => typeof v === 'number') as number[];
+      .filter((v) => typeof v === "number") as number[];
     if (apys.length === 0) return 0;
     const sum = apys.reduce((acc, v) => acc + v, 0);
     return sum / apys.length;
@@ -267,14 +287,14 @@ export const usePrice = (targetToken?: string) => {
   const getHighest24APY = useCallback(() => {
     const apys = allVaultData
       .map((item) => item.apy?.apy)
-      .filter((v) => typeof v === 'number') as number[];
+      .filter((v) => typeof v === "number") as number[];
     return apys.length === 0 ? 0 : Math.max(...apys);
   }, [allVaultData]);
 
   const getHighest7APY = useCallback(() => {
     const apys = allVaultData
       .map((item) => item.apy?.apy7d)
-      .filter((v) => typeof v === 'number') as number[];
+      .filter((v) => typeof v === "number") as number[];
     return apys.length === 0 ? 0 : Math.max(...apys);
   }, [allVaultData]);
 
@@ -290,41 +310,44 @@ export const usePrice = (targetToken?: string) => {
     return Number(apy) || 0;
   }, [allVaultData]);
 
-  return useMemo(() => ({
-    chartData,
-    isLoading,
-    error,
-    fetchPriceChart,
-    priceData,
-    isPriceLoading,
-    priceError,
-    refreshPriceData,
-    allVaultData,
-    getVaultDataByToken,
-    getVaultDataByAddress,
-    getAverageAPY,
-    getHighest24APY,
-    getHighest7APY,
-    get24APY,
-    get7APY,
-  }), [
-    chartData,
-    isLoading,
-    error,
-    fetchPriceChart,
-    priceData,
-    isPriceLoading,
-    priceError,
-    refreshPriceData,
-    allVaultData,
-    getVaultDataByToken,
-    getVaultDataByAddress,
-    getAverageAPY,
-    getHighest24APY,
-    getHighest7APY,
-    get24APY,
-    get7APY,
-  ]);
+  return useMemo(
+    () => ({
+      chartData,
+      isLoading,
+      error,
+      fetchPriceChart,
+      priceData,
+      isPriceLoading,
+      priceError,
+      refreshPriceData,
+      allVaultData,
+      getVaultDataByToken,
+      getVaultDataByAddress,
+      getAverageAPY,
+      getHighest24APY,
+      getHighest7APY,
+      get24APY,
+      get7APY,
+    }),
+    [
+      chartData,
+      isLoading,
+      error,
+      fetchPriceChart,
+      priceData,
+      isPriceLoading,
+      priceError,
+      refreshPriceData,
+      allVaultData,
+      getVaultDataByToken,
+      getVaultDataByAddress,
+      getAverageAPY,
+      getHighest24APY,
+      getHighest7APY,
+      get24APY,
+      get7APY,
+    ]
+  );
 };
 
 export default usePrice;
