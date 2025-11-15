@@ -61,11 +61,11 @@ const chartConfig = {
   },
 };
 
-const getPoolName = (address: string, symbol: string): string => {
+const getPoolName = (address: string, uSymbol: string): string => {
   const poolNames: { [key: string]: string } = {
     "0xceCcE0EB9DD2Ef7996e01e25DD70e461F918A14b": "Hypurrfi",
     "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b": "Hyperlend",
-    [symbol === "USDT0"
+    [uSymbol === "USD₮0"
       ? "0xFc5126377F0efc0041C0969Ef9BA903Ce67d151e"
       : "0x835FEBF893c6DdDee5CF762B0f8e31C5B06938ab"]: "Felix",
   };
@@ -178,7 +178,7 @@ const VaultDetails = () => {
   useEffect(() => {
     if (!vaultId) return;
     const currentVaultData = getVaultDataByAddress(vaultId);
-    setCurrentVaultSymbol(currentVaultData?.symbol || "");
+    setCurrentVaultSymbol(currentVaultData?.underlyingSymbol || "");
     setCurrentVaultName(currentVaultData?.name || "");
     setCurrentVaultAssetAddress(currentVaultData?.underlying || "");
   }, [vaultId, getVaultDataByAddress]);

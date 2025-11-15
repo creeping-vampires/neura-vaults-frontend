@@ -378,7 +378,9 @@ export interface LatestVaultItem {
   address: string;
   chain: string;
   symbol: string;
+  underlyingSymbol?: string;
   underlying: string;
+  underlyingDecimals?: number;
   safe: string;
   silo: string;
   proxyAdmin: string;

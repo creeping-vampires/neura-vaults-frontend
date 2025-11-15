@@ -36,8 +36,9 @@ export class MultiVaultBatchClient {
   ): Promise<Record<string, MultiVaultData>> {
     const vaultConfigs = vaults.map((v) => ({
       address: v.address as Address,
-      symbol: v.symbol,
+      symbol: (v as any).underlyingSymbol,
       name: v.name,
+      underlyingDecimals: (v as any).underlyingDecimals ?? 6,
     }));
 
     // Combine all calls into a single batch for maximum efficiency
@@ -88,25 +89,14 @@ export class MultiVaultBatchClient {
     // Extract asset addresses from results
     const assetAddresses = vaultConfigs.map(({ address }) => allResults[callIndexMap.get(`asset_${address}`)]);
 
-    // Add asset decimals calls to the batch
-    const assetDecimalsCalls = assetAddresses.map((result) => ({
-      address: result.data as Address,
-      abi: parseAbi(["function decimals() view returns (uint8)"]) as readonly any[],
-      functionName: "decimals",
-    }));
-
-    const assetDecimalsResults = await this.batchClient.batchRead(assetDecimalsCalls, {
-      cacheKey: `asset_decimals_${vaultConfigs.map((v) => v.address).join("_")}`,
-      ttl: 30000,
-    });
 
     // Organize results keyed by vault address
     const results: Record<string, MultiVaultData> = {};
 
     for (let i = 0; i < vaultConfigs.length; i++) {
-      const { address, symbol, name } = vaultConfigs[i];
+      const { address, symbol, name, underlyingDecimals } = vaultConfigs[i];
       const assetAddress = assetAddresses[i].data as Address;
-      const assetDecimals = assetDecimalsResults[i].data as bigint;
+      const assetDecimals = BigInt(underlyingDecimals);
 
       // Extract vault data results using the index map
       const vaultDataInfo = callIndexMap.get(`vault_data_${address}`);

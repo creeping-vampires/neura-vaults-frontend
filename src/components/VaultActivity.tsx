@@ -7,6 +7,7 @@ import { getExplorerTxUrl } from "@/lib/utils";
 import { fetchVaultActivities } from "@/services/vaultActivityService";
 import { LatestVaultActionItem } from "@/services/config";
 import { formatUnits } from "viem";
+import { usePrice } from "@/hooks/usePrice";
 
 interface VaultActivityProps {
   vaultId?: string;
@@ -46,13 +47,11 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
     fetchActivities();
   }, [fetchActivities]);
 
-  // Helper functions
-  const getDecimalsFromSymbol = (symbol: string) => {
-    const upper = (symbol || "").toUpperCase();
-    if (upper.includes("USDC") || upper.includes("USDT")) return 6;
-    if (upper.includes("UBTC") || upper.includes("BTC")) return 8; // conservative default for BTC-like
-    return 18;
-  };
+  const { getVaultDataByAddress } = usePrice();
+  const decimals = (() => {
+    const info = getVaultDataByAddress?.(vaultId || "");
+    return Number((info as any)?.underlyingDecimals ?? 6);
+  })();
 
   const formatTimeAgoFromSeconds = (secondsStr: string) => {
     const ts = Number(secondsStr);
@@ -90,8 +89,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
           ) : (
             vaultActivities.slice(0, 10).map((activity, i) => {
               const symbolForDecimals =
-                activity.vaultName || currentVault || "";
-              const decimals = getDecimalsFromSymbol(symbolForDecimals);
+                currentVault || activity.vaultName || "";
               let amountNum = 0;
               try {
                 const raw = BigInt(activity.assets ?? "0");
