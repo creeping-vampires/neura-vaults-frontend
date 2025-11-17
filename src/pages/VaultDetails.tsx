@@ -202,9 +202,9 @@ const VaultDetails = () => {
     const allTransformed = [];
 
     const relevantTokenData = priceChartData;
-
     relevantTokenData.forEach((tokenData) => {
       const points = (tokenData as any).dataPoints || tokenData.data || [];
+
       const tokenTransformed = points
         ?.map((point: any) => {
           const tsRaw = point.timestamp as number | string;
@@ -219,7 +219,6 @@ const VaultDetails = () => {
           // Focus only on share price and timestamp
           const spRaw = point.share_price_formatted ?? point.sharePrice;
           let valueNum: number = 0;
-
           if (typeof spRaw === "string") {
             const parsed = parseFloat(spRaw.replace(/[^0-9.\-]/g, ""));
             valueNum = isNaN(parsed) ? 0 : parsed;
@@ -249,7 +248,6 @@ const VaultDetails = () => {
         allTransformed.push(...tokenTransformed);
       }
     });
-
     allTransformed.sort((a, b) => a.date - b.date);
 
     setChartData(allTransformed);
@@ -729,7 +727,7 @@ const VaultDetails = () => {
                                   typeof value === "number"
                                     ? value
                                     : parseFloat(String(value));
-                                const label = `${currentVaultSymbol} Share Price`;
+                                const label = ` ${currentVaultSymbol}`;
                                 return [numValue?.toFixed(4), label];
                               }
                               return [value, name];
@@ -737,7 +735,7 @@ const VaultDetails = () => {
                           />
                         }
                         labelFormatter={(label, payload) => {
-                          return `${currentVaultSymbol} - Share Price`;
+                          return `Share Price`;
                         }}
                       />
                       <Area
