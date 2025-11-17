@@ -59,80 +59,45 @@ export const usePrice = (targetToken?: string) => {
 
       try {
         setError(null);
-        const response: LatestPriceChartResponse =
-          await yieldMonitorService.getPriceChart(
-            params.address,
-            params.timeframe
-          );
+        const response: LatestPriceChartResponse = await yieldMonitorService.getPriceChart(
+          params.address,
+          params.timeframe
+        );
 
-        // Transform latest response to the TokenPriceData[] structure expected by UI
         const tokenSeparatedData: TokenPriceData[] = [];
         const points = response?.data?.dataPoints || [];
 
         const transformed = points.map((pt: LatestPriceChartPoint) => {
-          const safeBigInt = (
-            v: string | number | undefined | null
-          ): bigint | null => {
-            try {
-              if (v === undefined || v === null) return null;
-              if (typeof v === "number") return BigInt(Math.floor(v));
-              const s = String(v).trim();
-              if (!/^-?\d+$/.test(s)) return null;
-              return BigInt(s);
-            } catch {
-              return null;
+          const ts = Number(pt.timestamp);
+          let spNum = 0;
+          const spRaw: any = (pt as any).sharePrice;
+          if (typeof spRaw === "string") {
+            const s = spRaw.trim();
+            if (/^-?\d+$/.test(s)) {
+              spNum = Number(s) / 1e6;
+            } else {
+              const parsed = parseFloat(s);
+              spNum = isNaN(parsed) ? 0 : parsed;
             }
-          };
-
-          const computeSharePrice = (): string => {
-            const assets = safeBigInt(pt.totalAssets);
-            const supply = safeBigInt(pt.totalSupply);
-            if (assets !== null && supply !== null && supply > 0n) {
-              const scaled = (assets * 10n ** 18n) / supply;
-              return formatUnits(scaled, 18);
-            }
-
-            const sp = pt.sharePrice;
-            if (typeof sp === "string" && sp.length > 0) {
-              const spBig = safeBigInt(sp);
-              if (spBig !== null) return formatUnits(spBig, 18);
-              const parsed = Number(sp.replace(/[^0-9.\-]/g, ""));
-              return isNaN(parsed) ? "0" : String(parsed);
-            }
-            return "0";
-          };
-
-          const sharePriceStr = computeSharePrice();
-          const sharePriceNum = Number(sharePriceStr);
+          } else if (typeof spRaw === "number") {
+            spNum = spRaw > 1000 ? spRaw / 1e6 : spRaw;
+          } else {
+            const a = Number(pt.totalAssets);
+            const s = Number(pt.totalSupply);
+            spNum = s > 0 ? a / s : 0;
+          }
 
           return {
-            timestamp: Number(pt.timestamp),
-            share_price_formatted: isNaN(sharePriceNum)
-              ? "0.000000"
-              : sharePriceNum.toFixed(6),
-            pool_apy: Number(pt.apy ?? pt.apy7d ?? pt.apy30d ?? 0),
+            timestamp: ts,
+            share_price_formatted: isFinite(spNum) ? spNum.toFixed(6) : "0.000000",
+            pool_apy: Number((pt as any).apy ?? (pt as any).apy7d ?? (pt as any).apy30d ?? 0),
           };
         });
 
-        // Sort by timestamp ascending
-        const sortedData = transformed.sort((a, b) => {
-          const ta =
-            typeof a.timestamp === "string"
-              ? Date.parse(a.timestamp)
-              : Number(a.timestamp);
-          const tb =
-            typeof b.timestamp === "string"
-              ? Date.parse(b.timestamp)
-              : Number(b.timestamp);
-          return ta - tb;
-        });
-
-        // Label series by vault name or address
-        const label =
-          response?.data?.vaultName || response?.data?.vaultAddress || "Vault";
+        const sortedData = transformed.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+        const label = response?.data?.vaultName || response?.data?.vaultAddress || "Vault";
         tokenSeparatedData.push({ token: label, data: sortedData });
 
-        // Cache and update state
         priceChartCache.set(key, tokenSeparatedData);
         setChartData(tokenSeparatedData);
       } catch (err: any) {
