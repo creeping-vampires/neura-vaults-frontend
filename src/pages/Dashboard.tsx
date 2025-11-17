@@ -28,7 +28,7 @@ const Dashboard = () => {
     return usdt0 || vaults[0];
   }, [getAllVaults]);
 
-  const { get24APY, getHighest7APY } = usePrice();
+  const { getHighest24APY, getHighest7APY } = usePrice();
 
   const [hypeBalance, setHypeBalance] = useState<number>(0);
 
@@ -74,7 +74,7 @@ const Dashboard = () => {
           totalTVL += vaultTVL;
         });
         const weightedAverageAPY =
-          totalTVL > 0 ? totalWeightedAPY / totalTVL : 0;
+          getHighest24APY();
 
         // Calculate total interest earned across all vaults
         const totalInterestEarned = allVaults.reduce((sum, vault) => {
