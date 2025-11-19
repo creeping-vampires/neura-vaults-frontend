@@ -7,10 +7,10 @@ interface AdminRouteProps {
 }
 
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  const { isAdmin, hasAccess, isLoading, walletAddress } = useUserAccess();
+  const { isAdmin, isLoading, walletAddress } = useUserAccess();
   const location = useLocation();
   
-  console.log("AdminRoute - isAdmin:", isAdmin, "hasAccess:", hasAccess, "isLoading:", isLoading, "walletAddress:", walletAddress);
+  console.log("AdminRoute - isAdmin:", isAdmin, "isLoading:", isLoading, "walletAddress:", walletAddress);
 
   // Show loading state while checking admin access
   if (isLoading) {
@@ -46,12 +46,6 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
               <span className="text-muted-foreground">Admin Status:</span>
               <span className={`font-medium ${isAdmin ? "text-primary" : "text-destructive"}`}>
                 {isAdmin ? "Yes" : "No"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Has Access:</span>
-              <span className={`font-medium ${hasAccess ? "text-primary" : "text-destructive"}`}>
-                {hasAccess ? "Yes" : "No"}
               </span>
             </div>
           </div>

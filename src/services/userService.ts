@@ -24,14 +24,8 @@ export interface UserAccessRequest {
 export interface UserAccessResponse {
   wallet_address: string;
   has_access: boolean;
-  is_admin: boolean;
   invite_code_used: string;
   redeemed_at: string;
-  credits_received: number;
-  kol_role_assigned: boolean;
-  whitelisted_at: string;
-  invite_code_used_for_whitelist: string;
-  is_active: boolean;
 }
 
 export interface RedeemInviteCodeRequest {
@@ -163,9 +157,7 @@ export const userService = {
       };
 
       // Add apiKey query parameter with the admin wallet address
-      const urlWithApiKey = `${
-        API_ROUTES.CREATE_INVITE_CODE
-      }?apiKey=${encodeURIComponent(walletAddress)}`;
+      const urlWithApiKey = `${API_ROUTES.CREATE_INVITE_CODE}`;
 
       const response = await apiPost<CreateInviteCodeResponse>(
         urlWithApiKey,
@@ -185,7 +177,6 @@ export const userService = {
    */
   getInviteCodes: async (): Promise<GetInviteCodesResponse> => {
     try {
-      // Pass api_key as query parameter with the admin wallet address
       const response = await apiGet<GetInviteCodesResponse>(
         API_ROUTES.GET_INVITE_CODES
       );

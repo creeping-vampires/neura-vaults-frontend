@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Key, Users, Copy, Check, Trash2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { userService, InviteCode as ApiInviteCode } from "@/services/userService";
@@ -92,17 +91,17 @@ const Admin: React.FC = () => {
 
   useEffect(() => {
     fetchInviteCodes();
-    const fetchAccessRequests = async () => {
-      if (!userAddress) return;
-      try {
-        const reqs = await userService.getAccessRequests(userAddress);
-        console.log("accessRequests", reqs);
-        setAccessRequests(reqs || []);
-      } catch (error) {
-        console.error("Error fetching access requests:", error);
-      }
-    };
-    fetchAccessRequests();
+    // const fetchAccessRequests = async () => {
+    //   if (!userAddress) return;
+    //   try {
+    //     const reqs = await userService.getAccessRequests(userAddress);
+    //     console.log("accessRequests", reqs);
+    //     setAccessRequests(reqs || []);
+    //   } catch (error) {
+    //     console.error("Error fetching access requests:", error);
+    //   }
+    // };
+    // fetchAccessRequests();
   }, [userAddress]);
 
   const sortBy = (key: keyof AccessRequest) => {
@@ -380,7 +379,9 @@ const Admin: React.FC = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    inviteCodes.map((code) => (
+                    inviteCodes
+                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .map((code) => (
                       <TableRow key={code.id}>
                         <TableCell className="font-mono font-medium">
                           <div className="flex gap-2 items-center">

@@ -44,7 +44,6 @@ import { useAccount } from "wagmi";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 import VaultActionPanel from "@/components/VaultActionPanel";
-import userService from "@/services/userService";
 
 const chartConfig = {
   value: {
@@ -133,7 +132,7 @@ const VaultDetails = () => {
     ...vaultData
   } = vaultDataObject;
 
-  const { hasAccess } = useUserAccess();
+  const { isAdmin } = useUserAccess();
   const [txCanceled, setTxCanceled] = useState(false);
 
   const [totalAUM, setTotalAUM] = useState(0);
@@ -1034,7 +1033,7 @@ const VaultDetails = () => {
               vaultId={vaultId}
               refreshData={refreshData}
               isConnected={isConnected}
-              hasAccess={hasAccess}
+              isAdmin={isAdmin}
               txCanceled={txCanceled}
               onRequireAccess={() => setShowAccessCodeModal(true)}
               pendingDepositAssets={pendingDepositAssets}
@@ -1068,7 +1067,7 @@ const VaultDetails = () => {
       <AccessCodeModal
         isOpen={showAccessCodeModal}
         onClose={() => setShowAccessCodeModal(false)}
-        hasAccess={hasAccess}
+        isAdmin={isAdmin}
       />
     </div>
   );
