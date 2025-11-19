@@ -72,11 +72,9 @@ const Admin: React.FC = () => {
   } | null>(null);
 
   const fetchInviteCodes = async () => {
-    if (!userAddress) return;
-
     setIsLoading(true);
     try {
-      const apiCodes = await userService.getInviteCodes(userAddress);
+      const apiCodes = await userService.getInviteCodes();
       console.log("apiCodes", apiCodes);
       const convertedCodes = apiCodes.map(convertApiInviteCode);
       setInviteCodes(convertedCodes);

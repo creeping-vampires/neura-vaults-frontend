@@ -3,15 +3,16 @@ import { apiPost, apiGet, API_ROUTES } from './config';
 // Simple in-memory cache for user access responses per wallet
 const userAccessCache = new Map<string, UserAccessResponse>();
 
-async function fetchUserAccess(walletAddress: string): Promise<UserAccessResponse> {
+async function fetchUserAccess(
+  walletAddress: string
+): Promise<UserAccessResponse> {
   const requestBody: UserAccessRequest = {
     wallet_address: walletAddress,
   };
 
   const response = await apiPost<UserAccessResponse>(
     API_ROUTES.CHECK_USER_ACCESS,
-    requestBody,
-    0 
+    requestBody
   );
   return response;
 }
@@ -97,7 +98,7 @@ export const userService = {
       const response = await fetchUserAccess(walletAddress);
       return response;
     } catch (error) {
-      console.error('Error checking user access:', error);
+      console.error("Error checking user access:", error);
       throw error;
     }
   },
@@ -118,7 +119,7 @@ export const userService = {
       userAccessCache.set(walletAddress, response);
       return response;
     } catch (error) {
-      console.error('Error checking user access (cached):', error);
+      console.error("Error checking user access (cached):", error);
       throw error;
     }
   },
@@ -126,7 +127,10 @@ export const userService = {
   /**
    * Redeem an invite code for a wallet address
    */
-  redeemInviteCode: async (code: string, walletAddress: string): Promise<RedeemInviteCodeResponse> => {
+  redeemInviteCode: async (
+    code: string,
+    walletAddress: string
+  ): Promise<RedeemInviteCodeResponse> => {
     try {
       const requestBody: RedeemInviteCodeRequest = {
         code: code.trim().toUpperCase(),
@@ -138,10 +142,10 @@ export const userService = {
         requestBody,
         0 // No caching
       );
-      
+
       return response;
     } catch (error) {
-      console.error('Error redeeming invite code:', error);
+      console.error("Error redeeming invite code:", error);
       throw error;
     }
   },
@@ -149,24 +153,29 @@ export const userService = {
   /**
    * Create a new invite code using the authenticated user's wallet
    */
-  createInviteCode: async (expiresAt: string, walletAddress: string): Promise<CreateInviteCodeResponse> => {
+  createInviteCode: async (
+    expiresAt: string,
+    walletAddress: string
+  ): Promise<CreateInviteCodeResponse> => {
     try {
       const requestBody: CreateInviteCodeRequest = {
         expires_at: expiresAt,
       };
 
       // Add apiKey query parameter with the admin wallet address
-      const urlWithApiKey = `${API_ROUTES.CREATE_INVITE_CODE}?apiKey=${encodeURIComponent(walletAddress)}`;
+      const urlWithApiKey = `${
+        API_ROUTES.CREATE_INVITE_CODE
+      }?apiKey=${encodeURIComponent(walletAddress)}`;
 
       const response = await apiPost<CreateInviteCodeResponse>(
         urlWithApiKey,
         requestBody,
         0 // No caching
       );
-      
+
       return response;
     } catch (error) {
-      console.error('Error creating invite code:', error);
+      console.error("Error creating invite code:", error);
       throw error;
     }
   },
@@ -174,18 +183,16 @@ export const userService = {
   /**
    * Get all invite codes (Admin only)
    */
-  getInviteCodes: async (walletAddress: string): Promise<GetInviteCodesResponse> => {
+  getInviteCodes: async (): Promise<GetInviteCodesResponse> => {
     try {
-      // Add apiKey query parameter with the admin wallet address
+      // Pass api_key as query parameter with the admin wallet address
       const response = await apiGet<GetInviteCodesResponse>(
-        API_ROUTES.GET_INVITE_CODES,
-        { apiKey: walletAddress },
-        0 // No caching for admin data
+        API_ROUTES.GET_INVITE_CODES
       );
-      
+
       return response;
     } catch (error) {
-      console.error('Error fetching invite codes:', error);
+      console.error("Error fetching invite codes:", error);
       throw error;
     }
   },
@@ -193,16 +200,18 @@ export const userService = {
   /**
    * Get all access requests (Admin only)
    */
-  getAccessRequests: async (walletAddress: string): Promise<GetAccessRequestsResponse> => {
+  getAccessRequests: async (
+    walletAddress: string
+  ): Promise<GetAccessRequestsResponse> => {
     try {
       const response = await apiGet<GetAccessRequestsResponse>(
         API_ROUTES.ACCESS_REQUESTS,
-        { apiKey: walletAddress },
-        0 // No caching for admin data
+        { api_key: walletAddress },
+        0
       );
       return response;
     } catch (error) {
-      console.error('Error fetching access requests:', error);
+      console.error("Error fetching access requests:", error);
       throw error;
     }
   },

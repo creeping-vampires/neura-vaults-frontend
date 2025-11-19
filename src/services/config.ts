@@ -1,10 +1,14 @@
 import axios, { AxiosInstance } from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
-const API_URL_LATEST = import.meta.env.VITE_API_URL_LATEST;
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 if (!API_URL) {
   throw new Error("VITE_API_URL environment variable is not defined");
+}
+
+if (!API_KEY) {
+  throw new Error("VITE_API_KEY environment variable is not defined");
 }
 
 // Yield Monitor Daily Metrics Types
@@ -230,19 +234,19 @@ export interface LatestWithdrawalsResponse {
 // API Routes
 export const API_ROUTES = {
   GET_DAILY_METRICS: `${API_URL}/yield-monitor/daily-metrics/`,
-  GET_PRICE_CHART_7D: `${API_URL_LATEST}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/7d`,
-  GET_PRICE_CHART_30D: `${API_URL_LATEST}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/30d`,
-  GET_VAULTS_LATEST: `${API_URL_LATEST}/neura-vault/vaults`,
-  GET_VAULT_DEPOSITS_LATEST: `${API_URL_LATEST}/neura-vault/deposits`,
-  GET_VAULT_WITHDRAWALS_LATEST: `${API_URL_LATEST}/neura-vault/withdrawals`,
+  GET_PRICE_CHART_7D: `${API_URL}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/7d`,
+  GET_PRICE_CHART_30D: `${API_URL}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/30d`,
+  GET_VAULTS_LATEST: `${API_URL}/neura-vault/vaults`,
+  GET_VAULT_DEPOSITS_LATEST: `${API_URL}/neura-vault/deposits`,
+  GET_VAULT_WITHDRAWALS_LATEST: `${API_URL}/neura-vault/withdrawals`,
   GET_VAULT_REBALANCES: `${API_URL}/vault/rebalances/combined/`,
   GET_AGENT_THOUGHTS: `${API_URL}/agent-thoughts/`,
 
   // invite code & user access
-  CHECK_USER_ACCESS: `${API_URL}/invite-codes/check_access/`,
+  CHECK_USER_ACCESS: `${API_URL}/invite-codes/check_access`,
   REDEEM_INVITE_CODE: `${API_URL}/invite-codes/redeem/`,
-  CREATE_INVITE_CODE: `${API_URL}/invite-codes/`,
-  GET_INVITE_CODES: `${API_URL}/invite-codes/`,
+  CREATE_INVITE_CODE: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
+  GET_INVITE_CODES: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
   ACCESS_REQUESTS: `${API_URL}/access-requests/`,
 } as const;
 
