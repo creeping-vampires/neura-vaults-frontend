@@ -1,4 +1,4 @@
-import { PublicClient, Address, parseAbi } from "viem";
+import { PublicClient, Address, parseAbi, formatUnits } from "viem";
 import { getBatchRpcClient } from "./batchRpc";
 import { LatestVaultItem } from "@/services/config";
 
@@ -50,7 +50,9 @@ export class MultiVaultBatchClient {
     vaultConfigs.forEach(({ address }) => {
       allCalls.push({
         address,
-        abi: parseAbi(["function asset() view returns (address)"]) as readonly any[],
+        abi: parseAbi([
+          "function asset() view returns (address)",
+        ]) as readonly any[],
         functionName: "asset",
       });
       callIndexMap.set(`asset_${address}`, currentIndex++);
@@ -62,17 +64,23 @@ export class MultiVaultBatchClient {
       allCalls.push(
         {
           address,
-          abi: parseAbi(["function totalAssets() view returns (uint256)"]) as readonly any[],
+          abi: parseAbi([
+            "function totalAssets() view returns (uint256)",
+          ]) as readonly any[],
           functionName: "totalAssets",
         },
         {
           address,
-          abi: parseAbi(["function totalSupply() view returns (uint256)"]) as readonly any[],
+          abi: parseAbi([
+            "function totalSupply() view returns (uint256)",
+          ]) as readonly any[],
           functionName: "totalSupply",
         },
         {
           address,
-          abi: parseAbi(["function decimals() view returns (uint8)"]) as readonly any[],
+          abi: parseAbi([
+            "function decimals() view returns (uint8)",
+          ]) as readonly any[],
           functionName: "decimals",
         }
       );
@@ -82,13 +90,16 @@ export class MultiVaultBatchClient {
 
     // Execute single optimized batch call
     const allResults = await this.batchClient.batchRead(allCalls, {
-      cacheKey: `multi_vault_complete_${vaultConfigs.map((v) => v.address).join("_")}`,
+      cacheKey: `multi_vault_complete_${vaultConfigs
+        .map((v) => v.address)
+        .join("_")}`,
       ttl: 30000,
     });
 
     // Extract asset addresses from results
-    const assetAddresses = vaultConfigs.map(({ address }) => allResults[callIndexMap.get(`asset_${address}`)]);
-
+    const assetAddresses = vaultConfigs.map(
+      ({ address }) => allResults[callIndexMap.get(`asset_${address}`)]
+    );
 
     // Organize results keyed by vault address
     const results: Record<string, MultiVaultData> = {};
@@ -143,19 +154,25 @@ export class MultiVaultBatchClient {
     const userDataCalls = entries.flatMap(([key, data]) => [
       {
         address: data.vaultAddress,
-        abi: parseAbi(["function balanceOf(address) view returns (uint256)"]) as readonly any[],
+        abi: parseAbi([
+          "function balanceOf(address) view returns (uint256)",
+        ]) as readonly any[],
         functionName: "balanceOf",
         args: [userAddress],
       },
       {
         address: data.assetAddress,
-        abi: parseAbi(["function balanceOf(address) view returns (uint256)"]) as readonly any[],
+        abi: parseAbi([
+          "function balanceOf(address) view returns (uint256)",
+        ]) as readonly any[],
         functionName: "balanceOf",
         args: [userAddress],
       },
       {
         address: data.assetAddress,
-        abi: parseAbi(["function allowance(address, address) view returns (uint256)"]) as readonly any[],
+        abi: parseAbi([
+          "function allowance(address, address) view returns (uint256)",
+        ]) as readonly any[],
         functionName: "allowance",
         args: [userAddress, data.vaultAddress],
       },
@@ -167,7 +184,10 @@ export class MultiVaultBatchClient {
     });
 
     // Organize results keyed by vault address
-    const results: Record<string, { userShares: bigint; userAssetBalance: bigint; assetAllowance: bigint }> = {} as any;
+    const results: Record<
+      string,
+      { userShares: bigint; userAssetBalance: bigint; assetAllowance: bigint }
+    > = {} as any;
     let index = 0;
 
     for (const [key] of entries) {
@@ -214,31 +234,22 @@ export const getMultiVaultBatchClient = (publicClient: PublicClient) => {
  * Helper function to calculate vault metrics from batch data
  */
 export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
-  const totalAssetsFormatted =
-    Number(
-      (data.totalAssets * BigInt(10 ** 18)) /
-        BigInt(10 ** Number(data.assetDecimals))
-    ) / 1e18;
+  const totalAssetsFormatted = Number(
+      formatUnits(userData.totalAssets, Number(data.assetDecimals))
+    );
 
-  const totalSupplyFormatted =
-    Number(
-      (data.totalSupply * BigInt(10 ** 18)) /
-        BigInt(10 ** Number(data.vaultDecimals))
-    ) / 1e18;
+  const totalSupplyFormatted = Number(
+      formatUnits(userData.totalSupply, Number(data.vaultDecimals))
+    );
 
-  const totalRequestedAssetsRaw: bigint = userData?.totalRequestedAssets ?? 0n;
   const totalRequestedAssetsFormatted =
-    Number(
-      (totalRequestedAssetsRaw * BigInt(10 ** 18)) /
-        BigInt(10 ** Number(data.assetDecimals))
-    ) / 1e18;
+    Number(formatUnits(userData.totalRequestedAssets, Number(data.assetDecimals))
+    ) ;
 
-  const pendingDepositAssetsRaw: bigint = userData?.pendingDepositAssets ?? 0n;
-  const pendingDepositAssetsFormatted =
-    Number(
-      (pendingDepositAssetsRaw * BigInt(10 ** 18)) /
-        BigInt(10 ** Number(data.assetDecimals))
-    ) / 1e18;
+  const pendingDepositAssetsFormatted = Number(
+      formatUnits(userData.pendingDepositAssets, Number(data.assetDecimals))
+    );
+
 
   const currentNetAPR =
     totalAssetsFormatted > totalSupplyFormatted
@@ -248,25 +259,21 @@ export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
 
   let userMetrics = {};
   if (userData) {
-    const userSharesFormatted =
-      Number(
-        (userData.userShares * BigInt(10 ** 18)) /
-          BigInt(10 ** Number(data.vaultDecimals))
-      ) / 1e18;
+    const userSharesFormatted = Number(
+      formatUnits(userData.userShares, Number(data.vaultDecimals))
+    );
 
-    const userAssetBalanceFormatted =
-      Number(
-        (userData.userAssetBalance * BigInt(10 ** 18)) /
-          BigInt(10 ** Number(data.assetDecimals))
-      ) / 1e18;
-      
+    const userAssetBalanceFormatted = Number(
+      formatUnits(userData.userAssetBalance, Number(data.assetDecimals))
+    );
+
     const pricePerShare =
       totalSupplyFormatted > 0
         ? totalAssetsFormatted / totalSupplyFormatted
         : 0;
-        
+
     const userDepositsFormatted = userSharesFormatted * pricePerShare;
-    
+
     const compoundedYield = 0;
 
     userMetrics = {

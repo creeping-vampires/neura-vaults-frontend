@@ -1104,12 +1104,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             activeTab === "deposit"
               ? isDepositTransacting ||
                 !inputAmount ||
-                parseFloat(inputAmount) <= 0 ||
+                parseFloat(inputAmount) < 1 ||
                 (availableAssetBalance ?? 0) <= 0 ||
                 isValidatingDeposit
               : isWithdrawTransacting ||
                 !inputAmount ||
-                parseFloat(inputAmount) <= 0 ||
+                parseFloat(inputAmount) < 1 ||
                 (availableUserDeposits ?? 0) <= 0
           }
           className="w-full mt-4"
