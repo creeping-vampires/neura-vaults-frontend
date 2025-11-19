@@ -243,8 +243,8 @@ export const API_ROUTES = {
   GET_AGENT_THOUGHTS: `${API_URL}/agent-thoughts/`,
 
   // invite code & user access
-  CHECK_USER_ACCESS: `${API_URL}/invite-codes/check_access`,
-  REDEEM_INVITE_CODE: `${API_URL}/invite-codes/redeem/`,
+  CHECK_USER_ACCESS: `${API_URL}/invite-codes/user/check_access`,
+  REDEEM_INVITE_CODE: `${API_URL}/invite-codes/user/redeem`,
   CREATE_INVITE_CODE: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
   GET_INVITE_CODES: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
   ACCESS_REQUESTS: `${API_URL}/access-requests/`,
@@ -256,7 +256,6 @@ const api: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-  withCredentials: true,
 });
 
 // Request interceptor

@@ -5,7 +5,6 @@ import { userService, UserAccessResponse } from "../services/userService";
 export interface UserAccessState {
   isLoading: boolean;
   isAdmin: boolean;
-  hasAccess: boolean;
   error: string | null;
   adminData: UserAccessResponse | null;
 }
@@ -13,9 +12,8 @@ export interface UserAccessState {
 export const useUserAccess = () => {
   const { address: userAddress } = useAccount();
   const [state, setState] = useState<UserAccessState>({
-    isLoading: false,
+    isLoading: true,
     isAdmin: false,
-    hasAccess: false,
     error: null,
     adminData: null,
   });
@@ -29,22 +27,17 @@ export const useUserAccess = () => {
           walletAddress,
           force
         );
-
-        const newState = {
+        setState({
           isLoading: false,
-          isAdmin: response.is_admin,
-          hasAccess: response.has_access,
+          isAdmin: !!response.has_access,
           error: null,
           adminData: response,
-        };
-
-        setState(newState);
+        });
       } catch (error) {
         console.error("Error checking user access:", error);
         setState({
           isLoading: false,
           isAdmin: false,
-          hasAccess: false,
           error:
             error instanceof Error
               ? error.message
@@ -52,14 +45,8 @@ export const useUserAccess = () => {
           adminData: {
             wallet_address: walletAddress,
             has_access: false,
-            is_admin: false,
             invite_code_used: "",
             redeemed_at: "",
-            credits_received: 0,
-            kol_role_assigned: false,
-            whitelisted_at: "",
-            invite_code_used_for_whitelist: "",
-            is_active: false,
           },
         });
       }
@@ -76,7 +63,6 @@ export const useUserAccess = () => {
       setState({
         isLoading: false,
         isAdmin: false,
-        hasAccess: false,
         error: null,
         adminData: null,
       });
