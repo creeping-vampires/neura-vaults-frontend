@@ -15,17 +15,13 @@ import {
   TrendingUp,
   DollarSign,
   Clock,
-  ExternalLink,
   Target,
-  CheckCircle,
-  XCircle,
   Loader2,
 } from "lucide-react";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
 // Removed usePrivy login; wallet connection is derived from useActiveWallet
 import { useUserAccess } from "@/hooks/useUserAccess";
-import { getExplorerTxUrl } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import {
   ChartContainer,
@@ -42,13 +38,13 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { explorerUrl } from "@/utils/constant";
-import AgentConsole from "@/components/AgentConsole";
+import ChatBot from "@/components/ChatBot";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useAccount } from "wagmi";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 import VaultActionPanel from "@/components/VaultActionPanel";
+import userService from "@/services/userService";
 
 const chartConfig = {
   value: {
@@ -359,7 +355,7 @@ const VaultDetails = () => {
   ]);
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl relative">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
         <div className="flex items-center space-x-3 sm:space-x-4">
           <Button
@@ -1067,7 +1063,7 @@ const VaultDetails = () => {
         </div>
       </div>
 
-      <AgentConsole vaultId={vaultId} currentVault={currentVaultSymbol} />
+      <ChatBot />
 
       <AccessCodeModal
         isOpen={showAccessCodeModal}
