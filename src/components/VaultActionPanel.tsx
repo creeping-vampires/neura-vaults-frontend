@@ -51,7 +51,7 @@ interface VaultActionPanelProps {
   vaultId?: string;
   refreshData: () => void | Promise<void>;
   isConnected: boolean;
-  isAdmin: boolean;
+  hasAccess: boolean;
   txCanceled: boolean;
   onRequireAccess: () => void;
   pendingDepositAssets: bigint;
@@ -72,7 +72,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   vaultId,
   refreshData,
   isConnected,
-  isAdmin,
+  hasAccess,
   txCanceled,
   onRequireAccess,
   pendingDepositAssets,
@@ -979,7 +979,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         if (!isConnected) {
           await connectWithFallback(location.pathname);
           return;
-        } else if (!isAdmin) {
+        } else if (!hasAccess) {
           onRequireAccess();
           return;
         } else {

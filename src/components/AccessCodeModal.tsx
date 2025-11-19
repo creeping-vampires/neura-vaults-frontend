@@ -21,7 +21,7 @@ interface AccessCodeModalProps {
   onClose: () => void;
   title?: string;
   description?: string;
-  isAdmin?: boolean;
+  hasAccess?: boolean;
 }
 
 export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
@@ -29,7 +29,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
   onClose,
   title = "Welcome to Neura Vaults",
   description = "Enter your invite code to access the platform",
-  isAdmin = false,
+  hasAccess = false,
 }) => {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +59,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
       }
 
       // Check if user already has access
-      if (isAdmin) {
+      if (hasAccess) {
         toast({
           title: "Already Redeemed",
           description:
@@ -191,10 +191,10 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
           {/* Header */}
           <DialogHeader className="text-center space-y-2">
             <DialogTitle className="text-2xl font-semibold text-foreground text-center">
-              {isAdmin ? "Access Already Granted" : title}
+              {hasAccess ? "Access Already Granted" : title}
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-base">
-              {isAdmin
+              {hasAccess
                 ? "You already have access to Neura Vaults. No need to redeem another invite code."
                 : !showWaitlist
                 ? description
@@ -203,7 +203,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
           </DialogHeader>
 
           {/* Form - only show if user doesn't have access */}
-          {!isAdmin && !showWaitlist && (
+          {!hasAccess && !showWaitlist && (
             <form onSubmit={handleSubmit} className="w-full space-y-6">
               <div className="space-y-2">
                 <Input
@@ -235,7 +235,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
           )}
 
           {/* Waitlist form for users without access */}
-          {!isAdmin && showWaitlist && (
+          {!hasAccess && showWaitlist && (
             <form onSubmit={handleWaitlistSubmit} className="w-full space-y-4">
               <div className="space-y-2">
                 <div className="relative">
@@ -298,7 +298,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
           )}
 
           {/* Show close button for users who already have access */}
-          {isAdmin && (
+          {hasAccess && (
             <Button
               variant="wallet"
               onClick={handleClose}
@@ -309,7 +309,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
           )}
 
           {/* Footer */}
-          {!isAdmin && !showWaitlist && (
+          {!hasAccess && !showWaitlist && (
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
                 Don't have a code?{" "}

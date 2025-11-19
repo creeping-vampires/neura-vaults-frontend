@@ -132,7 +132,7 @@ const VaultDetails = () => {
     ...vaultData
   } = vaultDataObject;
 
-  const { isAdmin } = useUserAccess();
+  const { hasAccess } = useUserAccess();
   const [txCanceled, setTxCanceled] = useState(false);
 
   const [totalAUM, setTotalAUM] = useState(0);
@@ -1033,7 +1033,7 @@ const VaultDetails = () => {
               vaultId={vaultId}
               refreshData={refreshData}
               isConnected={isConnected}
-              isAdmin={isAdmin}
+              hasAccess={hasAccess}
               txCanceled={txCanceled}
               onRequireAccess={() => setShowAccessCodeModal(true)}
               pendingDepositAssets={pendingDepositAssets}
@@ -1067,7 +1067,7 @@ const VaultDetails = () => {
       <AccessCodeModal
         isOpen={showAccessCodeModal}
         onClose={() => setShowAccessCodeModal(false)}
-        isAdmin={isAdmin}
+        hasAccess={hasAccess}
       />
     </div>
   );

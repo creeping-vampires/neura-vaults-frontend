@@ -5,6 +5,7 @@ import { userService, UserAccessResponse } from "../services/userService";
 export interface UserAccessState {
   isLoading: boolean;
   isAdmin: boolean;
+  hasAccess: boolean;
   error: string | null;
   adminData: UserAccessResponse | null;
 }
@@ -14,6 +15,7 @@ export const useUserAccess = () => {
   const [state, setState] = useState<UserAccessState>({
     isLoading: true,
     isAdmin: false,
+    hasAccess: false,
     error: null,
     adminData: null,
   });
@@ -29,7 +31,8 @@ export const useUserAccess = () => {
         );
         setState({
           isLoading: false,
-          isAdmin: !!response.has_access,
+          isAdmin: response.is_admin,
+          hasAccess: response.has_access,
           error: null,
           adminData: response,
         });
@@ -38,6 +41,7 @@ export const useUserAccess = () => {
         setState({
           isLoading: false,
           isAdmin: false,
+          hasAccess: false,
           error:
             error instanceof Error
               ? error.message
@@ -45,6 +49,7 @@ export const useUserAccess = () => {
           adminData: {
             wallet_address: walletAddress,
             has_access: false,
+            is_admin: false,
             invite_code_used: "",
             redeemed_at: "",
           },
@@ -63,6 +68,7 @@ export const useUserAccess = () => {
       setState({
         isLoading: false,
         isAdmin: false,
+        hasAccess: false,
         error: null,
         adminData: null,
       });
