@@ -24,6 +24,7 @@ export interface UserAccessRequest {
 export interface UserAccessResponse {
   wallet_address: string;
   has_access: boolean;
+  is_admin: boolean;
   invite_code_used: string;
   redeemed_at: string;
 }

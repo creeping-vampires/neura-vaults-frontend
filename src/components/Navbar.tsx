@@ -35,7 +35,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
 
   const { address: userAddress } = useAccount();
 
-  const { isAdmin, isLoading } = useUserAccess();
+  const { hasAccess, isLoading } = useUserAccess();
 
   const [copiedWallet, setCopiedWallet] = useState(false);
   const [showWalletModal, setShowWalletModal] = useState(false);
@@ -252,7 +252,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
             <div className="flex items-center space-x-3">
               {isConnected ? (
                 <>
-                  {!isAdmin && (
+                  {!hasAccess && (
                     <Button
                       onClick={() => setShowAccessCodeModal(true)}
                       variant="outline"
@@ -384,7 +384,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
       <AccessCodeModal
         isOpen={showAccessCodeModal}
         onClose={() => setShowAccessCodeModal(false)}
-        isAdmin={isAdmin}
+        hasAccess={hasAccess}
       />
     </>
   );
