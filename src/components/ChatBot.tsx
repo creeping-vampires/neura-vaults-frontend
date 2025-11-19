@@ -65,7 +65,7 @@ const ChatBot: React.FC = () => {
           </button>
         </div>
         <iframe
-          src="http://127.0.0.1:8000"
+          src="https://neurachatbot-production.up.railway.app/"
           width="100%"
           height="500px"
           title="Chatbot"
