@@ -148,9 +148,9 @@ export const useMultiVault = () => {
             assetBalance: (metrics as any).assetBalance || 0,
             pricePerShare: (metrics as any).pricePerShare || 1,
             assetAddress: (rawData as any).assetAddress,
-            assetDecimals:
-              (apiItem as any)?.underlyingDecimals,
+            assetDecimals: (apiItem as any)?.underlyingDecimals,
             assetSymbol: (apiItem as any)?.underlyingSymbol,
+            vaultDecimals: (rawData as any).vaultDecimals,
             totalRequestedAssets: metrics.totalRequestedAssets,
             pendingDepositAssets: pendingDepositAssets,
             isLoading: false,
@@ -222,6 +222,7 @@ export const useMultiVault = () => {
               assetAddress: "0x",
               assetDecimals: 18,
               assetSymbol: "",
+              vaultDecimals: 18,
               totalRequestedAssets: 0,
               pendingDepositAssets: 0n,
               isLoading: false,
@@ -555,7 +556,7 @@ export const useMultiVault = () => {
         setIsDepositTransacting(true);
         setTransactionHash(null);
 
-        const vaultSymbol = vaultData[vaultAddress]?.assetSymbol;
+        const assetSymbol = vaultData[vaultAddress]?.assetSymbol;
         let assetAddress: `0x${string}` = vaultData[vaultAddress]?.assetAddress;
         let assetDecimals: number | undefined =
           vaultData[vaultAddress]?.assetDecimals;
@@ -682,7 +683,7 @@ export const useMultiVault = () => {
         toast({
           variant: "success",
           title: "✅ Deposit Request Submitted",
-          description: `Successfully requested deposit of ${amount} ${vaultSymbol}. Your deposit will be processed in the next settlement.`,
+          description: `Successfully requested deposit of ${amount} ${assetSymbol}. Your deposit will be processed in the next settlement.`,
         });
 
         await refreshAllData();
@@ -730,30 +731,35 @@ export const useMultiVault = () => {
         setIsWithdrawTransacting(true);
         setTransactionHash(null);
 
-        const vaultSymbol = vaultData[vaultAddress]?.assetSymbol;
+        const assetSymbol = vaultData[vaultAddress]?.assetSymbol;
         let assetDecimals: number | undefined =
           vaultData[vaultAddress]?.assetDecimals;
         const amountBigInt = parseUnits(amount, Number(assetDecimals));
 
-        const userShares = vaultData[vaultAddress]?.userShares;
-        const userAssets = vaultData[vaultAddress]?.userDeposits;
-        const userAssetsBigInt = parseUnits(
-          userAssets.toString(),
-          Number(assetDecimals)
-        );
+          // let vaultDecimals: number | undefined =
+          //   vaultData[vaultAddress]?.vaultDecimals;
+          // const userShares = vaultData[vaultAddress]?.userShares;
+          // const userSharesInBigInt = parseUnits(
+          //   userShares.toString(),
+          //   Number(vaultDecimals)
+          // );
 
-        // For full withdrawals, use actual shares
-        const isFullWithdrawal =
-          amountBigInt >= ((userAssetsBigInt as bigint) * 99n) / 100n; // 99% threshold
+          // const userAssets = vaultData[vaultAddress]?.userDeposits;
+          // const userAssetsInBigInt = parseUnits(
+          //   userAssets.toString(),
+          //   Number(assetDecimals)
+          // );
 
-        const shares = isFullWithdrawal
-          ? (userAssetsBigInt as bigint)
-          : ((await publicClient.readContract({
-              address: vaultAddress as `0x${string}`,
-              abi: YieldAllocatorVaultABI,
-              functionName: "convertToShares",
-              args: [amountBigInt],
-            })) as bigint);
+          // For full withdrawals, use actual shares
+          // const isFullWithdrawal =
+          //   amountBigInt >= ((userAssetsInBigInt as bigint) * 99n) / 100n; // 99% threshold
+
+          const shares = (await publicClient.readContract({
+            address: vaultAddress as `0x${string}`,
+            abi: YieldAllocatorVaultABI,
+            functionName: "convertToShares",
+            args: [amountBigInt],
+          })) as bigint;
 
         const requestRedeemGas = await publicClient.estimateContractGas({
           address: vaultAddress as `0x${string}`,
@@ -820,7 +826,7 @@ export const useMultiVault = () => {
         toast({
           variant: "success",
           title: "✅ Withdrawal Request Submitted",
-          description: `Successfully requested withdrawal of ${amount} ${vaultSymbol}. You can claim your withdrawal once it's processed.`,
+          description: `Successfully requested withdrawal of ${amount} ${assetSymbol}. You can claim your withdrawal once it's processed.`,
         });
 
         await refreshAllData();

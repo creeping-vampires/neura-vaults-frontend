@@ -18,6 +18,8 @@ export interface VaultData {
   assetDecimals: number;
   assetSymbol: string; 
 
+  vaultDecimals: number;
+
   // UI state
   isLoading: boolean;
   error: string | null;
