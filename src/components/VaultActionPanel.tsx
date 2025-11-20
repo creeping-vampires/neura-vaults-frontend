@@ -188,7 +188,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       : undefined;
 
     if (userHeadroomNum === undefined || vaultHeadroomNum === undefined) {
-      setDepositEligibility((prev) => ({ ...prev, eligible: false, reason: "" }));
+      setDepositEligibility((prev) => ({
+        ...prev,
+        eligible: false,
+        reason: "",
+      }));
       setIsValidatingDeposit(false);
       return;
     }
@@ -213,7 +217,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       return;
     }
 
-    setDepositEligibility((prev) => ({ ...prev, eligible: true, reason: undefined }));
+    setDepositEligibility((prev) => ({
+      ...prev,
+      eligible: true,
+      reason: undefined,
+    }));
     setIsValidatingDeposit(false);
   }, [
     inputAmount,
@@ -964,8 +972,13 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       activeTab === "deposit"
         ? availableAssetBalance || 0
         : availableUserDeposits || 0;
-    const amount = ((maxAmount * percent) / 100).toString();
-    setInputAmount(amount);
+    if (percent === 100) {
+      const amount = (((maxAmount * percent) / 100) * 0.999).toString();
+      setInputAmount(amount);
+    } else {
+      const amount = ((maxAmount * percent) / 100).toString();
+      setInputAmount(amount);
+    }
   };
 
   const { connectWithFallback } = useWalletConnection();

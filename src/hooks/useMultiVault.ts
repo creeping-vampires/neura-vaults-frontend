@@ -135,7 +135,10 @@ export const useMultiVault = () => {
           const apiItem = (allVaultData || []).find(
             (v: any) => v.address?.toLowerCase() === address?.toLowerCase()
           );
+          // console.log("apiItem", apiItem);
+          // console.log("rawData", rawData);
           const userDataForVault = (userData as any)[address];
+          // console.log("userDataForVault", userDataForVault);
           const metrics = calculateVaultMetrics(rawData, userDataForVault);
           processedVaultData[address] = {
             totalAssets: metrics.totalAssets,
@@ -736,30 +739,12 @@ export const useMultiVault = () => {
           vaultData[vaultAddress]?.assetDecimals;
         const amountBigInt = parseUnits(amount, Number(assetDecimals));
 
-          // let vaultDecimals: number | undefined =
-          //   vaultData[vaultAddress]?.vaultDecimals;
-          // const userShares = vaultData[vaultAddress]?.userShares;
-          // const userSharesInBigInt = parseUnits(
-          //   userShares.toString(),
-          //   Number(vaultDecimals)
-          // );
-
-          // const userAssets = vaultData[vaultAddress]?.userDeposits;
-          // const userAssetsInBigInt = parseUnits(
-          //   userAssets.toString(),
-          //   Number(assetDecimals)
-          // );
-
-          // For full withdrawals, use actual shares
-          // const isFullWithdrawal =
-          //   amountBigInt >= ((userAssetsInBigInt as bigint) * 99n) / 100n; // 99% threshold
-
-          const shares = (await publicClient.readContract({
-            address: vaultAddress as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "convertToShares",
-            args: [amountBigInt],
-          })) as bigint;
+        const shares = (await publicClient.readContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "convertToShares",
+          args: [amountBigInt],
+        })) as bigint;
 
         const requestRedeemGas = await publicClient.estimateContractGas({
           address: vaultAddress as `0x${string}`,
