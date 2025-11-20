@@ -275,6 +275,7 @@ export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
       compoundedYield,
       assetBalance: userAssetBalanceFormatted,
       pricePerShare: pricePerShare,
+      vaultDecimals: data.vaultDecimals,
     };
   }
 
