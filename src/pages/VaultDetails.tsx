@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { useMultiVault } from "@/hooks/useMultiVault";
 import { usePrice } from "@/hooks/usePrice";
-// Removed usePrivy login; wallet connection is derived from useActiveWallet
 import { useUserAccess } from "@/hooks/useUserAccess";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -39,6 +38,8 @@ import {
   AreaChart,
 } from "recharts";
 import ChatBot from "@/components/ChatBot";
+import yieldMonitorService from "@/services/vaultService";
+import { VaultAllocationsResponse } from "@/services/config";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useAccount } from "wagmi";
 
@@ -54,20 +55,6 @@ const chartConfig = {
     label: "APY",
     color: "#3B82F6",
   },
-};
-
-const getPoolName = (address: string, uSymbol: string): string => {
-  const poolNames: { [key: string]: string } = {
-    "0xceCcE0EB9DD2Ef7996e01e25DD70e461F918A14b": "Hypurrfi",
-    "0x00A89d7a5A02160f20150EbEA7a2b5E4879A1A8b": "Hyperlend",
-    [uSymbol === "USD₮0"
-      ? "0xFc5126377F0efc0041C0969Ef9BA903Ce67d151e"
-      : "0x835FEBF893c6DdDee5CF762B0f8e31C5B06938ab"]: "Felix",
-  };
-
-  return (
-    poolNames[address] || `Pool ${address.slice(0, 6)}...${address.slice(-4)}`
-  );
 };
 
 const useCountdown = () => {
@@ -119,13 +106,9 @@ const VaultDetails = () => {
     [getVaultClientByAddress, vaultId]
   );
   const {
-    deposit,
-    withdraw,
     claimRedeem,
     getClaimableDepositAmount,
     getClaimableRedeemAmount,
-    isDepositTransacting,
-    isWithdrawTransacting,
     refreshData,
     pendingDepositAssets,
     pendingRedeemShares,
@@ -159,6 +142,7 @@ const VaultDetails = () => {
     isPriceLoading,
     get24APY,
     get7APY,
+    get30APY,
     getVaultDataByAddress,
     priceData,
   } = usePrice();
@@ -180,6 +164,11 @@ const VaultDetails = () => {
 
   const { address: userAddress } = useAccount();
 
+  const [allocationsLoading, setAllocationsLoading] = useState(false);
+  const [allocationsError, setAllocationsError] = useState<string | null>(null);
+  const [allocationsData, setAllocationsData] =
+    useState<VaultAllocationsResponse | null>(null);
+
   useEffect(() => {
     if (!selectedTimeframe || !vaultId) {
       return;
@@ -187,6 +176,28 @@ const VaultDetails = () => {
 
     fetchPriceChart({ address: vaultId, timeframe: selectedTimeframe });
   }, [selectedTimeframe, vaultId, fetchPriceChart]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!vaultId) return;
+      setAllocationsLoading(true);
+      setAllocationsError(null);
+      try {
+        const res = await yieldMonitorService.getVaultAllocations(vaultId);
+        setAllocationsData(res);
+      } catch (err: any) {
+        const msg =
+          err?.response?.data?.error ||
+          err?.message ||
+          "Failed to load allocations";
+        setAllocationsError(msg);
+        setAllocationsData(null);
+      } finally {
+        setAllocationsLoading(false);
+      }
+    };
+    run();
+  }, [vaultId]);
 
   useEffect(() => {
     if (!priceChartData || priceChartData.length === 0) {
@@ -211,7 +222,7 @@ const VaultDetails = () => {
             ? tsNum * 1000
             : tsNum;
 
-          // Focus only on share price and timestamp
+          // only share price and timestamp
           const spRaw = point.share_price_formatted ?? point.sharePrice;
           let valueNum: number = 0;
           if (typeof spRaw === "string") {
@@ -302,56 +313,28 @@ const VaultDetails = () => {
 
   const timeframes = ["7D", "1M"] as const;
 
-  // Calculate pool composition data from vaultData
   const dynamicPoolData = useMemo(() => {
-    if (
-      !vaultData.poolAddresses ||
-      !vaultData.poolTVLs ||
-      vaultData.poolAddresses.length === 0
-    ) {
-      return [];
-    }
-
-    const vaultSymbol = currentVaultSymbol;
-
-    const validPools = vaultData.poolAddresses
-      .map((address, index) => {
-        const poolName = getPoolName(address, vaultSymbol);
-        if (!["Felix", "Hypurrfi", "Hyperlend"].includes(poolName)) {
-          return null;
-        }
-        return {
-          address,
-          tvl: vaultData.poolTVLs[index] || 0,
-          apr: vaultData.poolNetAPRs[index] || 0,
-          poolName,
-        };
-      })
-      .filter((pool) => pool !== null);
-
-    const totalTVL = validPools.reduce((sum, pool) => sum + pool!.tvl, 0);
-
-    return validPools.map((pool) => {
-      const percentage = totalTVL > 0 ? (pool!.tvl / totalTVL) * 100 : 0;
-      return {
-        name: pool!.poolName,
-        value: parseFloat(percentage.toFixed(1)),
-        tvl: pool!.tvl,
-        apr: pool!.apr,
-        color:
-          pool!.poolName === "Felix"
-            ? "#10B981"
-            : pool!.poolName === "Hypurrfi"
-            ? "#3B82F6"
-            : "#F59E0B",
-      };
+    const d = allocationsData?.data[0]?.allocations || [];
+    if (!d || d.length === 0) return [] as any[];
+    return d.map((a) => {
+      const n = a.name;
+      const p = a.protocol;
+      const pct = Number(a.percentage) || 0;
+      const bal = (() => {
+        const b = parseFloat(String(a.balance));
+        return isNaN(b) ? 0 : b;
+      })();
+      const color =
+        p === "safe"
+          ? "#00d6c1"
+          : p === "felix"
+          ? "#b8b9be"
+          : p === "hypurrFinance"
+          ? "#3B82F6"
+          : "#F59E0B";
+      return { name: n, protocol: p, value: parseFloat(pct.toFixed(1)), tvl: bal, color };
     });
-  }, [
-    vaultData.poolAddresses,
-    vaultData.poolTVLs,
-    vaultData.poolNetAPRs,
-    vaultId,
-  ]);
+  }, [allocationsData]);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 max-w-7xl relative">
@@ -554,15 +537,30 @@ const VaultDetails = () => {
                         <path d="M12 16v-4" />
                         <path d="M12 8h.01" />
                       </svg>
-                      <div className="flex items-center gap-1 absolute top-8 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                        <div className="font-medium text-muted-foreground">
-                          7-Day APY
-                        </div>
-                        <div className="font-medium text-foreground">:</div>
-                        <div className="font-medium ml-1 text-foreground">
-                          {get7APY() ? get7APY().toFixed(2) : "-"}
-                        </div>
+                      <div className="absolute top-7 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                         <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                        <div className="flex items-center gap-1">
+                          <div className="font-medium text-muted-foreground">
+                            7-Day APY
+                          </div>
+                          <div className="font-medium text-foreground ml-auto">
+                            :
+                          </div>
+                          <div className="font-medium text-foreground ml-1">
+                            {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="font-medium text-muted-foreground">
+                            30-Day APY
+                          </div>
+                          <div className="font-medium text-foreground ml-auto">
+                            :
+                          </div>
+                          <div className="font-medium text-foreground ml-1">
+                            {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -934,82 +932,103 @@ const VaultDetails = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {vaultData.isLoading ? (
+                  {allocationsLoading ? (
                     <div className="flex items-center justify-center h-[300px]">
                       <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
-                  ) : vaultData.poolAddresses &&
-                    vaultData.poolAddresses.length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-                      <div>
-                        <h3 className="text-foreground font-medium mb-4">
-                          By Protocol
-                        </h3>
-                        <div className="h-[250px]">
-                          <ChartContainer
-                            config={chartConfig}
-                            className="w-full h-full"
-                          >
-                            <RechartsPieChart>
-                              <ChartTooltip content={<ChartTooltipContent />} />
-                              <Pie
-                                data={dynamicPoolData}
-                                dataKey="value"
-                                nameKey="name"
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={120}
-                              >
-                                {dynamicPoolData.map((entry, index) => (
-                                  <Cell
-                                    key={`cell-${index}`}
-                                    fill={entry.color}
-                                  />
-                                ))}
-                              </Pie>
-                            </RechartsPieChart>
-                          </ChartContainer>
+                  ) : allocationsError ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        {allocationsError}
+                      </p>
+                    </div>
+                  ) : allocationsData?.data[0]?.allocations &&
+                    allocationsData.data[0].allocations.length > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-foreground font-medium">
+                            {allocationsData.data[0].vaultName}
+                          </span>
                         </div>
+                        <span className="text-foreground text-sm">
+                          Total Value: $
+                          {allocationsData.data[0].totalValueFormatted}
+                        </span>
                       </div>
-                      <div>
-                        <h3 className="text-foreground font-medium mb-4">
-                          Pool Details
-                        </h3>
-                        <div className="space-y-3">
-                          {dynamicPoolData.map((item, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+                        <div>
+                          <h3 className="text-foreground font-medium mb-4">
+                            By Protocol
+                          </h3>
+                          <div className="h-[250px]">
+                            <ChartContainer
+                              config={chartConfig}
+                              className="w-full h-full"
                             >
-                              <div className="flex items-center space-x-3">
-                                <div
-                                  className="w-4 h-4 rounded-full"
-                                  style={{ backgroundColor: item.color }}
+                              <RechartsPieChart>
+                                <ChartTooltip
+                                  content={<ChartTooltipContent />}
                                 />
-                                <div>
+                                <Pie
+                                  data={dynamicPoolData}
+                                  dataKey="value"
+                                  nameKey="name"
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={120}
+                                >
+                                  {dynamicPoolData.map((entry, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={entry.color}
+                                    />
+                                  ))}
+                                </Pie>
+                              </RechartsPieChart>
+                            </ChartContainer>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-foreground font-medium mb-4">
+                            Allocation Details
+                          </h3>
+                          <div className="space-y-3">
+                            {dynamicPoolData.map((item, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <div
+                                    className="w-4 h-4 rounded-full"
+                                    style={{ backgroundColor: item.color }}
+                                  />
+                                  <div>
+                                    <span className="text-foreground font-medium block">
+                                      {item.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      Balance: ${item.tvl.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
                                   <span className="text-foreground font-medium block">
-                                    {item.name}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground">
-                                    TVL: ${item.tvl.toFixed(2)}
+                                    {item.value}%
                                   </span>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <span className="text-foreground font-medium block">
-                                  {item.value}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </>
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">
-                        No pool composition data available.
+                        No allocation data available.
                       </p>
                     </div>
                   )}
@@ -1023,21 +1042,14 @@ const VaultDetails = () => {
           <div className="sticky top-6 space-y-4 sm:space-y-6">
             <VaultActionPanel
               currentVaultSymbol={currentVaultSymbol}
-              currentVaultAssetAddress={currentVaultAssetAddress}
               availableAssetBalance={vaultData?.assetBalance}
               availableUserDeposits={vaultData?.userDeposits}
-              deposit={deposit}
-              withdraw={withdraw}
-              isDepositTransacting={isDepositTransacting}
-              isWithdrawTransacting={isWithdrawTransacting}
               vaultId={vaultId}
               refreshData={refreshData}
               isConnected={isConnected}
               hasAccess={hasAccess}
               txCanceled={txCanceled}
               onRequireAccess={() => setShowAccessCodeModal(true)}
-              pendingDepositAssets={pendingDepositAssets}
-              pendingRedeemShares={pendingRedeemShares}
               claimableDepositAssets={claimableDepositAssets}
               claimableWithdrawAssets={claimableWithdrawAssets}
             />

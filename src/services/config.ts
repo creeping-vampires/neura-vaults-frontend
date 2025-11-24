@@ -239,6 +239,9 @@ export const API_ROUTES = {
   GET_VAULTS_LATEST: `${API_URL}/neura-vault/vaults`,
   GET_VAULT_DEPOSITS_LATEST: `${API_URL}/neura-vault/deposits`,
   GET_VAULT_WITHDRAWALS_LATEST: `${API_URL}/neura-vault/withdrawals`,
+  GET_VAULT_ALLOCATIONS: `${API_URL}/neura-vault/allocations`,
+  GET_VAULT_PENDING_AMOUNT: `${API_URL}/neura-vault/deposits/pendingAmount`,
+  GET_VAULT_PENDING_WITHDRAWALS: `${API_URL}/neura-vault/withdrawals/pendingAmount`,
   GET_VAULT_REBALANCES: `${API_URL}/vault/rebalances/combined/`,
   GET_AGENT_THOUGHTS: `${API_URL}/agent-thoughts/`,
 
@@ -372,6 +375,7 @@ export interface LatestVaultCurrentData {
 
 export interface LatestVaultApy {
   apy: number | null;
+  apy1d: number | null;
   apy7d: number | null;
   apy30d: number | null;
 }
@@ -396,4 +400,48 @@ export interface LatestVaultItem {
 export interface LatestVaultsResponse {
   success: boolean;
   data: LatestVaultItem[];
+}
+
+export interface VaultAllocationItem {
+  protocol: string;
+  name: string;
+  balance: string;
+  percentage: number;
+}
+
+export interface VaultAllocationsData {
+  vaultAddress: string;
+  vaultName: string;
+  symbol: string;
+  totalValueFormatted: string;
+  allocations: VaultAllocationItem[];
+}
+
+export interface VaultAllocationsResponse {
+  success?: boolean;
+  data?: VaultAllocationsData;
+  error?: string;
+}
+
+export interface PendingDepositsData {
+  vaultAddress: string;
+  pendingAmount: string;
+}
+
+export interface PendingDepositsResponse {
+  success?: boolean;
+  data?: PendingDepositsData;
+  error?: string;
+}
+
+export interface PendingWithdrawalsData {
+  vaultAddress: string;
+  pendingShares: string;
+  pendingCount: number;
+}
+
+export interface PendingWithdrawalsResponse {
+  success?: boolean;
+  data?: PendingWithdrawalsData;
+  error?: string;
 }

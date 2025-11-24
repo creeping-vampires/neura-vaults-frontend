@@ -27,7 +27,6 @@ export interface VaultData {
   // Pool data
   poolNetAPRs: number[];
   poolTVLs: number[];
-  poolAddresses: `0x${string}`[];
 
   // Pending transaction tracking
   pendingDepositAssets?: bigint;

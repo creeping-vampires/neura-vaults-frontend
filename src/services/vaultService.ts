@@ -4,6 +4,9 @@ import {
   DailyMetricsResponse,
   LatestPriceChartResponse,
   LatestVaultsResponse,
+  VaultAllocationsResponse,
+  PendingDepositsResponse,
+  PendingWithdrawalsResponse,
 } from "./config";
 
 const yieldMonitorService = {
@@ -20,10 +23,10 @@ const yieldMonitorService = {
   },
   getPriceChart: async (
     address: string,
-    timeframe: '7D' | '1M'
+    timeframe: "7D" | "1M"
   ): Promise<LatestPriceChartResponse> => {
     try {
-      const period = timeframe === '1M' ? '30d' : '7d';
+      const period = timeframe === "1M" ? "30d" : "7d";
       const route = `${API_ROUTES.GET_VAULTS_LATEST}/${address}/history/${period}`;
       const data = await apiGet<LatestPriceChartResponse>(route);
       return data;
@@ -34,10 +37,56 @@ const yieldMonitorService = {
   },
   getVaultPrice: async (): Promise<LatestVaultsResponse> => {
     try {
-      const data = await apiGet<LatestVaultsResponse>(API_ROUTES.GET_VAULTS_LATEST);
+      const data = await apiGet<LatestVaultsResponse>(
+        API_ROUTES.GET_VAULTS_LATEST
+      );
       return data;
     } catch (error) {
       console.error("Error fetching vaults data:", error);
+      throw error;
+    }
+  },
+  getVaultAllocations: async (
+    vaultAddress: string
+  ): Promise<VaultAllocationsResponse> => {
+    try {
+      const data = await apiGet<VaultAllocationsResponse>(
+        API_ROUTES.GET_VAULT_ALLOCATIONS,
+        { vaultAddress }
+      );
+      return data;
+    } catch (error) {
+      console.error("Error fetching vault allocations:", error);
+      throw error;
+    }
+  },
+  getPendingDepositAmount: async (
+    vaultAddress: string
+  ): Promise<PendingDepositsResponse> => {
+    try {
+      const data = await apiGet<PendingDepositsResponse>(
+        API_ROUTES.GET_VAULT_PENDING_AMOUNT,
+        { vaultAddress },
+        10_000
+      );
+      return data;
+    } catch (error) {
+      console.error("Error fetching pending deposit amount:", error);
+      throw error;
+    }
+  },
+  getPendingWithdrawalAmount: async (
+    vaultAddress: string
+  ): Promise<PendingWithdrawalsResponse> => {
+    try {
+      const data = await apiGet<PendingWithdrawalsResponse>(
+        API_ROUTES.GET_VAULT_PENDING_WITHDRAWALS,
+        { vaultAddress },
+        10_000
+      );
+      return data;
+    } catch (error) {
+      console.error("Error fetching pending withdrawal amount:", error);
       throw error;
     }
   },
