@@ -16,7 +16,7 @@ import { formatAddress } from "@/lib/utils";
 interface InviteCode {
   id: string;
   code: string;
-  status: "active" | "used" | "expired";
+  status: "active" | "redeemed" | "expired";
   createdAt: string;
   usedAt?: string;
   usedBy?: string;
@@ -32,9 +32,9 @@ const convertApiInviteCode = (apiCode: ApiInviteCode): InviteCode => {
   const now = new Date();
   const expiresAt = new Date(apiCode.expires_at);
 
-  let status: "active" | "used" | "expired" = "active";
-  if (apiCode.status === "used") {
-    status = "used";
+  let status: "active" | "redeemed" | "expired" = "active";
+  if (apiCode.status === "redeemed") {
+    status = "redeemed";
   } else if (expiresAt < now) {
     status = "expired";
   }
@@ -222,7 +222,7 @@ const Admin: React.FC = () => {
   const stats = {
     total: inviteCodes.length,
     active: inviteCodes.filter((code) => code.status === "active").length,
-    used: inviteCodes.filter((code) => code.status === "used").length,
+    used: inviteCodes.filter((code) => code.status === "redeemed").length,
     expired: inviteCodes.filter((code) => code.status === "expired").length,
   };
 

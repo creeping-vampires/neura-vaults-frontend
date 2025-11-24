@@ -83,6 +83,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
       setValidating(true);
       try {
         if (caps == null) {
+          setValidating(false);
           return;
         }
         const perUserCapUnits = caps.perUserCapUnits;
@@ -98,10 +99,12 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
           String(claimableDepositAssets ?? 0),
           vaultData.assetDecimals
         );
-        const userEffective =
-          userSupplied + claimableDepositAssetsUnits > 0n
+
+        const pendingAmount =
+          claimableDepositAssetsUnits > 0n
             ? claimableDepositAssetsUnits
             : pendingDepositAssets;
+        const userEffective = userSupplied + pendingAmount;
 
         const userHeadroomUnits =
           perUserCapUnits > userEffective
