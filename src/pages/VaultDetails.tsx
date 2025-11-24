@@ -45,6 +45,7 @@ import { useAccount } from "wagmi";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 import VaultActionPanel from "@/components/VaultActionPanel";
+import { formatUnits } from "viem";
 
 const chartConfig = {
   value: {
@@ -321,7 +322,7 @@ const VaultDetails = () => {
       const p = a.protocol;
       const pct = Number(a.percentage) || 0;
       const bal = (() => {
-        const b = parseFloat(String(a.balance));
+        const b = Number(formatUnits(BigInt(a.balance), vaultData?.assetDecimals));
         return isNaN(b) ? 0 : b;
       })();
       const color =
