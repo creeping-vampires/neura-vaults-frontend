@@ -318,22 +318,21 @@ const VaultDetails = () => {
     const d = allocationsData?.data[0]?.allocations || [];
     if (!d || d.length === 0) return [] as any[];
     return d.map((a) => {
-      const n = a.name;
-      const p = a.protocol;
+      const n = a.protocol;
       const pct = Number(a.percentage) || 0;
       const bal = (() => {
         const b = Number(formatUnits(BigInt(a.balance), vaultData?.assetDecimals));
         return isNaN(b) ? 0 : b;
       })();
       const color =
-        p === "safe"
+        n === "safe"
           ? "#00d6c1"
-          : p === "felix"
+          : n === "felix"
           ? "#b8b9be"
-          : p === "hypurrFinance"
+          : n === "hypurrFinance"
           ? "#3B82F6"
           : "#F59E0B";
-      return { name: n, protocol: p, value: parseFloat(pct.toFixed(1)), tvl: bal, color };
+      return { name: n, value: parseFloat(pct.toFixed(1)), tvl: bal, color };
     });
   }, [allocationsData]);
 
@@ -946,17 +945,6 @@ const VaultDetails = () => {
                   ) : allocationsData?.data[0]?.allocations &&
                     allocationsData.data[0].allocations.length > 0 ? (
                     <>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-foreground font-medium">
-                            {allocationsData.data[0].vaultName}
-                          </span>
-                        </div>
-                        <span className="text-foreground text-sm">
-                          Total Value: $
-                          {allocationsData.data[0].totalValueFormatted}
-                        </span>
-                      </div>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                         <div>
                           <h3 className="text-foreground font-medium mb-4">
@@ -1007,8 +995,8 @@ const VaultDetails = () => {
                                     style={{ backgroundColor: item.color }}
                                   />
                                   <div>
-                                    <span className="text-foreground font-medium block">
-                                      {item.name}
+                                    <span className="text-foreground font-medium block capitalize">
+                                      {item.name === "safe" ? "Safe (Idle)" : item.name}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
                                       Balance: ${item.tvl.toFixed(2)}
