@@ -100,7 +100,7 @@ const Vaults = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
-                Current APY
+                Current APY (24h)
               </h3>
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>

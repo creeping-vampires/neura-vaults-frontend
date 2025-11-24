@@ -534,7 +534,9 @@ const Portfolio = () => {
 
             <div className="flex justify-end space-x-6 mt-4">
               <div className="flex flex-col items-center">
-                <div className="text-muted-foreground text-xs">Current APY</div>
+                <div className="text-muted-foreground text-xs">
+                  Current APY (24h)
+                </div>
                 <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
                   {get24APY().toFixed(2)}%
                   <div className="absolute top-6 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
