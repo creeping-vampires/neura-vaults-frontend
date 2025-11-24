@@ -13,7 +13,6 @@ export interface MultiVaultData {
   vaultDecimals: number;
   assetAddress: Address;
   assetDecimals: number;
-  poolAddresses: `0x${string}`[];
   poolNetAPRs: number[];
   poolTVLs: number[];
   userShares?: bigint;
@@ -128,7 +127,6 @@ export class MultiVaultBatchClient {
         vaultDecimals,
         assetAddress,
         assetDecimals,
-        poolAddresses: [],
         poolNetAPRs: [],
         poolTVLs: [],
       };

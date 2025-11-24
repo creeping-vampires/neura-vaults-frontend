@@ -160,7 +160,6 @@ export const useMultiVault = () => {
             error: null,
             poolNetAPRs: (rawData as any).poolNetAPRs || [],
             poolTVLs: (rawData as any).poolTVLs || [],
-            poolAddresses: (rawData as any).poolAddresses || [],
           };
         });
 
@@ -169,7 +168,7 @@ export const useMultiVault = () => {
         // Update memory cache
         multiVaultCache = { data: processedVaultData, timestamp: Date.now() };
 
-        // Persist to localStorage
+        // Persist to localStorag         
         try {
           localStorage.setItem(
             "multiVaultData",
@@ -232,7 +231,6 @@ export const useMultiVault = () => {
               error: errorMessage,
               poolNetAPRs: [],
               poolTVLs: [],
-              poolAddresses: [],
             };
           });
           setVaultData(errorVaultData);
@@ -1112,7 +1110,6 @@ export const useMultiVault = () => {
           error: null,
           poolNetAPRs: [],
           poolTVLs: [],
-          poolAddresses: [],
         } as VaultData);
 
       return {

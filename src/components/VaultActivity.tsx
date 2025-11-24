@@ -67,7 +67,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
     <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
       <CardHeader className="pb-3 sm:pb-6">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-foreground font-medium text-base sm:text-lg">
+          <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
             Vault Activity
           </CardTitle>
         </div>

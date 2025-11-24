@@ -31,8 +31,7 @@ const Vaults = () => {
     isLoading: isVaultsLoading,
     error: vaultsError,
   } = useMultiVault();
-  const { get24APY, get7APY, getHighest24APY, getVaultDataByAddress } =
-    usePrice();
+  const { get24APY, get7APY, get30APY, getVaultDataByAddress } = usePrice();
 
   const marketData: MarketItem[] = useMemo(() => {
     const allVaults = getAllVaults();
@@ -106,16 +105,27 @@ const Vaults = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-              {getHighest24APY().toFixed(2)} %
-              <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                <div className="font-medium text-muted-foreground">
-                  7-Day APY
-                </div>
-                <div className="font-medium text-foreground">:</div>
-                <div className="font-medium ml-1 text-foreground">
-                  {get7APY().toFixed(2)}%
-                </div>
+              {get24APY().toFixed(2)} %
+              <div className="absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                 <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                <div className="flex items-center gap-1">
+                  <div className="font-medium text-muted-foreground">
+                    7-Day APY
+                  </div>
+                  <div className="font-medium text-foreground ml-auto">:</div>
+                  <div className="font-medium text-foreground ml-1">
+                    {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="font-medium text-muted-foreground">
+                    30-Day APY
+                  </div>
+                  <div className="font-medium text-foreground ml-auto">:</div>
+                  <div className="font-medium text-foreground ml-1">
+                    {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -230,15 +240,30 @@ const Vaults = () => {
                       </td>
                       <td className="text-primary font-semibold py-6 flex items-center justify-center gap-1 relative group">
                         {get24APY().toFixed(2)}%
-                        <div className="flex items-center gap-1 absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          <div className="font-medium text-muted-foreground">
-                            7-Day APY
-                          </div>
-                          <div className="font-medium text-foreground">:</div>
-                          <div className="font-medium ml-1 text-foreground">
-                            {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
-                          </div>
+                        <div className="absolute top-12 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                           <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                          <div className="flex items-center gap-1">
+                            <div className="font-medium text-muted-foreground">
+                              7-Day APY
+                            </div>
+                            <div className="font-medium text-foreground ml-auto">
+                              :
+                            </div>
+                            <div className="font-medium text-foreground ml-1">
+                              {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="font-medium text-muted-foreground">
+                              30-Day APY
+                            </div>
+                            <div className="font-medium text-foreground ml-auto">
+                              :
+                            </div>
+                            <div className="font-medium text-foreground ml-1">
+                              {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td className="text-center py-4">

@@ -28,7 +28,7 @@ const Dashboard = () => {
     return usdt0 || vaults[0];
   }, [getAllVaults]);
 
-  const { getHighest24APY, getHighest7APY } = usePrice();
+  const { get24APY, get7APY, get30APY } = usePrice();
 
   const [hypeBalance, setHypeBalance] = useState<number>(0);
 
@@ -73,8 +73,6 @@ const Dashboard = () => {
           totalWeightedAPY += vaultTVL * vaultAPY;
           totalTVL += vaultTVL;
         });
-        const weightedAverageAPY =
-          getHighest24APY();
 
         // Calculate total interest earned across all vaults
         const totalInterestEarned = allVaults.reduce((sum, vault) => {
@@ -88,7 +86,7 @@ const Dashboard = () => {
 
         setDashboardData({
           tvl,
-          currentAPY: weightedAverageAPY,
+          currentAPY: get24APY(),
           interestEarned: totalInterestEarned,
           totalSupply: totalAgentVolume,
         });
@@ -169,15 +167,26 @@ const Dashboard = () => {
             <div className="space-y-1 sm:space-y-2">
               <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
                 {dashboardData.currentAPY.toFixed(2)} %
-                <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                  <div className="font-medium text-muted-foreground">
-                    7-Day APY
-                  </div>
-                  <div className="font-medium text-foreground">:</div>
-                  <div className="font-medium ml-1 text-foreground">
-                    {getHighest7APY() ? `${getHighest7APY().toFixed(2)}%` : "-"}
-                  </div>
+                <div className="absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                   <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                  <div className="flex items-center gap-1">
+                    <div className="font-medium text-muted-foreground">
+                      7-Day APY
+                    </div>
+                    <div className="font-medium text-foreground ml-auto">:</div>
+                    <div className="font-medium text-foreground ml-1">
+                      {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="font-medium text-muted-foreground">
+                      30-Day APY
+                    </div>
+                    <div className="font-medium text-foreground ml-auto">:</div>
+                    <div className="font-medium text-foreground ml-1">
+                      {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,10 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { formatUnits, parseAbi, parseUnits } from "viem";
-import { usePublicClient, useAccount } from "wagmi";
-import { usePrice } from "@/hooks/usePrice";
-import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
+import React, { useEffect, useMemo, useState } from "react";
+import { formatUnits, parseUnits } from "viem";
 import { getSupplyCapsForVault, RAW_CAPS } from "@/services/supplyCaps";
 import { formatCurrency } from "@/utils/currency";
+import { useMultiVault } from "@/hooks/useMultiVault";
 
 interface HeadroomState {
   userHeadroom?: string;
@@ -14,11 +12,11 @@ interface HeadroomState {
 interface SupplyCapHeadroomProps {
   show: boolean;
   vaultId?: string;
-  assetAddress: string;
   inputAmount?: string;
-  pendingDepositAssets?: bigint;
-  claimableDepositAssets?: number;
-  claimableWithdrawAssets?: number;
+  pendingDepositAssets: bigint;
+  claimableDepositAssets: number;
+  totalPendingDeposits?: number;
+  totalPendingWithdrawals?: number;
   className?: string;
   onHeadroomComputed?: (headroom: HeadroomState) => void;
 }
@@ -26,27 +24,23 @@ interface SupplyCapHeadroomProps {
 const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   show,
   vaultId,
-  assetAddress,
   inputAmount,
   pendingDepositAssets,
   claimableDepositAssets,
-  claimableWithdrawAssets,
+  totalPendingDeposits,
+  totalPendingWithdrawals,
   className,
   onHeadroomComputed,
 }) => {
-  const publicClient = usePublicClient();
-  const { address: userAddress } = useAccount();
-  const { getVaultDataByAddress } = usePrice();
+  const { getVaultByAddress } = useMultiVault();
+
+  const vaultData = useMemo(
+    () => getVaultByAddress(vaultId || ""),
+    [getVaultByAddress, vaultId]
+  );
 
   const [headroom, setHeadroom] = useState<HeadroomState>({});
   const [validating, setValidating] = useState(true);
-  const [assetDecimals, setAssetDecimals] = useState<number | null>(null);
-
-  // Cached base chain state to avoid re-reading on every input change
-  const vaultSuppliedRef = useRef<bigint | null>(null);
-  const userSuppliedRef = useRef<bigint | null>(null);
-  const userClaimableAssetsRef = useRef<bigint | null>(null);
-  const [baseReady, setBaseReady] = useState(false);
 
   // Debounce input amount to reduce frequent evaluations during typing
   const [debouncedAmount, setDebouncedAmount] = useState<string | undefined>(
@@ -59,91 +53,14 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
 
   // Memoized caps and requested amount
   const caps = useMemo(() => {
-    return assetDecimals != null
-      ? getSupplyCapsForVault(Number(assetDecimals))
-      : null;
-  }, [assetDecimals]);
+    return getSupplyCapsForVault(vaultData.assetDecimals);
+  }, [vaultData.assetDecimals]);
+
   const requestedAssets = useMemo(() => {
-    if (assetDecimals == null) return 0n;
     return debouncedAmount
-      ? parseUnits(debouncedAmount, Number(assetDecimals))
+      ? parseUnits(debouncedAmount, vaultData.assetDecimals)
       : 0n;
-  }, [debouncedAmount, assetDecimals]);
-
-  useEffect(() => {
-    const info = getVaultDataByAddress?.(vaultId || "");
-    const d = (info as any)?.underlyingDecimals ?? 6;
-    setAssetDecimals(Number(d));
-  }, [vaultId, getVaultDataByAddress]);
-
-  // Fetch and cache base state on identity/decimals change
-  useEffect(() => {
-    let cancelled = false;
-    const fetchBaseState = async () => {
-      setBaseReady(false);
-      vaultSuppliedRef.current = null;
-      userSuppliedRef.current = null;
-      userClaimableAssetsRef.current = null;
-
-      try {
-        if (!publicClient || !vaultId || !userAddress || assetDecimals == null)
-          return;
-
-        const [vaultSupplied, userShares] = await Promise.all([
-          publicClient.readContract({
-            address: vaultId as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "totalAssets",
-          }) as Promise<bigint>,
-          publicClient.readContract({
-            address: vaultId as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "balanceOf",
-            args: [userAddress as `0x${string}`],
-          }) as Promise<bigint>,
-        ]);
-
-        const userSupplied = (await publicClient.readContract({
-          address: vaultId as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "convertToAssets",
-          args: [userShares],
-        })) as bigint;
-
-        let userClaimableAssets: bigint = 0n;
-        if (!(claimableDepositAssets ?? 0)) {
-          userClaimableAssets = (await publicClient.readContract({
-            address: vaultId as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "claimableDepositRequest",
-            args: [0n, userAddress as `0x${string}`],
-          })) as bigint;
-        }
-
-        if (!cancelled) {
-          vaultSuppliedRef.current = vaultSupplied;
-          userSuppliedRef.current = userSupplied;
-          userClaimableAssetsRef.current = userClaimableAssets;
-          setBaseReady(true);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setBaseReady(false);
-        }
-      }
-    };
-    fetchBaseState();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    publicClient,
-    vaultId,
-    userAddress,
-    assetDecimals,
-    claimableDepositAssets,
-    claimableWithdrawAssets,
-  ]);
+  }, [debouncedAmount, vaultData.assetDecimals]);
 
   const status = useMemo<
     "info" | "warning" | "user_error" | "vault_error"
@@ -164,33 +81,64 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     let cancelled = false;
     const evaluate = async () => {
       setValidating(true);
-      if (!publicClient || !vaultId || !userAddress || !assetDecimals) {
-        return;
-      }
       try {
-        if (!baseReady || caps == null) {
+        if (caps == null) {
           return;
         }
         const perUserCapUnits = caps.perUserCapUnits;
         const vaultCapUnits = caps.vaultCapUnits;
 
-        const vaultSupplied = vaultSuppliedRef.current ?? 0n;
-        const userSupplied = userSuppliedRef.current ?? 0n;
-
+        const vaultSupplied =
+          parseUnits(String(vaultData.totalAssets), vaultData.assetDecimals) ??
+          0n;
+        const userSupplied =
+          parseUnits(String(vaultData.userDeposits), vaultData.assetDecimals) ??
+          0n;
+        const claimableDepositAssetsUnits = parseUnits(
+          String(claimableDepositAssets ?? 0),
+          vaultData.assetDecimals
+        );
         const userEffective =
-          (userSupplied ?? 0n) + (pendingDepositAssets ?? 0n);
+          userSupplied + claimableDepositAssetsUnits > 0n
+            ? claimableDepositAssetsUnits
+            : pendingDepositAssets;
+
         const userHeadroomUnits =
           perUserCapUnits > userEffective
             ? perUserCapUnits - userEffective
             : 0n;
+
+        const pendingDepositsUnits = parseUnits(
+          String(totalPendingDeposits ?? 0),
+          vaultData.assetDecimals
+        );
+
+        const pendingWithdrawalsUnits = parseUnits(
+          String(totalPendingWithdrawals ?? 0),
+          vaultData.assetDecimals
+        );
+
+        const vaultEffectiveSupplied =
+          (vaultSupplied ?? 0n) +
+          pendingDepositsUnits -
+          pendingWithdrawalsUnits;
+
         const vaultHeadroomUnits =
-          vaultCapUnits > (vaultSupplied ?? 0n)
-            ? vaultCapUnits - (vaultSupplied ?? 0n)
+          vaultCapUnits > vaultEffectiveSupplied
+            ? vaultCapUnits - vaultEffectiveSupplied
             : 0n;
 
+        const vaultHeadroomUnitsFinal =
+          vaultCapUnits < vaultHeadroomUnits
+            ? caps.vaultCapUnits - vaultSupplied
+            : vaultHeadroomUnits;
+
         const res: HeadroomState = {
-          userHeadroom: formatUnits(userHeadroomUnits, Number(assetDecimals)),
-          vaultHeadroom: formatUnits(vaultHeadroomUnits, Number(assetDecimals)),
+          userHeadroom: formatUnits(userHeadroomUnits, vaultData.assetDecimals),
+          vaultHeadroom: formatUnits(
+            vaultHeadroomUnitsFinal,
+            vaultData.assetDecimals
+          ),
         };
         if (!cancelled) {
           const shouldUpdate =
@@ -213,27 +161,12 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
       cancelled = true;
     };
   }, [
-    publicClient,
     vaultId,
-    userAddress,
-    assetDecimals,
+    vaultData,
     requestedAssets,
-    pendingDepositAssets,
-    baseReady,
+    totalPendingDeposits,
+    totalPendingWithdrawals,
   ]);
-
-  const colorClass = useMemo(() => {
-    switch (status) {
-      case "user_error":
-        return "text-red-600";
-      case "vault_error":
-        return "text-red-600";
-      case "warning":
-        return "text-amber-600";
-      default:
-        return "text-muted-foreground";
-    }
-  }, [status]);
 
   return (
     show && (

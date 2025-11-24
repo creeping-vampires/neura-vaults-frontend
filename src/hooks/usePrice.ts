@@ -265,13 +265,19 @@ export const usePrice = (targetToken?: string) => {
 
   const get24APY = useCallback(() => {
     const item = allVaultData[0];
-    const apy = item?.apy?.apy ?? 0;
+    const apy = item?.apy?.apy1d ?? 0;
     return Number(apy) || 0;
   }, [allVaultData]);
 
   const get7APY = useCallback(() => {
     const item = allVaultData[0];
     const apy = item?.apy?.apy7d ?? 0;
+    return Number(apy) || 0;
+  }, [allVaultData]);
+
+  const get30APY = useCallback(() => {
+    const item = allVaultData[0];
+    const apy = item?.apy?.apy30d ?? 0;
     return Number(apy) || 0;
   }, [allVaultData]);
 
@@ -293,6 +299,7 @@ export const usePrice = (targetToken?: string) => {
       getHighest7APY,
       get24APY,
       get7APY,
+      get30APY,
     }),
     [
       chartData,
@@ -311,6 +318,7 @@ export const usePrice = (targetToken?: string) => {
       getHighest7APY,
       get24APY,
       get7APY,
+      get30APY,
     ]
   );
 };

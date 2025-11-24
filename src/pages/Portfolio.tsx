@@ -86,13 +86,8 @@ const Portfolio = () => {
   const { getAllVaults, getTotalTVL, getTotalUserDeposits, refreshAllData } =
     useMultiVault();
 
-  const {
-    priceData,
-    getHighest7APY,
-    get24APY,
-    get7APY,
-    getVaultDataByAddress,
-  } = usePrice();
+  const { priceData, get24APY, get7APY, get30APY, getVaultDataByAddress } =
+    usePrice();
   const {
     transactions,
     isLoading: isLoadingTransactions,
@@ -542,17 +537,30 @@ const Portfolio = () => {
                 <div className="text-muted-foreground text-xs">Current APY</div>
                 <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
                   {get24APY().toFixed(2)}%
-                  <div className="flex items-center gap-1 absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                    <div className="font-medium text-muted-foreground">
-                      7-Day APY
-                    </div>
-                    <div className="font-medium text-foreground">:</div>
-                    <div className="font-medium ml-1 text-foreground">
-                      {getHighest7APY()
-                        ? `${getHighest7APY().toFixed(2)}%`
-                        : "-"}
-                    </div>
+                  <div className="absolute top-6 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                     <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                    <div className="flex items-center gap-1">
+                      <div className="font-medium text-muted-foreground">
+                        7-Day APY
+                      </div>
+                      <div className="font-medium text-foreground ml-auto">
+                        :
+                      </div>
+                      <div className="font-medium text-foreground ml-1">
+                        {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="font-medium text-muted-foreground">
+                        30-Day APY
+                      </div>
+                      <div className="font-medium text-foreground ml-auto">
+                        :
+                      </div>
+                      <div className="font-medium text-foreground ml-1">
+                        {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -700,17 +708,32 @@ const Portfolio = () => {
                           </td>
                           <td className="text-primary font-semibold py-6 gap-1 relative group">
                             {get24APY().toFixed(2)}%
-                            <div className="flex items-center gap-1 absolute top-14 left-6 -translate-x-1/2 mb-2 px-3 py-2 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                              <div className="font-medium text-muted-foreground">
-                                7-Day APY
-                              </div>
-                              <div className="font-medium text-foreground">
-                                :
-                              </div>
-                              <div className="font-medium ml-1 text-foreground">
-                                {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
-                              </div>
+                            <div className="absolute top-12 left-5 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                               <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                              <div className="flex items-center gap-1">
+                                <div className="font-medium text-muted-foreground">
+                                  7-Day APY
+                                </div>
+                                <div className="font-medium text-foreground ml-auto">
+                                  :
+                                </div>
+                                <div className="font-medium text-foreground ml-1">
+                                  {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <div className="font-medium text-muted-foreground">
+                                  30-Day APY
+                                </div>
+                                <div className="font-medium text-foreground ml-auto">
+                                  :
+                                </div>
+                                <div className="font-medium text-foreground ml-1">
+                                  {get30APY()
+                                    ? `${get30APY().toFixed(2)}%`
+                                    : "-"}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="text-foreground font-semibold py-4">

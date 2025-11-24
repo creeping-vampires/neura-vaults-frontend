@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +19,8 @@ import { useMultiVault } from "@/hooks/useMultiVault";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { useLocation } from "react-router-dom";
 import SupplyCapHeadroom from "@/components/shared/SupplyCapHeadroom";
+import yieldMonitorService from "@/services/vaultService";
+import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
 
 // User-initiated tx: pending -> submitted -> (confirmed) or failed
 // Backend-initiated tx: settling -> settled
@@ -41,53 +49,51 @@ export interface PendingTransaction {
 
 interface VaultActionPanelProps {
   currentVaultSymbol: string;
-  currentVaultAssetAddress: string;
   availableAssetBalance?: number;
   availableUserDeposits?: number;
-  deposit: (amount: string) => Promise<string>;
-  withdraw: (amount: string) => Promise<string>;
-  isDepositTransacting: boolean;
-  isWithdrawTransacting: boolean;
   vaultId?: string;
   refreshData: () => void | Promise<void>;
   isConnected: boolean;
   hasAccess: boolean;
   txCanceled: boolean;
   onRequireAccess: () => void;
-  pendingDepositAssets: bigint;
-  pendingRedeemShares: bigint;
   claimableDepositAssets?: number;
   claimableWithdrawAssets?: number;
 }
 
 const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   currentVaultSymbol,
-  currentVaultAssetAddress,
   availableAssetBalance,
   availableUserDeposits,
-  deposit,
-  withdraw,
-  isDepositTransacting,
-  isWithdrawTransacting,
   vaultId,
   refreshData,
   isConnected,
   hasAccess,
   txCanceled,
   onRequireAccess,
-  pendingDepositAssets,
-  pendingRedeemShares,
   claimableDepositAssets,
   claimableWithdrawAssets,
 }) => {
   const publicClient = usePublicClient();
   const { address: userAddress } = useAccount();
   const {
+    deposit,
+    withdraw,
+    isDepositTransacting,
+    isWithdrawTransacting,
     depositEventStatus,
     setDepositEventStatus,
     withdrawEventStatus,
     setWithdrawEventStatus,
+    getVaultByAddress,
+    pendingDepositAssets,
+    pendingRedeemShares,
   } = useMultiVault();
+
+  const vaultData = useMemo(
+    () => getVaultByAddress(vaultId || ""),
+    [getVaultByAddress, vaultId]
+  );
 
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [inputAmount, setInputAmount] = useState<string>("");
@@ -104,8 +110,8 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   const [depositEligibility, setDepositEligibility] = useState<{
     eligible: boolean;
     reason?: string;
-    userHeadroom?: string; // human units
-    vaultHeadroom?: string; // human units
+    userHeadroom?: string;
+    vaultHeadroom?: string;
   }>({ eligible: true });
 
   // Withdraw validation state (request-state guards)
@@ -151,6 +157,61 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 
     setWithdrawEligibility({ eligible: true });
   }, [pendingRedeemShares, claimableWithdrawAssets]);
+
+  const [totalPendingDeposits, setTotalPendingDeposits] = useState<number>(0);
+  const [totalPendingWithdrawals, setTotalPendingWithdrawals] =
+    useState<number>(0);
+
+  const fetchTotalPendingDeposits = useCallback(async () => {
+    if (!vaultId) return;
+    try {
+      setIsValidatingDeposit(true);
+      const res = await yieldMonitorService.getPendingDepositAmount(vaultId);
+      const valStr = (res as any)?.data?.pendingAmount ?? "0";
+      const valNum = parseFloat(String(valStr));
+      setTotalPendingDeposits(valNum);
+    } catch (err: any) {
+      console.error("Failed to fetch totalPendingDeposits:", err);
+      setTotalPendingDeposits(0);
+    } finally {
+      setIsValidatingDeposit(false);
+    }
+  }, [vaultId]);
+
+  const fetchTotalPendingWithdrawals = useCallback(async () => {
+    if (!vaultId) return 0;
+    try {
+      const res = await yieldMonitorService.getPendingWithdrawalAmount(vaultId);
+      const sharesStr = (res as any)?.data?.pendingShares ?? "0";
+      const shares = BigInt(String(sharesStr || "0"));
+      if (!publicClient) {
+        setTotalPendingWithdrawals(0);
+        return 0;
+      }
+      const assets = (await publicClient.readContract({
+        address: vaultId as `0x${string}`,
+        abi: YieldAllocatorVaultABI,
+        functionName: "convertToAssets",
+        args: [shares],
+      })) as bigint;
+      const assetDecimals = vaultData?.assetDecimals ?? 6;
+      const num = Number(formatUnits(assets, Number(assetDecimals)));
+      setTotalPendingWithdrawals(num);
+      return num;
+    } catch (err: any) {
+      console.error("Failed to fetch totalPendingWithdrawals:", err);
+      setTotalPendingWithdrawals(0);
+      return 0;
+    }
+  }, [vaultId, vaultData?.assetDecimals, publicClient, getVaultByAddress]);
+
+  useEffect(() => {
+    fetchTotalPendingDeposits();
+  }, [fetchTotalPendingDeposits]);
+
+  useEffect(() => {
+    fetchTotalPendingWithdrawals();
+  }, [fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
     setIsValidatingDeposit(true);
@@ -207,7 +268,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       return;
     }
 
-    if (amountNum > userHeadroomNum) {
+    if (userHeadroomNum !== undefined && amountNum > userHeadroomNum) {
       setDepositEligibility((prev) => ({
         ...prev,
         eligible: false,
@@ -229,6 +290,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     claimableDepositAssets,
     depositEligibility.userHeadroom,
     depositEligibility.vaultHeadroom,
+    totalPendingDeposits,
   ]);
 
   // Create a transaction entry in the local panel history
@@ -321,7 +383,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         })
       );
 
-      // Propagate to UI/logging/external systems after state set
+      // Propagate to UI systems after state set
       try {
         // Clear any active monitor on terminal states outside the state updater to avoid side-effects
         if (becameTerminal) {
@@ -887,7 +949,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     try {
       depositId = addPendingTransaction("deposit", amount);
 
-      const depositTx = await deposit(amount);
+      const depositTx = await deposit(vaultId, amount);
 
       if (depositId) {
         updateTransactionStatus(depositId, "submitted", depositTx);
@@ -930,7 +992,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     try {
       withdrawId = addPendingTransaction("withdraw", amount);
 
-      const withdrawTx = await withdraw(amount);
+      const withdrawTx = await withdraw(vaultId, amount);
 
       if (withdrawId) {
         updateTransactionStatus(withdrawId, "submitted", withdrawTx);
@@ -1142,11 +1204,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           <SupplyCapHeadroom
             show={activeTab === "deposit"}
             vaultId={vaultId}
-            assetAddress={currentVaultAssetAddress}
             inputAmount={inputAmount}
             pendingDepositAssets={pendingDepositAssets}
             claimableDepositAssets={claimableDepositAssets}
-            claimableWithdrawAssets={claimableWithdrawAssets}
+            totalPendingDeposits={totalPendingDeposits}
+            totalPendingWithdrawals={totalPendingWithdrawals}
             onHeadroomComputed={(res) =>
               setDepositEligibility((prev) => ({
                 ...prev,
