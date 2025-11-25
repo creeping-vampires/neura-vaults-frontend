@@ -29,15 +29,13 @@ interface InviteCode {
 }
 
 const convertApiInviteCode = (apiCode: ApiInviteCode): InviteCode => {
-  const now = new Date();
-  const expiresAt = new Date(apiCode.expires_at);
-
-  let status: "active" | "redeemed" | "expired" = "active";
-  if (apiCode.status === "redeemed") {
-    status = "redeemed";
-  } else if (expiresAt < now) {
-    status = "expired";
-  }
+  const apiStatus = (apiCode.status || "").toLowerCase();
+  const status: InviteCode["status"] =
+    apiStatus === "redeemed"
+      ? "redeemed"
+      : apiStatus === "expired"
+      ? "expired"
+      : "active";
 
   return {
     id: apiCode.id.toString(),
@@ -91,17 +89,6 @@ const Admin: React.FC = () => {
 
   useEffect(() => {
     fetchInviteCodes();
-    // const fetchAccessRequests = async () => {
-    //   if (!userAddress) return;
-    //   try {
-    //     const reqs = await userService.getAccessRequests(userAddress);
-    //     console.log("accessRequests", reqs);
-    //     setAccessRequests(reqs || []);
-    //   } catch (error) {
-    //     console.error("Error fetching access requests:", error);
-    //   }
-    // };
-    // fetchAccessRequests();
   }, [userAddress]);
 
   const sortBy = (key: keyof AccessRequest) => {
@@ -195,7 +182,7 @@ const Admin: React.FC = () => {
   const getStatusBadge = (status: InviteCode["status"]) => {
     const variants = {
       active: "default",
-      used: "secondary",
+      redeemed: "secondary",
       expired: "destructive",
     } as const;
 
@@ -218,7 +205,7 @@ const Admin: React.FC = () => {
       minute: "2-digit",
     });
   };
-
+  
   const stats = {
     total: inviteCodes.length,
     active: inviteCodes.filter((code) => code.status === "active").length,
@@ -292,7 +279,7 @@ const Admin: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2 max-w-80">
+              {/* <div className="space-y-2 max-w-80">
                 <Label htmlFor="expires">Expires At</Label>
                 <Input
                   id="expires"
@@ -309,7 +296,7 @@ const Admin: React.FC = () => {
                     input.showPicker();
                   }}
                 />
-              </div>
+              </div> */}
 
               <Button
                 onClick={handleCreateCode}

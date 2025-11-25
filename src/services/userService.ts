@@ -179,7 +179,9 @@ export const userService = {
   getInviteCodes: async (): Promise<GetInviteCodesResponse> => {
     try {
       const response = await apiGet<GetInviteCodesResponse>(
-        API_ROUTES.GET_INVITE_CODES
+        API_ROUTES.GET_INVITE_CODES,
+        undefined,
+        0
       );
 
       return response;
