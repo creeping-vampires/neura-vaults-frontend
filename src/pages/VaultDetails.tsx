@@ -990,13 +990,30 @@ const VaultDetails = () => {
                                 className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                               >
                                 <div className="flex items-center space-x-3">
-                                  <div
-                                    className="w-4 h-4 rounded-full"
-                                    style={{ backgroundColor: item.color }}
+                                  <img
+                                    src={
+                                      item.name === "safe"
+                                        ? "/logo.webp"
+                                        : `/pools/${item.name.toLowerCase()}.svg`
+                                    }
+                                    alt={item.name}
+                                    className="min-w-9 h-9 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                    onError={(e) => {
+                                      const target =
+                                        e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                      target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${item.name
+                                        .charAt(0)
+                                        .toUpperCase()}</div>`;
+                                    }}
                                   />
                                   <div>
                                     <span className="text-foreground font-medium block capitalize">
-                                      {item.name === "safe" ? "Safe (Idle)" : item.name}
+                                      {item.name === "safe"
+                                        ? "Safe (Idle)"
+                                        : item.name === "hypurrFinance"
+                                        ? "HypurrFi"
+                                        : item.name}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
                                       Balance: ${item.tvl.toFixed(2)}
