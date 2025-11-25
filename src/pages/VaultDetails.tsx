@@ -516,8 +516,8 @@ const VaultDetails = () => {
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
                   <span className="text-primary text-xs sm:text-sm font-medium">
-                    {isPriceLoading ? "Loading..." : get24APY().toFixed(2)}% APY
-                    (24h)
+                    {isPriceLoading ? "Loading..." : get7APY().toFixed(2)}% APY
+                    (7d)
                   </span>
                   <div className="flex items-center gap-1 relative">
                     <div className="h-6 w-6 group relative flex items-center justify-center rounded-md">
@@ -540,14 +540,10 @@ const VaultDetails = () => {
                       <div className="absolute top-7 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                         <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                         <div className="flex items-center gap-1">
-                          <div className="font-medium text-muted-foreground">
-                            7-Day APY
-                          </div>
-                          <div className="font-medium text-foreground ml-auto">
-                            :
-                          </div>
+                          <div className="font-medium text-muted-foreground">1-Day APY</div>
+                          <div className="font-medium text-foreground ml-auto">:</div>
                           <div className="font-medium text-foreground ml-1">
-                            {get7APY() ? `${get7APY().toFixed(2)}%` : "-"}
+                            {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
