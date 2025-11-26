@@ -876,7 +876,7 @@ const VaultDetails = () => {
                                 <img
                                   src={`/pools/${allocation.protocol.toLowerCase()}.svg`}
                                   alt={allocation.protocol}
-                                  className="min-w-9 h-9 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                  className="min-w-9 h-9 rounded-full border transform hover:scale-110 transition-transform duration-200 cursor-pointer"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = "none";
@@ -993,7 +993,7 @@ const VaultDetails = () => {
                                         : `/pools/${item.name.toLowerCase()}.svg`
                                     }
                                     alt={item.name}
-                                    className="min-w-9 h-9 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                    className="min-w-9 h-9 rounded-full border transform hover:scale-110 transition-transform duration-200 cursor-pointer"
                                     onError={(e) => {
                                       const target =
                                         e.target as HTMLImageElement;
