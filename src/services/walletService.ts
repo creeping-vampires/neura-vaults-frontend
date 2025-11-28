@@ -27,9 +27,7 @@ function writeEvents(events: ConnectionEvent[]) {
   try {
     const pruned = events.slice(-MAX_EVENTS);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
-  } catch {
-    // ignore storage errors
-  }
+  } catch {}
 }
 
 export function logConnectionEvent(event: Omit<ConnectionEvent, 'timestamp'>) {
@@ -37,8 +35,6 @@ export function logConnectionEvent(event: Omit<ConnectionEvent, 'timestamp'>) {
   const events = readEvents();
   events.push(withTs);
   writeEvents(events);
-  // Also log to console for immediate diagnostics
-  // eslint-disable-next-line no-console
   console.info('[connection]', withTs);
 }
 
