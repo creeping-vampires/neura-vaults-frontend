@@ -15,7 +15,6 @@ import { toast } from "@/hooks/use-toast";
 import { usePublicClient } from "wagmi";
 import { Address, formatUnits, parseAbiItem } from "viem";
 import { useAccount } from "wagmi";
-import { useMultiVault } from "@/hooks/useMultiVault";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { useLocation } from "react-router-dom";
 import SupplyCapHeadroom from "@/components/shared/SupplyCapHeadroom";
@@ -59,6 +58,17 @@ interface VaultActionPanelProps {
   onRequireAccess: () => void;
   claimableDepositAssets?: number;
   claimableWithdrawAssets?: number;
+  deposit: (vaultAddress: string, amount: string) => Promise<string> | Promise<unknown>;
+  withdraw: (vaultAddress: string, amount: string) => Promise<string> | Promise<unknown>;
+  isDepositTransacting: boolean;
+  isWithdrawTransacting: boolean;
+  depositEventStatus?: string;
+  setDepositEventStatus: (status: string) => void;
+  withdrawEventStatus?: string;
+  setWithdrawEventStatus: (status: string) => void;
+  pendingDepositAssets?: bigint;
+  pendingRedeemShares?: bigint;
+  assetDecimals?: number;
 }
 
 const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
@@ -73,28 +83,20 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   onRequireAccess,
   claimableDepositAssets,
   claimableWithdrawAssets,
+  deposit,
+  withdraw,
+  isDepositTransacting,
+  isWithdrawTransacting,
+  depositEventStatus,
+  setDepositEventStatus,
+  withdrawEventStatus,
+  setWithdrawEventStatus,
+  pendingDepositAssets,
+  pendingRedeemShares,
+  assetDecimals: assetDecimalsProp,
 }) => {
   const publicClient = usePublicClient();
   const { address: userAddress } = useAccount();
-  const {
-    deposit,
-    withdraw,
-    isDepositTransacting,
-    isWithdrawTransacting,
-    depositEventStatus,
-    setDepositEventStatus,
-    withdrawEventStatus,
-    setWithdrawEventStatus,
-    getVaultByAddress,
-    pendingDepositAssets,
-    pendingRedeemShares,
-  } = useMultiVault();
-
-  const vaultData = useMemo(
-    () => getVaultByAddress(vaultId || ""),
-    [getVaultByAddress, vaultId]
-  );
-
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
   const [inputAmount, setInputAmount] = useState<string>("");
 
@@ -194,7 +196,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         functionName: "convertToAssets",
         args: [shares],
       })) as bigint;
-      const assetDecimals = vaultData?.assetDecimals ?? 6;
+      const assetDecimals = (typeof assetDecimalsProp === "number" ? assetDecimalsProp : undefined) ?? 6;
       const num = Number(formatUnits(assets, Number(assetDecimals)));
       setTotalPendingWithdrawals(num);
       return num;
@@ -203,7 +205,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       setTotalPendingWithdrawals(0);
       return 0;
     }
-  }, [vaultId, vaultData?.assetDecimals, publicClient, getVaultByAddress]);
+  }, [vaultId, assetDecimalsProp, publicClient]);
 
   useEffect(() => {
     fetchTotalPendingDeposits();
@@ -587,7 +589,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                   } else if (userAddress) {
                     const newBackendId = addPendingTransaction(
                       "deposit",
-                      amount || "",
+                      amount,
                       undefined,
                       "backend",
                       requestId,
@@ -616,7 +618,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                   } else {
                     const newBackendId = addPendingTransaction(
                       "deposit",
-                      amount || "",
+                      amount,
                       undefined,
                       "backend",
                       0n,
@@ -658,7 +660,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                   } else if (userAddress) {
                     const newBackendId = addPendingTransaction(
                       "withdraw",
-                      amount || "",
+                      amount,
                       undefined,
                       "backend",
                       requestId,
@@ -687,7 +689,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                   } else {
                     const newBackendId = addPendingTransaction(
                       "withdraw",
-                      amount || "",
+                      amount,
                       undefined,
                       "backend",
                       0n,
@@ -952,13 +954,13 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       const depositTx = await deposit(vaultId, amount);
 
       if (depositId) {
-        updateTransactionStatus(depositId, "submitted", depositTx);
+        updateTransactionStatus(depositId, "submitted", depositTx as string);
         // Immediately enqueue backend entry with settling state
         let backendId: string | undefined;
         if (userAddress) {
           backendId = addPendingTransaction(
             "deposit",
-            amount || "",
+            amount,
             undefined,
             "backend",
             0n,
@@ -973,7 +975,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         }
         startTransactionMonitoring(
           depositId,
-          depositTx,
+          depositTx as string,
           "deposit",
           amount,
           backendId
@@ -995,13 +997,13 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       const withdrawTx = await withdraw(vaultId, amount);
 
       if (withdrawId) {
-        updateTransactionStatus(withdrawId, "submitted", withdrawTx);
+        updateTransactionStatus(withdrawId, "submitted", withdrawTx as string);
         // Immediately enqueue backend entry with settling state
         let backendId: string | undefined;
         if (userAddress) {
           backendId = addPendingTransaction(
             "withdraw",
-            amount || "",
+            amount,
             undefined,
             "backend",
             0n,
@@ -1016,7 +1018,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         }
         startTransactionMonitoring(
           withdrawId,
-          withdrawTx,
+          withdrawTx as string,
           "withdraw",
           amount,
           backendId
