@@ -585,7 +585,7 @@ const VaultDetails = () => {
                     </p>
                     <div className="flex items-center mt-1">
                       <span className="text-muted-foreground text-xs sm:text-sm font-medium">
-                        Shares: {vaultData.userShares?.toFixed(4) || "0.0000"}
+                        aiUSDT: {vaultData.userShares?.toFixed(4) || "0.0000"}
                       </span>
                     </div>
 
