@@ -98,23 +98,31 @@ const VaultDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const multiVaultData = useMultiVault();
-  const { getTotalTVL, getVaultClientByAddress } = multiVaultData;
-
-  // Use dynamic vault client based on route address
-  const vaultDataObject = useMemo(
-    () => getVaultClientByAddress(vaultId || ""),
-    [getVaultClientByAddress, vaultId]
-  );
   const {
+    getTotalTVL,
+    getVaultByAddress,
+    refreshAllData,
+    deposit,
+    withdraw,
+    isDepositTransacting,
+    isWithdrawTransacting,
+    depositEventStatus,
+    setDepositEventStatus,
+    withdrawEventStatus,
+    setWithdrawEventStatus,
+    claimDeposit,
+    cancelDepositRequest,
     claimRedeem,
     getClaimableDepositAmount,
     getClaimableRedeemAmount,
-    refreshData,
     pendingDepositAssets,
     pendingRedeemShares,
-    ...vaultData
-  } = vaultDataObject;
+  } = useMultiVault();
+
+  const vaultData = useMemo(
+    () => getVaultByAddress(vaultId),
+    [getVaultByAddress, vaultId]
+  );
 
   const { hasAccess } = useUserAccess();
   const [txCanceled, setTxCanceled] = useState(false);
@@ -158,9 +166,9 @@ const VaultDetails = () => {
   useEffect(() => {
     if (!vaultId) return;
     const currentVaultData = getVaultDataByAddress(vaultId);
-    setCurrentVaultSymbol(currentVaultData?.underlyingSymbol || "");
-    setCurrentVaultName(currentVaultData?.name || "");
-    setCurrentVaultAssetAddress(currentVaultData?.underlying || "");
+    setCurrentVaultSymbol(currentVaultData?.underlyingSymbol);
+    setCurrentVaultName(currentVaultData?.name);
+    setCurrentVaultAssetAddress(currentVaultData?.underlying);
   }, [vaultId, getVaultDataByAddress]);
 
   const { address: userAddress } = useAccount();
@@ -269,28 +277,28 @@ const VaultDetails = () => {
 
   const refreshClaimableDeposit = useCallback(async () => {
     try {
-      const amount = await getClaimableDepositAmount?.();
+      const amount = await getClaimableDepositAmount?.(vaultId);
       setClaimableDepositAssets(amount || 0);
     } catch (e) {
       console.log("error refreshing withdraw claimable", e);
     }
-  }, [getClaimableDepositAmount]);
+  }, [getClaimableDepositAmount, vaultId]);
 
   const refreshClaimableWithdraw = useCallback(async () => {
     try {
-      const amount = await getClaimableRedeemAmount?.();
+      const amount = await getClaimableRedeemAmount?.(vaultId);
       setClaimableWithdrawAssets(amount || 0);
     } catch (e) {
       console.log("error refreshing withdraw claimable", e);
     }
-  }, [getClaimableRedeemAmount]);
+  }, [getClaimableRedeemAmount, vaultId]);
 
   // Initial refresh and on vault/auth changes
   const isConnected = Boolean(userAddress);
   useEffect(() => {
     refreshClaimableDeposit();
     refreshClaimableWithdraw();
-  }, [vaultId, isConnected, refreshClaimableWithdraw]);
+  }, [vaultId, isConnected, refreshClaimableDeposit, refreshClaimableWithdraw]);
 
   useEffect(() => {
     if (pendingRedeemShares > 0n) {
@@ -321,7 +329,9 @@ const VaultDetails = () => {
       const n = a.protocol;
       const pct = Number(a.percentage) || 0;
       const bal = (() => {
-        const b = Number(formatUnits(BigInt(a.balance), vaultData?.assetDecimals));
+        const b = Number(
+          formatUnits(BigInt(a.balance), vaultData?.assetDecimals)
+        );
         return isNaN(b) ? 0 : b;
       })();
       const color =
@@ -387,12 +397,8 @@ const VaultDetails = () => {
                     className="text-xs border-2 border-primary/60 hover:border-primary"
                     onClick={async () => {
                       try {
-                        const vc = multiVaultData.getVaultClientByAddress(
-                          vaultId || ""
-                        );
-                        await vc.claimDeposit?.();
-                        await refreshData?.();
-                        await multiVaultData.refreshAllData?.();
+                        await claimDeposit?.(vaultId);
+                        await refreshAllData?.();
                       } catch (error: any) {
                         toast({
                           variant: "destructive",
@@ -413,13 +419,9 @@ const VaultDetails = () => {
                       className="text-xs border border-primary/40 hover:border-primary"
                       onClick={async () => {
                         try {
-                          const vc = multiVaultData.getVaultClientByAddress(
-                            vaultId || ""
-                          );
-                          await vc.cancelDepositRequest?.();
+                          await cancelDepositRequest?.(vaultId);
                           setTxCanceled(true);
-                          await refreshData?.();
-                          await multiVaultData.refreshAllData?.();
+                          await refreshAllData?.();
                         } catch (error: any) {
                           toast({
                             variant: "destructive",
@@ -471,9 +473,9 @@ const VaultDetails = () => {
               <Button
                 onClick={async () => {
                   try {
-                    await claimRedeem?.();
+                    await claimRedeem?.(vaultId);
                     await refreshClaimableWithdraw();
-                    refreshData();
+                    refreshAllData?.();
                   } catch (error: any) {
                     console.error("Error claiming withdraw:", error);
                     toast({
@@ -540,8 +542,12 @@ const VaultDetails = () => {
                       <div className="absolute top-7 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                         <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                         <div className="flex items-center gap-1">
-                          <div className="font-medium text-muted-foreground">1-Day APY</div>
-                          <div className="font-medium text-foreground ml-auto">:</div>
+                          <div className="font-medium text-muted-foreground">
+                            1-Day APY
+                          </div>
+                          <div className="font-medium text-foreground ml-auto">
+                            :
+                          </div>
                           <div className="font-medium text-foreground ml-1">
                             {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
                           </div>
@@ -1047,13 +1053,24 @@ const VaultDetails = () => {
               availableAssetBalance={vaultData?.assetBalance}
               availableUserDeposits={vaultData?.userDeposits}
               vaultId={vaultId}
-              refreshData={refreshData}
+              refreshData={refreshAllData}
               isConnected={isConnected}
               hasAccess={hasAccess}
               txCanceled={txCanceled}
               onRequireAccess={() => setShowAccessCodeModal(true)}
               claimableDepositAssets={claimableDepositAssets}
               claimableWithdrawAssets={claimableWithdrawAssets}
+              deposit={deposit}
+              withdraw={withdraw}
+              isDepositTransacting={isDepositTransacting}
+              isWithdrawTransacting={isWithdrawTransacting}
+              depositEventStatus={depositEventStatus}
+              setDepositEventStatus={setDepositEventStatus}
+              withdrawEventStatus={withdrawEventStatus}
+              setWithdrawEventStatus={setWithdrawEventStatus}
+              pendingDepositAssets={pendingDepositAssets}
+              pendingRedeemShares={pendingRedeemShares}
+              assetDecimals={vaultData?.assetDecimals}
             />
 
             <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[115px]">

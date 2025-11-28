@@ -12,7 +12,6 @@ import {
   parseAbiItem,
   maxUint256,
   Address,
-  WalletClient,
 } from "viem";
 import { usePrice } from "@/hooks/usePrice";
 import {
@@ -168,7 +167,7 @@ export const useMultiVault = () => {
         // Update memory cache
         multiVaultCache = { data: processedVaultData, timestamp: Date.now() };
 
-        // Persist to localStorag         
+        // Persist to localStorag
         try {
           localStorage.setItem(
             "multiVaultData",
@@ -797,7 +796,7 @@ export const useMultiVault = () => {
               args: [0n, userAddress], // requestId: 0, controller: userAddress
             })) as bigint;
 
-            setPendingRedeemShares(pendingShares || 0n);
+            setPendingRedeemShares(pendingShares);
           } catch (e) {
             console.warn("Failed to check pendingRedeemRequest", e);
             setPendingRedeemShares(0n);
@@ -1086,70 +1085,6 @@ export const useMultiVault = () => {
     [getWalletClient, userAddress, refreshAllData, publicClient]
   );
 
-  const getVaultClientByAddress = useCallback(
-    (addr: string) => {
-      const info = (allVaultData || []).find(
-        (v: any) => v.address?.toLowerCase() === addr?.toLowerCase()
-      );
-      const data =
-        vaultData[addr] ||
-        ({
-          totalAssets: 0,
-          totalSupply: 0,
-          currentNetAPR: 0,
-          tvl: 0,
-          userDeposits: 0,
-          userShares: 0,
-          compoundedYield: 0,
-          assetBalance: 0,
-          pricePerShare: 1,
-          assetDecimals: 18,
-          totalRequestedAssets: 0,
-          pendingDepositAssets: 0n,
-          isLoading: true,
-          error: null,
-          poolNetAPRs: [],
-          poolTVLs: [],
-        } as VaultData);
-
-      return {
-        ...data,
-        symbol: (info as any)?.underlyingSymbol,
-        refreshData: refreshAllData,
-        deposit: (amount: string) => deposit(addr, amount),
-        withdraw: (amount: string) => withdraw(addr, amount),
-        claimDeposit: () => claimDeposit(addr),
-        cancelDepositRequest: () => cancelDepositRequest(addr),
-        claimRedeem: () => claimRedeem(addr),
-        getClaimableDepositAmount: () => getClaimableDepositAmount(addr),
-        getClaimableRedeemAmount: () => getClaimableRedeemAmount(addr),
-        isDepositTransacting,
-        isWithdrawTransacting,
-        transactionHash,
-        // Pending deposit tracking
-        pendingDepositAssets,
-        // Pending redeem tracking
-        pendingRedeemShares,
-      };
-    },
-    [
-      vaultData,
-      refreshAllData,
-      deposit,
-      withdraw,
-      claimDeposit,
-      claimRedeem,
-      getClaimableDepositAmount,
-      getClaimableRedeemAmount,
-      isDepositTransacting,
-      isWithdrawTransacting,
-      transactionHash,
-      pendingDepositAssets,
-      pendingRedeemShares,
-      allVaultData,
-    ]
-  );
-
   return {
     vaultData,
     isLoading,
@@ -1172,8 +1107,6 @@ export const useMultiVault = () => {
     isDepositTransacting,
     isWithdrawTransacting,
     transactionHash,
-    // Dynamic vault client by address
-    getVaultClientByAddress,
     // Pending trxns tracking
     pendingDepositAssets,
     pendingRedeemShares,
