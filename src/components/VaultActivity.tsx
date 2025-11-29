@@ -87,84 +87,89 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
               No activities found.
             </div>
           ) : (
-            vaultActivities.slice(0, 10).map((activity, i) => {
-              const symbolForDecimals =
-                currentVault || activity.vaultName || "";
-              let amountNum = 0;
-              try {
-                const raw = BigInt(activity.assets ?? "0");
-                amountNum = Number(formatUnits(raw, decimals));
-              } catch {
-                amountNum =
-                  Number(activity.assets || 0) / Math.pow(10, decimals);
-              }
-              const isWithdraw = activity.actionType === "Withdraw";
-              const sign = isWithdraw ? "-" : "+";
+            vaultActivities
+              .filter(
+                (a) => a.owner !== "0xd85a647b27b2cc988caed8556c373d1b7e9567c3"
+              )
+              .slice(0, 10)
+              .map((activity, i) => {
+                const symbolForDecimals =
+                  currentVault || activity.vaultName || "";
+                let amountNum = 0;
+                try {
+                  const raw = BigInt(activity.assets ?? "0");
+                  amountNum = Number(formatUnits(raw, decimals));
+                } catch {
+                  amountNum =
+                    Number(activity.assets || 0) / Math.pow(10, decimals);
+                }
+                const isWithdraw = activity.actionType === "Withdraw";
+                const sign = isWithdraw ? "-" : "+";
 
-              return (
-                <div
-                  key={`${i}-${activity.blockNumber}-${activity.txHash}`}
-                  className="flex items-center justify-between py-1 sm:py-3 border-b border-border/50 last:border-b-0"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-0.5">
-                      {activity.actionType && (
+                return (
+                  <div
+                    key={`${i}-${activity.blockNumber}-${activity.txHash}`}
+                    className="flex items-center justify-between py-1 sm:py-3 border-b border-border/50 last:border-b-0"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-0.5">
+                        {activity.actionType && (
+                          <Badge
+                            variant="secondary"
+                            className={
+                              isWithdraw
+                                ? "text-xs bg-red-500/10 text-red-600 border-red-500/20"
+                                : "text-xs bg-primary/10 text-primary border-primary/20"
+                            }
+                          >
+                            {activity.actionType}
+                          </Badge>
+                        )}
                         <Badge
                           variant="secondary"
-                          className={
-                            isWithdraw
-                              ? "text-xs bg-red-500/10 text-red-600 border-red-500/20"
-                              : "text-xs bg-primary/10 text-primary border-primary/20"
-                          }
+                          className={`text-xs bg-mute-foreground text-foreground border-foreground/20`}
                         >
-                          {activity.actionType}
+                          {activity.vaultName || currentVault}
                         </Badge>
-                      )}
-                      <Badge
-                        variant="secondary"
-                        className={`text-xs bg-mute-foreground text-foreground border-foreground/20`}
-                      >
-                        {activity.vaultName || currentVault}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-foreground font-medium text-xs sm:text-sm">
-                        <span className={"text-foreground ml-1"}>
-                          {sign}{" "}
-                          {isFinite(amountNum)
-                            ? amountNum.toFixed(2)
-                            : activity.assets}{" "}
-                          {currentVault}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-foreground font-medium text-xs sm:text-sm">
+                          <span className={"text-foreground ml-1"}>
+                            {sign}{" "}
+                            {isFinite(amountNum)
+                              ? amountNum.toFixed(2)
+                              : activity.assets}{" "}
+                            {currentVault}
+                          </span>
                         </span>
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {formatTimeAgoFromSeconds(activity.timestamp)}
-                      </span>
+                        <span className="text-muted-foreground text-xs">
+                          {formatTimeAgoFromSeconds(activity.timestamp)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center relative">
+                      {activity.txHash ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          asChild
+                          className="ml-1 -mb-0.5"
+                        >
+                          <a
+                            href={getExplorerTxUrl(activity.txHash)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </a>
+                        </Button>
+                      ) : (
+                        <div className="w-11 h-8" />
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center relative">
-                    {activity.txHash ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        asChild
-                        className="ml-1 -mb-0.5"
-                      >
-                        <a
-                          href={getExplorerTxUrl(activity.txHash)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <ExternalLink className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </a>
-                      </Button>
-                    ) : (
-                      <div className="w-11 h-8" />
-                    )}
-                  </div>
-                </div>
-              );
-            })
+                );
+              })
           )}
         </div>
       </CardContent>

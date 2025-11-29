@@ -177,8 +177,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     try {
       setIsValidatingDeposit(true);
       const res = await yieldMonitorService.getPendingDepositAmount(vaultId);
-      const valStr = (res as any)?.data?.pendingAmount ?? "0";
-      console.log("valStr",BigInt(res?.data?.pendingAmount))
       setTotalPendingDeposits(BigInt(res?.data?.pendingAmount));
     } catch (err: any) {
       console.error("Failed to fetch totalPendingDeposits:", err);
@@ -213,21 +211,14 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     }
   }, [vaultId, assetDecimalsProp, publicClient]);
 
-  useEffect(() => {
-    fetchTotalPendingDeposits();
-  }, [fetchTotalPendingDeposits]);
-
-  useEffect(() => {
-    fetchTotalPendingWithdrawals();
-  }, [fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
     fetchTotalPendingDeposits();
-  }, [vaultId, fetchTotalPendingDeposits]);
+  }, [vaultId, pendingDepositAssets, fetchTotalPendingDeposits]);
 
   useEffect(() => {
     fetchTotalPendingWithdrawals();
-  }, [vaultId, fetchTotalPendingWithdrawals]);
+  }, [vaultId, pendingRedeemShares, fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
     if (depositEventStatus === "submitted"||depositEventStatus === "settled") {
