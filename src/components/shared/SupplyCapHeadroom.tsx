@@ -56,16 +56,16 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
 
   // Memoized caps and requested amount
   const caps = useMemo(() => {
-    if (vaultData.assetDecimals)
+    if (vaultData?.assetDecimals)
       return getSupplyCapsForVault(vaultData.assetDecimals);
-  }, [vaultData.assetDecimals]);
+  }, [vaultData]);
 
   const requestedAssets = useMemo(() => {
-    if (vaultData.assetDecimals)
+    if (vaultData?.assetDecimals)
       return debouncedAmount
         ? parseUnits(debouncedAmount, vaultData.assetDecimals)
         : 0n;
-  }, [debouncedAmount, vaultData.assetDecimals]);
+  }, [debouncedAmount, vaultData]);
 
   const status = useMemo<
     "info" | "warning" | "user_error" | "vault_error"
