@@ -288,8 +288,7 @@ export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
         : 0;
 
     const userDepositsFormatted = userSharesFormatted * pricePerShare;
-    
-    const compoundedYield = 0;
+    const compoundedYield = userDepositsFormatted - userSharesFormatted;
 
     userMetrics = {
       userShares: userSharesFormatted,
