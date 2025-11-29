@@ -58,8 +58,14 @@ interface VaultActionPanelProps {
   onRequireAccess: () => void;
   claimableDepositAssets?: number;
   claimableWithdrawAssets?: number;
-  deposit: (vaultAddress: string, amount: string) => Promise<string> | Promise<unknown>;
-  withdraw: (vaultAddress: string, amount: string) => Promise<string> | Promise<unknown>;
+  deposit: (
+    vaultAddress: string,
+    amount: string
+  ) => Promise<string> | Promise<unknown>;
+  withdraw: (
+    vaultAddress: string,
+    amount: string
+  ) => Promise<string> | Promise<unknown>;
   isDepositTransacting: boolean;
   isWithdrawTransacting: boolean;
   depositEventStatus?: string;
@@ -69,6 +75,7 @@ interface VaultActionPanelProps {
   pendingDepositAssets?: bigint;
   pendingRedeemShares?: bigint;
   assetDecimals?: number;
+  vaultDecimals?: number;
 }
 
 const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
@@ -94,6 +101,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   pendingDepositAssets,
   pendingRedeemShares,
   assetDecimals: assetDecimalsProp,
+  vaultDecimals,
 }) => {
   const publicClient = usePublicClient();
   const { address: userAddress } = useAccount();
@@ -160,9 +168,9 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     setWithdrawEligibility({ eligible: true });
   }, [pendingRedeemShares, claimableWithdrawAssets]);
 
-  const [totalPendingDeposits, setTotalPendingDeposits] = useState<number>(0);
+  const [totalPendingDeposits, setTotalPendingDeposits] = useState<bigint>(0n);
   const [totalPendingWithdrawals, setTotalPendingWithdrawals] =
-    useState<number>(0);
+    useState<bigint>(0n);
 
   const fetchTotalPendingDeposits = useCallback(async () => {
     if (!vaultId) return;
@@ -170,11 +178,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       setIsValidatingDeposit(true);
       const res = await yieldMonitorService.getPendingDepositAmount(vaultId);
       const valStr = (res as any)?.data?.pendingAmount ?? "0";
-      const valNum = parseFloat(String(valStr));
-      setTotalPendingDeposits(valNum);
+      console.log("valStr",BigInt(res?.data?.pendingAmount))
+      setTotalPendingDeposits(BigInt(res?.data?.pendingAmount));
     } catch (err: any) {
       console.error("Failed to fetch totalPendingDeposits:", err);
-      setTotalPendingDeposits(0);
+      setTotalPendingDeposits(0n);
     } finally {
       setIsValidatingDeposit(false);
     }
@@ -187,7 +195,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       const sharesStr = (res as any)?.data?.pendingShares ?? "0";
       const shares = BigInt(String(sharesStr || "0"));
       if (!publicClient) {
-        setTotalPendingWithdrawals(0);
+        setTotalPendingWithdrawals(0n);
         return 0;
       }
       const assets = (await publicClient.readContract({
@@ -196,13 +204,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         functionName: "convertToAssets",
         args: [shares],
       })) as bigint;
-      const assetDecimals = (typeof assetDecimalsProp === "number" ? assetDecimalsProp : undefined) ?? 6;
-      const num = Number(formatUnits(assets, Number(assetDecimals)));
-      setTotalPendingWithdrawals(num);
-      return num;
+      setTotalPendingWithdrawals(assets);
+      return assets;
     } catch (err: any) {
       console.error("Failed to fetch totalPendingWithdrawals:", err);
-      setTotalPendingWithdrawals(0);
+      setTotalPendingWithdrawals(0n);
       return 0;
     }
   }, [vaultId, assetDecimalsProp, publicClient]);
@@ -214,6 +220,38 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     fetchTotalPendingWithdrawals();
   }, [fetchTotalPendingWithdrawals]);
+
+  useEffect(() => {
+    fetchTotalPendingDeposits();
+  }, [vaultId, fetchTotalPendingDeposits]);
+
+  useEffect(() => {
+    fetchTotalPendingWithdrawals();
+  }, [vaultId, fetchTotalPendingWithdrawals]);
+
+  useEffect(() => {
+    if (depositEventStatus === "submitted"||depositEventStatus === "settled") {
+      fetchTotalPendingDeposits();
+    }
+  }, [depositEventStatus, fetchTotalPendingDeposits]);
+
+  useEffect(() => {
+    if (withdrawEventStatus === "submitted"||withdrawEventStatus === "settled") {
+      fetchTotalPendingWithdrawals();
+    }
+  }, [withdrawEventStatus, fetchTotalPendingWithdrawals]);
+
+  // useEffect(() => {
+  //   if (!isDepositTransacting) {
+  //     fetchTotalPendingDeposits();
+  //   }
+  // }, [isDepositTransacting, fetchTotalPendingDeposits]);
+
+  // useEffect(() => {
+  //   if (!isWithdrawTransacting) {
+  //     fetchTotalPendingWithdrawals();
+  //   }
+  // }, [isWithdrawTransacting, fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
     setIsValidatingDeposit(true);
@@ -844,7 +882,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           const depositTx: PendingTransaction = {
             id: `backend-deposit-${Date.now()}`,
             type: "deposit",
-            amount: formatUnits(pendingDepositAssets, 6),
+            amount: formatUnits(
+              pendingDepositAssets,
+              assetDecimalsProp ?? 6
+            ).toString(),
             status: "settling",
             origin: "backend",
             timestamp: Date.now(),
@@ -879,7 +920,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           const withdrawTx: PendingTransaction = {
             id: `backend-withdraw-${Date.now()}`,
             type: "withdraw",
-            amount: formatUnits(pendingRedeemShares, 18),
+            amount: formatUnits(
+              pendingRedeemShares,
+              vaultDecimals ?? 18
+            ).toString(),
             status: "settling",
             origin: "backend",
             timestamp: Date.now(),
@@ -1209,6 +1253,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             inputAmount={inputAmount}
             pendingDepositAssets={pendingDepositAssets}
             claimableDepositAssets={claimableDepositAssets}
+            pendingRedeemShares={pendingRedeemShares}
             totalPendingDeposits={totalPendingDeposits}
             totalPendingWithdrawals={totalPendingWithdrawals}
             onHeadroomComputed={(res) =>

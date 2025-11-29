@@ -581,13 +581,13 @@ const VaultDetails = () => {
                 {vaultData?.userDeposits && vaultData.userDeposits > 0 ? (
                   <>
                     <p className="text-xl sm:text-2xl font-bold text-foreground">
-                      {vaultData.userDeposits.toFixed(4)}
+                      {vaultData.userDeposits.toFixed(4)} aiUSDT
                     </p>
-                    <div className="flex items-center mt-1">
+                    {/* <div className="flex items-center mt-1">
                       <span className="text-muted-foreground text-xs sm:text-sm font-medium">
                         aiUSDT: {vaultData.userShares?.toFixed(4) || "0.0000"}
                       </span>
-                    </div>
+                    </div> */}
 
                     {vaultData.compoundedYield > 0 && (
                       <div className="flex items-center mt-1">
@@ -1071,6 +1071,8 @@ const VaultDetails = () => {
               pendingDepositAssets={pendingDepositAssets}
               pendingRedeemShares={pendingRedeemShares}
               assetDecimals={vaultData?.assetDecimals}
+              vaultDecimals={vaultData?.vaultDecimals}
+
             />
 
             <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[115px]">
