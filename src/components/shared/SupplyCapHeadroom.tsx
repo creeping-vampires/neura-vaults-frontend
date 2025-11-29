@@ -15,8 +15,9 @@ interface SupplyCapHeadroomProps {
   inputAmount?: string;
   pendingDepositAssets: bigint;
   claimableDepositAssets: number;
-  totalPendingDeposits?: number;
-  totalPendingWithdrawals?: number;
+  pendingRedeemShares: bigint;
+  totalPendingDeposits?: bigint;
+  totalPendingWithdrawals?: bigint;
   className?: string;
   onHeadroomComputed?: (headroom: HeadroomState) => void;
 }
@@ -27,6 +28,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   inputAmount,
   pendingDepositAssets,
   claimableDepositAssets,
+  pendingRedeemShares,
   totalPendingDeposits,
   totalPendingWithdrawals,
   className,
@@ -46,6 +48,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   const [debouncedAmount, setDebouncedAmount] = useState<string | undefined>(
     undefined
   );
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedAmount(inputAmount), 250);
     return () => clearTimeout(t);
@@ -53,13 +56,15 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
 
   // Memoized caps and requested amount
   const caps = useMemo(() => {
-    return getSupplyCapsForVault(vaultData.assetDecimals);
+    if (vaultData.assetDecimals)
+      return getSupplyCapsForVault(vaultData.assetDecimals);
   }, [vaultData.assetDecimals]);
 
   const requestedAssets = useMemo(() => {
-    return debouncedAmount
-      ? parseUnits(debouncedAmount, vaultData.assetDecimals)
-      : 0n;
+    if (vaultData.assetDecimals)
+      return debouncedAmount
+        ? parseUnits(debouncedAmount, vaultData.assetDecimals)
+        : 0n;
   }, [debouncedAmount, vaultData.assetDecimals]);
 
   const status = useMemo<
@@ -82,7 +87,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     const evaluate = async () => {
       setValidating(true);
       try {
-        if (caps == null) {
+        if (!vaultId || !vaultData || caps == null) {
           setValidating(false);
           return;
         }
@@ -111,20 +116,10 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ? perUserCapUnits - userEffective
             : 0n;
 
-        const pendingDepositsUnits = parseUnits(
-          String(totalPendingDeposits ?? 0),
-          vaultData.assetDecimals
-        );
-
-        const pendingWithdrawalsUnits = parseUnits(
-          String(totalPendingWithdrawals ?? 0),
-          vaultData.assetDecimals
-        );
-
         const vaultEffectiveSupplied =
           (vaultSupplied ?? 0n) +
-          pendingDepositsUnits -
-          pendingWithdrawalsUnits;
+          totalPendingDeposits -
+          totalPendingWithdrawals;
 
         const vaultHeadroomUnits =
           vaultCapUnits > vaultEffectiveSupplied
