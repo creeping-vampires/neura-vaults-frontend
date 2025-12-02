@@ -7,6 +7,7 @@ import { usePrice } from "@/hooks/usePrice";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { fetchHypeBalance } from "@/lib/utils";
 import { useMultiVault } from "@/hooks/useMultiVault";
+import yieldMonitorService from "@/services/vaultService";
 import { useAccount } from "wagmi";
 import { useNavigate } from "react-router-dom";
 
@@ -79,10 +80,17 @@ const Dashboard = () => {
           return sum + (vault.data?.compoundedYield || 0);
         }, 0);
 
-        // Calculate total agent volume (total supply across all vaults)
-        const totalAgentVolume = allVaults.reduce((sum, vault) => {
-          return sum + (vault.data?.totalSupply || 0);
-        }, 0);
+        let totalAgentVolume = 0;
+        try {
+          const volumeData = await yieldMonitorService.getVolumeSummary();
+          if (volumeData.success && volumeData.data?.grandTotal) {
+            totalAgentVolume = parseFloat(
+              volumeData.data.grandTotal.totalVolumeFormatted
+            );
+          }
+        } catch (error) {
+          console.error("Error fetching volume summary:", error);
+        }
 
         setDashboardData({
           tvl,
@@ -170,7 +178,9 @@ const Dashboard = () => {
                 <div className="absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                   <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                   <div className="flex items-center gap-1">
-                    <div className="font-medium text-muted-foreground">1-Day APY</div>
+                    <div className="font-medium text-muted-foreground">
+                      1-Day APY
+                    </div>
                     <div className="font-medium text-foreground ml-auto">:</div>
                     <div className="font-medium text-foreground ml-1">
                       {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}

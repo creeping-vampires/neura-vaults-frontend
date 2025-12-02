@@ -47,7 +47,7 @@ export interface PendingTransaction {
 }
 
 interface VaultActionPanelProps {
-  currentVaultSymbol: string;
+  currentAssetSymbol: string;
   availableAssetBalance?: number;
   availableUserDeposits?: number;
   vaultId?: string;
@@ -79,7 +79,7 @@ interface VaultActionPanelProps {
 }
 
 const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
-  currentVaultSymbol,
+  currentAssetSymbol,
   availableAssetBalance,
   availableUserDeposits,
   vaultId,
@@ -479,7 +479,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           if (nextStatus === "failed") {
             toast({
               title: "Transaction failed",
-              description: `Your ${changedTx.type} of ${changedTx.amount} ${currentVaultSymbol} failed.`,
+              description: `Your ${changedTx.type} of ${changedTx.amount} ${currentAssetSymbol} failed.`,
               variant: "destructive",
             });
           } else if (nextStatus === "settled") {
@@ -502,7 +502,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       setWithdrawEventStatus,
       vaultId,
       userAddress,
-      currentVaultSymbol,
+      currentAssetSymbol,
       toast,
     ]
   );
@@ -752,7 +752,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     [
       updateTransactionStatus,
       refreshData,
-      currentVaultSymbol,
+      currentAssetSymbol,
       publicClient,
       vaultId,
       userAddress,
@@ -1173,10 +1173,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               {activeTab === "deposit"
                 ? `${(availableAssetBalance ?? 0).toFixed(
                     2
-                  )} ${currentVaultSymbol}`
+                  )} ${currentAssetSymbol}`
                 : `${(availableUserDeposits ?? 0).toFixed(
                     2
-                  )} ${currentVaultSymbol}`}
+                  )} ${currentAssetSymbol}`}
             </span>
           </div>
         </div>
@@ -1209,7 +1209,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               className="w-full h-12 px-4 py-3 bg-gradient-to-br from-card to-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground text-sm">
-              {currentVaultSymbol}
+              {currentAssetSymbol}
             </span>
           </div>
         </div>
@@ -1319,7 +1319,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                             {tx.amount &&
                               `${parseFloat(tx.amount).toFixed(
                                 4
-                              )} ${currentVaultSymbol}`}
+                              )} ${currentAssetSymbol}`}
                           </span>
                           <span className={`text-xs ${getStatusColor()}`}>
                             {getStatusText()}
