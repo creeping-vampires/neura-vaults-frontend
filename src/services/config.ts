@@ -242,6 +242,7 @@ export const API_ROUTES = {
   GET_VAULT_ALLOCATIONS: `${API_URL}/neura-vault/allocations`,
   GET_VAULT_PENDING_AMOUNT: `${API_URL}/neura-vault/deposits/pendingAmount`,
   GET_VAULT_PENDING_WITHDRAWALS: `${API_URL}/neura-vault/withdrawals/pendingAmount`,
+  GET_VOLUME_SUMMARY: `${API_URL}/neura-vault/volume/summary`,
   GET_VAULT_REBALANCES: `${API_URL}/vault/rebalances/combined/`,
   GET_AGENT_THOUGHTS: `${API_URL}/agent-thoughts/`,
 
@@ -444,4 +445,42 @@ export interface PendingWithdrawalsResponse {
   success?: boolean;
   data?: PendingWithdrawalsData;
   error?: string;
+}
+
+export interface VolumeSummaryVault {
+  vaultName: string;
+  vaultAddress: string;
+  safeAddress: string;
+  symbol: string;
+  totalDeposits: string;
+  totalWithdrawals: string;
+  totalVolume: string;
+  totalDepositsFormatted: string;
+  totalWithdrawalsFormatted: string;
+  totalVolumeFormatted: string;
+  depositCount: number;
+  withdrawalCount: number;
+  totalTransactionCount: number;
+}
+
+export interface VolumeSummaryGrandTotal {
+  totalDeposits: string;
+  totalWithdrawals: string;
+  totalVolume: string;
+  totalDepositsFormatted: string;
+  totalWithdrawalsFormatted: string;
+  totalVolumeFormatted: string;
+  depositCount: number;
+  withdrawalCount: number;
+  totalTransactionCount: number;
+}
+
+export interface VolumeSummaryData {
+  grandTotal: VolumeSummaryGrandTotal;
+  vaults: VolumeSummaryVault[];
+}
+
+export interface VolumeSummaryResponse {
+  success: boolean;
+  data: VolumeSummaryData;
 }

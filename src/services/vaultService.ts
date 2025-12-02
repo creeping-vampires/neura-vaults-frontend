@@ -7,9 +7,21 @@ import {
   VaultAllocationsResponse,
   PendingDepositsResponse,
   PendingWithdrawalsResponse,
+  VolumeSummaryResponse,
 } from "./config";
 
 const yieldMonitorService = {
+  getVolumeSummary: async (): Promise<VolumeSummaryResponse> => {
+    try {
+      const data = await apiGet<VolumeSummaryResponse>(
+        API_ROUTES.GET_VOLUME_SUMMARY
+      );
+      return data;
+    } catch (error) {
+      console.error("Error fetching volume summary:", error);
+      throw error;
+    }
+  },
   getDailyMetrics: async (): Promise<DailyMetricsResponse> => {
     try {
       const data = await apiGet<DailyMetricsResponse>(
