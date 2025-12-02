@@ -860,7 +860,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         });
       }
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // check pending transaction on page refresh
@@ -1077,7 +1076,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         ? availableAssetBalance || 0
         : availableUserDeposits || 0;
     if (percent === 100) {
-      const amount = (((maxAmount * percent) / 100) * 0.999).toString();
+      const amount = (((maxAmount * percent) / 100) * 0.99999).toString();
       setInputAmount(amount);
     } else {
       const amount = ((maxAmount * percent) / 100).toString();
