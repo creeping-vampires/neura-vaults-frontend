@@ -110,7 +110,6 @@ const VaultDetails = () => {
     setDepositEventStatus,
     withdrawEventStatus,
     setWithdrawEventStatus,
-    claimDeposit,
     cancelDepositRequest,
     claimRedeem,
     getClaimableDepositAmount,
@@ -160,15 +159,15 @@ const VaultDetails = () => {
   const [chartData, setChartData] = useState([]);
 
   const [currentVaultSymbol, setCurrentVaultSymbol] = useState("");
+  const [currentAssetSymbol, setCurrentAssetSymbol] = useState("");
   const [currentVaultName, setCurrentVaultName] = useState("");
-  const [currentVaultAssetAddress, setCurrentVaultAssetAddress] = useState("");
 
   useEffect(() => {
     if (!vaultId) return;
     const currentVaultData = getVaultDataByAddress(vaultId);
-    setCurrentVaultSymbol(currentVaultData?.underlyingSymbol);
+    setCurrentVaultSymbol(currentVaultData?.symbol);
+    setCurrentAssetSymbol(currentVaultData?.underlyingSymbol);
     setCurrentVaultName(currentVaultData?.name);
-    setCurrentVaultAssetAddress(currentVaultData?.underlying);
   }, [vaultId, getVaultDataByAddress]);
 
   const { address: userAddress } = useAccount();
@@ -367,7 +366,7 @@ const VaultDetails = () => {
                 variant="secondary"
                 className="bg-primary/10 text-primary border-primary/20 text-xs"
               >
-                {currentVaultSymbol}
+                {currentAssetSymbol}
               </Badge>
             </div>
           </div>
@@ -390,53 +389,30 @@ const VaultDetails = () => {
               </div>
               {/* Cancel / Claim UX */}
               <div className="ml-auto flex items-center gap-2">
-                {claimableDepositAssets > 0 ? (
+                {pendingDepositAssets > 0n && (
                   <Button
                     size="sm"
                     variant="wallet"
-                    className="text-xs border-2 border-primary/60 hover:border-primary"
+                    className="text-xs border border-primary/40 hover:border-primary"
                     onClick={async () => {
                       try {
-                        await claimDeposit?.(vaultId);
+                        await cancelDepositRequest?.(vaultId);
+                        setTxCanceled(true);
                         await refreshAllData?.();
                       } catch (error: any) {
                         toast({
                           variant: "destructive",
-                          title: "Claim Failed",
+                          title: "Cancel Failed",
                           description:
-                            error?.message || "Unable to claim deposit shares.",
+                            error?.message ||
+                            "Unable to cancel pending deposit.",
                         });
                       }
                     }}
+                    disabled={claimableDepositAssets > 0}
                   >
-                    Claim Shares
+                    Cancel
                   </Button>
-                ) : (
-                  pendingDepositAssets > 0n && (
-                    <Button
-                      size="sm"
-                      variant="wallet"
-                      className="text-xs border border-primary/40 hover:border-primary"
-                      onClick={async () => {
-                        try {
-                          await cancelDepositRequest?.(vaultId);
-                          setTxCanceled(true);
-                          await refreshAllData?.();
-                        } catch (error: any) {
-                          toast({
-                            variant: "destructive",
-                            title: "Cancel Failed",
-                            description:
-                              error?.message ||
-                              "Unable to cancel pending deposit.",
-                          });
-                        }
-                      }}
-                      disabled={claimableDepositAssets > 0}
-                    >
-                      Cancel
-                    </Button>
-                  )
                 )}
               </div>
             </Card>
@@ -581,7 +557,7 @@ const VaultDetails = () => {
                 {vaultData?.userDeposits && vaultData.userDeposits > 0 ? (
                   <>
                     <p className="text-xl sm:text-2xl font-bold text-foreground">
-                      {vaultData.userDeposits.toFixed(4)} aiUSDT
+                      {vaultData.userDeposits.toFixed(4)} {currentVaultSymbol}
                     </p>
                     {/* <div className="flex items-center mt-1">
                       <span className="text-muted-foreground text-xs sm:text-sm font-medium">
@@ -722,7 +698,7 @@ const VaultDetails = () => {
                                   typeof value === "number"
                                     ? value
                                     : parseFloat(String(value));
-                                const label = ` ${currentVaultSymbol}`;
+                                const label = ` ${currentAssetSymbol}`;
                                 return [numValue?.toFixed(4), label];
                               }
                               return [value, name];
@@ -787,7 +763,7 @@ const VaultDetails = () => {
                   </CardHeader>
                   <CardContent className="space-y-3 sm:space-y-4 pt-0">
                     <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
-                      Autonomous Liquidity {currentVaultSymbol} is a tokenized
+                      Autonomous Liquidity {currentAssetSymbol} is a tokenized
                       AI yield optimization strategy that maximizes
                       risk-adjusted returns on stablecoin investments across
                       numerous DeFi protocols. By continuously scanning the
@@ -801,7 +777,7 @@ const VaultDetails = () => {
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
                           {vaultData.pendingDepositAssets?.toFixed(4) || "0.00"}{" "}
-                          {currentVaultSymbol}
+                          {currentAssetSymbol}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -810,7 +786,7 @@ const VaultDetails = () => {
                         </span>
                         <span className="text-foreground font-medium text-xs sm:text-sm">
                           {vaultData.totalRequestedAssets?.toFixed(4) || "0.00"}{" "}
-                          {currentVaultSymbol}
+                          {currentAssetSymbol}
                         </span>
                       </div>
                     </div> */}
@@ -850,7 +826,7 @@ const VaultDetails = () => {
                 >
                   <VaultActivity
                     vaultId={vaultId}
-                    currentVault={currentVaultSymbol}
+                    currentVault={currentAssetSymbol}
                   />
                 </Suspense>
               </div>
@@ -1049,7 +1025,7 @@ const VaultDetails = () => {
         <div className="w-full lg:w-80 flex-shrink-0 space-y-4 sm:space-y-6">
           <div className="sticky top-6 space-y-4 sm:space-y-6">
             <VaultActionPanel
-              currentVaultSymbol={currentVaultSymbol}
+              currentAssetSymbol={currentAssetSymbol}
               availableAssetBalance={vaultData?.assetBalance}
               availableUserDeposits={vaultData?.userDeposits}
               vaultId={vaultId}

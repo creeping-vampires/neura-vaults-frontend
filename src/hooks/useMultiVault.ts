@@ -873,85 +873,6 @@ export const useMultiVault = () => {
     [getWalletClient, userAddress, refreshAllData, publicClient, allVaultData]
   );
 
-  // Post-claim cleanup
-  const claimDeposit = useCallback(
-    async (vaultAddress: string) => {
-      const walletClient = await getWalletClient();
-      if (!walletClient || !userAddress) {
-        throw new Error("Wallet not connected");
-      }
-      try {
-        const chainSwitched = await switchToChain();
-        if (!chainSwitched) {
-          throw new Error("Failed to switch to Hyper EVM chain");
-        }
-        setIsTransacting(true);
-        setTransactionHash(null);
-
-        const maxAssets = (await publicClient.readContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "maxDeposit",
-          args: [userAddress as `0x${string}`],
-        })) as bigint;
-
-        if (maxAssets === 0n) {
-          toast({
-            variant: "default",
-            title: "No Claimable Shares",
-            description: "There are no deposit shares to claim right now.",
-          });
-          return null;
-        }
-
-        const gas = await publicClient.estimateContractGas({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "deposit",
-          args: [maxAssets, userAddress as `0x${string}`],
-          account: userAddress as `0x${string}`,
-        });
-
-        const tx = await walletClient.writeContract({
-          address: vaultAddress as `0x${string}`,
-          abi: YieldAllocatorVaultABI,
-          functionName: "deposit",
-          args: [maxAssets, userAddress as `0x${string}`],
-          chain: hyperliquid,
-          account: userAddress as `0x${string}`,
-          gas: (gas * 200n) / 100n,
-        });
-        setTransactionHash(tx);
-        await publicClient.waitForTransactionReceipt({ hash: tx });
-
-        toast({
-          variant: "success",
-          title: "✅ Shares Claimed",
-          description: "Successfully claimed settled deposit shares.",
-        });
-
-        // Check for any remaining pending deposit requests
-        await checkPendingDepositRequest();
-        await refreshAllData();
-        return tx;
-      } catch (error) {
-        console.error("Claim deposit failed:", error);
-        toast({
-          variant: "destructive",
-          title: "❌ Claim Deposit Failed",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Unexpected error occurred.",
-        });
-        throw error;
-      } finally {
-        setIsTransacting(false);
-      }
-    },
-    [getWalletClient, userAddress, refreshAllData, publicClient]
-  );
-
   // Allow user to cancel an active deposit request if contract permits
   const cancelDepositRequest = useCallback(
     async (vaultAddress: string) => {
@@ -1136,7 +1057,6 @@ export const useMultiVault = () => {
     // Transaction functions
     deposit,
     withdraw,
-    claimDeposit,
     cancelDepositRequest,
     claimRedeem,
     getClaimableDepositAmount,
