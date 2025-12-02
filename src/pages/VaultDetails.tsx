@@ -1058,8 +1058,6 @@ const VaultDetails = () => {
               hasAccess={hasAccess}
               txCanceled={txCanceled}
               onRequireAccess={() => setShowAccessCodeModal(true)}
-              claimableDepositAssets={claimableDepositAssets}
-              claimableWithdrawAssets={claimableWithdrawAssets}
               deposit={deposit}
               withdraw={withdraw}
               isDepositTransacting={isDepositTransacting}
@@ -1070,9 +1068,10 @@ const VaultDetails = () => {
               setWithdrawEventStatus={setWithdrawEventStatus}
               pendingDepositAssets={pendingDepositAssets}
               pendingRedeemShares={pendingRedeemShares}
+              claimableDepositAssets={claimableDepositAssets}
+              claimableWithdrawAssets={claimableWithdrawAssets}
               assetDecimals={vaultData?.assetDecimals}
               vaultDecimals={vaultData?.vaultDecimals}
-
             />
 
             <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[115px]">
