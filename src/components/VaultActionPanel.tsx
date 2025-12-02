@@ -100,7 +100,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   setWithdrawEventStatus,
   pendingDepositAssets,
   pendingRedeemShares,
-  assetDecimals: assetDecimalsProp,
+  assetDecimals,
   vaultDecimals,
 }) => {
   const publicClient = usePublicClient();
@@ -209,8 +209,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       setTotalPendingWithdrawals(0n);
       return 0;
     }
-  }, [vaultId, assetDecimalsProp, publicClient]);
-
+  }, [vaultId, assetDecimals, publicClient]);
 
   useEffect(() => {
     fetchTotalPendingDeposits();
@@ -221,13 +220,19 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   }, [vaultId, pendingRedeemShares, fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
-    if (depositEventStatus === "submitted"||depositEventStatus === "settled") {
+    if (
+      depositEventStatus === "submitted" ||
+      depositEventStatus === "settled"
+    ) {
       fetchTotalPendingDeposits();
     }
   }, [depositEventStatus, fetchTotalPendingDeposits]);
 
   useEffect(() => {
-    if (withdrawEventStatus === "submitted"||withdrawEventStatus === "settled") {
+    if (
+      withdrawEventStatus === "submitted" ||
+      withdrawEventStatus === "settled"
+    ) {
       fetchTotalPendingWithdrawals();
     }
   }, [withdrawEventStatus, fetchTotalPendingWithdrawals]);
@@ -855,7 +860,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         });
       }
     } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // check pending transaction on page refresh
@@ -873,10 +877,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           const depositTx: PendingTransaction = {
             id: `backend-deposit-${Date.now()}`,
             type: "deposit",
-            amount: formatUnits(
-              pendingDepositAssets,
-              assetDecimalsProp ?? 6
-            ).toString(),
+            amount:
+              (claimableDepositAssets ?? 0) > 0
+                ? (claimableDepositAssets ?? 0).toString()
+                : formatUnits(pendingDepositAssets ?? 0n, assetDecimals ?? 18),
             status: "settling",
             origin: "backend",
             timestamp: Date.now(),
@@ -911,10 +915,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           const withdrawTx: PendingTransaction = {
             id: `backend-withdraw-${Date.now()}`,
             type: "withdraw",
-            amount: formatUnits(
-              pendingRedeemShares,
-              vaultDecimals ?? 18
-            ).toString(),
+            amount:
+              (claimableWithdrawAssets ?? 0) > 0
+                ? (claimableWithdrawAssets ?? 0).toString()
+                : formatUnits(pendingRedeemShares ?? 0n, vaultDecimals ?? 18),
             status: "settling",
             origin: "backend",
             timestamp: Date.now(),
@@ -1072,7 +1076,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         ? availableAssetBalance || 0
         : availableUserDeposits || 0;
     if (percent === 100) {
-      const amount = (((maxAmount * percent) / 100) * 0.999).toString();
+      const amount = (((maxAmount * percent) / 100) * 0.99999).toString();
       setInputAmount(amount);
     } else {
       const amount = ((maxAmount * percent) / 100).toString();

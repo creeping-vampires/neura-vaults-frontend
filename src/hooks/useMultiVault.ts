@@ -360,6 +360,13 @@ export const useMultiVault = () => {
     }, 0);
   }, [vaultData]);
 
+  const vaultAddresses = useMemo(() => {
+    return (allVaultData || [])
+      .map((v: any) => v.address)
+      .sort()
+      .join(",");
+  }, [allVaultData]);
+
   useEffect(() => {
     if (
       !publicClient ||
@@ -393,18 +400,31 @@ export const useMultiVault = () => {
             const owners = logs
               .map((l) => (l as any)?.args?.owner as Address | undefined)
               .filter(Boolean) as Address[];
-            if (owners.length > 0 && owners.includes(userAddress as Address)) {
+
+            // Normalize addresses for comparison
+            const normalizedUserAddress = userAddress.toLowerCase();
+            const hasMatchingOwner = owners.some(
+              (owner) => owner.toLowerCase() === normalizedUserAddress
+            );
+
+            if (hasMatchingOwner) {
+              console.log(`[MultiVault] Deposit event detected for ${address}`);
               fetchAllVaultData(true);
               try {
                 checkPendingDepositRequest();
-              } catch {}
+              } catch (err) {
+                console.error(
+                  "Failed to check pending deposit request after event",
+                  err
+                );
+              }
+              setDepositEventStatus("settled");
               toast({
                 variant: "success",
                 title: "📦 Deposits Settled",
                 description:
                   "New shares will be deposited shortly. Refreshing data...",
               });
-              setDepositEventStatus("settled");
             }
           },
         });
@@ -427,18 +447,33 @@ export const useMultiVault = () => {
             const owners = logs
               .map((l) => (l as any)?.args?.owner as Address | undefined)
               .filter(Boolean) as Address[];
-            if (owners.length > 0 && owners.includes(userAddress as Address)) {
+
+            // Normalize addresses for comparison
+            const normalizedUserAddress = userAddress.toLowerCase();
+            const hasMatchingOwner = owners.some(
+              (owner) => owner.toLowerCase() === normalizedUserAddress
+            );
+
+            if (hasMatchingOwner) {
+              console.log(
+                `[MultiVault] Withdraw event detected for ${address}`
+              );
               fetchAllVaultData(true);
 
               try {
                 checkPendingRedeemRequest();
-              } catch {}
+              } catch (err) {
+                console.error(
+                  "Failed to check pending redeem request after event",
+                  err
+                );
+              }
+              setWithdrawEventStatus("settled");
               toast({
                 variant: "success",
                 title: "💸 Withdrawals Settled",
                 description: "Assets may be claimable. Refreshing data...",
               });
-              setWithdrawEventStatus("settled");
             }
           },
         });
@@ -465,7 +500,7 @@ export const useMultiVault = () => {
     return () => {
       unsubscribers.forEach((unsub) => unsub());
     };
-  }, [publicClient, userAddress, refreshAllData, allVaultData]);
+  }, [publicClient, userAddress, refreshAllData, vaultAddresses]);
 
   // Helpers: claimable amounts
   const getClaimableDepositAmount = useCallback(
@@ -554,6 +589,7 @@ export const useMultiVault = () => {
           throw new Error("Failed to switch to Hyper EVM chain");
         }
         setIsDepositTransacting(true);
+        setDepositEventStatus("submitted");
         setTransactionHash(null);
 
         const assetSymbol = vaultData[vaultAddress]?.assetSymbol;
@@ -691,6 +727,7 @@ export const useMultiVault = () => {
         return depositTx;
       } catch (error) {
         console.error("Deposit failed:", error);
+        setDepositEventStatus("failed");
 
         toast({
           variant: "destructive",
@@ -729,6 +766,7 @@ export const useMultiVault = () => {
           throw new Error("Failed to switch to Hyper EVM chain");
         }
         setIsWithdrawTransacting(true);
+        setWithdrawEventStatus("submitted");
         setTransactionHash(null);
 
         const assetSymbol = vaultData[vaultAddress]?.assetSymbol;
@@ -816,6 +854,7 @@ export const useMultiVault = () => {
         return withdrawTx;
       } catch (error) {
         console.error("Withdrawal failed:", error);
+        setWithdrawEventStatus("failed");
 
         toast({
           variant: "destructive",
