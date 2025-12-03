@@ -1,8 +1,6 @@
 import { PublicClient, Address, parseAbi, formatUnits } from "viem";
 import { getBatchRpcClient } from "./batchRpc";
 import { LatestVaultItem } from "@/services/config";
-import YieldAllocatorVaultABI from "@/utils/abis/YieldAllocatorVault.json";
-import { publicClient } from "@/lib/privyConfig";
 
 export interface MultiVaultData {
   symbol: string;

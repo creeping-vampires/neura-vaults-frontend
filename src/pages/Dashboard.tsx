@@ -85,7 +85,7 @@ const Dashboard = () => {
           const volumeData = await yieldMonitorService.getVolumeSummary();
           if (volumeData.success && volumeData.data?.grandTotal) {
             totalAgentVolume = parseFloat(
-              volumeData.data.grandTotal.totalVolumeFormatted
+              volumeData.data.grandTotal.totalDepositsFormatted
             );
           }
         } catch (error) {
