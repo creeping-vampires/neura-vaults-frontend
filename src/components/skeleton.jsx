@@ -163,13 +163,13 @@ export default function SkeletonLoader() {
             </div>
             <div className="flex justify-end space-x-6 mt-4">
               <div className="flex flex-col items-center">
-                <div className="text-muted-foreground text-xs">Net APY</div>
+                {/* <div className="text-muted-foreground text-xs">Current APY(7D)</div> */}
                 <UISkeleton className="h-5 w-12 mt-1" />
               </div>
-              <div className="flex flex-col items-center">
+              {/* <div className="flex flex-col items-center">
                 <div className="text-muted-foreground text-xs">Points</div>
                 <UISkeleton className="h-5 w-16 mt-1" />
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

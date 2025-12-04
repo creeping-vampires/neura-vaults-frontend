@@ -122,7 +122,7 @@ const Dashboard = () => {
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen relative">
       {/* Portfolio Overview */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -201,7 +201,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+        {/* <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
@@ -215,7 +215,7 @@ const Dashboard = () => {
               </p>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Main Content */}

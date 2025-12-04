@@ -570,14 +570,14 @@ const VaultDetails = () => {
                       </span>
                     </div> */}
 
-                    {vaultData.compoundedYield > 0 && (
+                    {/* {vaultData.compoundedYield > 0 && (
                       <div className="flex items-center mt-1">
                         <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
                         <span className="text-primary text-xs sm:text-sm font-medium">
                           +{vaultData.compoundedYield.toFixed(4)} yield
                         </span>
                       </div>
-                    )}
+                    )} */}
                   </>
                 ) : (
                   <>
