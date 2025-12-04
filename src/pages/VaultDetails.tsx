@@ -125,6 +125,7 @@ const VaultDetails = () => {
 
   const { hasAccess } = useUserAccess();
   const [txCanceled, setTxCanceled] = useState(false);
+  const [claimInProgress, setClaimInProgress] = useState(false);
 
   const [totalAUM, setTotalAUM] = useState(0);
 
@@ -346,7 +347,7 @@ const VaultDetails = () => {
   }, [allocationsData]);
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 max-w-7xl relative">
+    <div className="container mx-auto p-4 sm:p-6 sm:pt-4 max-w-7xl relative">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
         <div className="flex items-center space-x-3 sm:space-x-4">
           <Button
@@ -449,6 +450,7 @@ const VaultDetails = () => {
               <Button
                 onClick={async () => {
                   try {
+                    setClaimInProgress(true);
                     await claimRedeem?.(vaultId);
                     await refreshClaimableWithdraw();
                     refreshAllData?.();
@@ -461,13 +463,16 @@ const VaultDetails = () => {
                         error?.message ||
                         "Unable to claim withdrawal assets. Please try again.",
                     });
+                  } finally {
+                    setClaimInProgress(false);
                   }
                 }}
                 size="sm"
                 variant="wallet"
-                className="text-xs border-2 border-primary/60 hover:border-primary transition-all duration-300 relative overflow-hidden"
+                disabled={claimInProgress}
+                className="text-xs border-2 border-primary/60 hover:border-primary transition-all duration-300 relative overflow-hidden w-28"
               >
-                Withdraw Assets
+                {claimInProgress ? "Withdrawing..." : "Withdraw Assets"}
               </Button>
             </Card>
           )}
@@ -1050,20 +1055,14 @@ const VaultDetails = () => {
               vaultDecimals={vaultData?.vaultDecimals}
             />
 
-            <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[115px]">
-              <CardContent className="py-3 px-4 sm:py-4 sm:px-6">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
-                    Next vault settlement
-                  </h3>
+            <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl h-[55px]">
+              <CardContent className="py-3 px-3 sm:py-4 sm:px-4">
+                <div className="flex items-center justify-start gap-3">
                   <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
+                  <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
+                    Settles Every 30–60 Minutes
+                  </h3>
                 </div>
-                <p className="text-base sm:text-lg font-bold text-foreground">
-                  {minutes} Minutes
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 sm:mt-1">
-                  Settlement: Every 30 minutes
-                </p>
               </CardContent>
             </Card>
           </div>

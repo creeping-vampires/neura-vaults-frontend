@@ -952,7 +952,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           setLatestTransactions((prev) =>
             prev.filter((tx) => tx.origin !== "backend")
           );
-        }, 15 * 60 * 1000);
+        }, 30 * 60 * 1000);
       }
     };
 
@@ -1134,7 +1134,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   return (
     <Card
       className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl sm:min-h-[500px]"
-      style={{ height: "calc(100vh - 315px)" }}
+      style={{ height: "calc(100vh - 196px)" }}
     >
       <CardContent className="p-4 pt-2">
         <div className="flex mb-4 border-b border-border">
@@ -1268,7 +1268,12 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             </h4>
             <div
               className="space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
-              style={{ height: "calc(100vh - 635px)" }}
+              style={{
+                height:
+                  activeTab === "deposit"
+                    ? "calc(100vh - 575px)"
+                    : "calc(100vh - 515px)",
+              }}
             >
               {latestTransactions
                 .filter((tx) => tx.type === "deposit" || tx.type === "withdraw")

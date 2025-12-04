@@ -402,15 +402,8 @@ export const useMultiVault = () => {
 
             if (hasMatchingOwner) {
               console.log(`[MultiVault] Deposit event detected for ${address}`);
+              setPendingDepositAssets(0n);
               fetchAllVaultData(true);
-              try {
-                checkPendingDepositRequest();
-              } catch (err) {
-                console.error(
-                  "Failed to check pending deposit request after event",
-                  err
-                );
-              }
               setDepositEventStatus("settled");
               toast({
                 variant: "success",
@@ -451,16 +444,8 @@ export const useMultiVault = () => {
               console.log(
                 `[MultiVault] Withdraw event detected for ${address}`
               );
+              setPendingRedeemShares(0n);
               fetchAllVaultData(true);
-
-              try {
-                checkPendingRedeemRequest();
-              } catch (err) {
-                console.error(
-                  "Failed to check pending redeem request after event",
-                  err
-                );
-              }
               setWithdrawEventStatus("settled");
               toast({
                 variant: "success",

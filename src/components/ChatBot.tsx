@@ -34,7 +34,7 @@ const ChatBot: React.FC = () => {
   return (
     <div className="fixed bottom-6 right-6 z-50 h-[600px]">
       {!isOpen && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-[17px] right-6 z-50">
           <button
             onClick={() => setIsOpen(true)}
             className="bg-background p-0.5 rounded-full shadow-[0_0_10px_1px] shadow-foreground/60 transition-all duration-300 hover:scale-105"
