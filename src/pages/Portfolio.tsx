@@ -351,7 +351,7 @@ const Portfolio = () => {
       {/* Portfolio Overview Card */}
       <Card
         className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl select-none"
-        onClick={() => setIsExpanded(!isExpanded)}
+        // onClick={() => setIsExpanded(!isExpanded)}
       >
         <CardContent className="p-4 sm:p-6 relative">
           <div className="flex items-center justify-between">
@@ -360,7 +360,7 @@ const Portfolio = () => {
                 Your Deposits
               </CardTitle>
             </div>
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
@@ -371,7 +371,7 @@ const Portfolio = () => {
               ) : (
                 <ChevronDown className="h-6 w-6" />
               )}
-            </Button>
+            </Button> */}
           </div>
           <div className="flex justify-between">
             <div className="mt-4">
@@ -382,7 +382,7 @@ const Portfolio = () => {
                 })}
               </p>
             </div>
-            {!isExpanded ? (
+            {/* {!isExpanded ? (
               <div className="flex items-center justify-between">
                 <div className="flex-1 flex justify-center">
                   <div className="absolute w-80 h-28 top-6">
@@ -530,7 +530,7 @@ const Portfolio = () => {
                   </ChartContainer>
                 </div>
               </div>
-            )}
+            )} */}
 
             <div className="flex justify-end space-x-6 mt-4">
               <div className="flex flex-col items-center">
