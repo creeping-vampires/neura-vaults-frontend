@@ -562,12 +562,12 @@ const Portfolio = () => {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-col items-center">
+              {/* <div className="flex flex-col items-center">
                 <div className="text-muted-foreground text-xs">Points</div>
                 <div className="text-foreground font-semibold mt-1">
                   {portfolioData.totalEarnings.toFixed(4)}
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         </CardContent>
@@ -659,9 +659,9 @@ const Portfolio = () => {
                         <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           APY
                         </th>
-                        <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
+                        {/* <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           Points
-                        </th>
+                        </th> */}
                         <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           REWARDS
                         </th>
@@ -730,9 +730,9 @@ const Portfolio = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="text-foreground font-semibold py-4">
+                          {/* <td className="text-foreground font-semibold py-4">
                             {position?.earnings?.toFixed(4)}
-                          </td>
+                          </td> */}
                           <td className="py-4 sm:w-32">
                             <div className="flex space-x-2">
                               {/* {position.asset === "USDC" ? ( */}
