@@ -11,7 +11,7 @@ interface SidebarProps {
 
 const socials = [
   { name: "twitter", link: "https://x.com/Neuravaults" },
-  { name: "discord", link: "https://discord.gg/officialneuravaults" },
+  { name: "discord", link: "https://discord.gg/suS7uFMY2u" },
   { name: "gitbook", link: "https://neura-vaults.gitbook.io/neura-vaults/" },
 ];
 
