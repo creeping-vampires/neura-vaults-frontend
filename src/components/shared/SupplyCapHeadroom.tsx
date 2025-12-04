@@ -42,7 +42,10 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   );
 
   const [headroom, setHeadroom] = useState<HeadroomState>({});
-  const [validating, setValidating] = useState(true);
+  const [validatingUser, setValidatingUser] = useState(true);
+  const [validatingVault, setValidatingVault] = useState(true);
+
+  const validating = validatingUser || validatingVault;
 
   // Debounce input amount to reduce frequent evaluations during typing
   const [debouncedAmount, setDebouncedAmount] = useState<string | undefined>(
@@ -82,21 +85,18 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     return "info";
   }, [debouncedAmount, headroom.userHeadroom, headroom.vaultHeadroom]);
 
+  // User Headroom
   useEffect(() => {
     let cancelled = false;
-    const evaluate = async () => {
-      setValidating(true);
+    const evaluateUserHeadroom = async () => {
+      setValidatingUser(true);
       try {
         if (!vaultId || !vaultData || caps == null) {
-          setValidating(false);
+          setValidatingUser(false);
           return;
         }
         const perUserCapUnits = caps.perUserCapUnits;
-        const vaultCapUnits = caps.vaultCapUnits;
 
-        const vaultSupplied =
-          parseUnits(String(vaultData.totalAssets), vaultData.assetDecimals) ??
-          0n;
         const userSupplied =
           parseUnits(String(vaultData.userDeposits), vaultData.assetDecimals) ??
           0n;
@@ -110,16 +110,66 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ? pendingDepositAssets
             : claimableDepositAssetsUnits;
         const userEffective = userSupplied + pendingAmount;
-        
+
         const userHeadroomUnits =
           perUserCapUnits > userEffective
             ? perUserCapUnits - userEffective
             : 0n;
 
+        const userHeadroomFormatted = formatUnits(
+          userHeadroomUnits,
+          vaultData.assetDecimals
+        );
+
+        if (!cancelled) {
+          setHeadroom((prev) => {
+            if (prev.userHeadroom !== userHeadroomFormatted) {
+              const next = { ...prev, userHeadroom: userHeadroomFormatted };
+              return next;
+            }
+            return prev;
+          });
+          setValidatingUser(false);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setValidatingUser(false);
+        }
+      }
+    };
+    evaluateUserHeadroom();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    vaultId,
+    caps,
+    vaultData?.userDeposits,
+    vaultData?.assetDecimals,
+    pendingDepositAssets,
+    claimableDepositAssets,
+  ]);
+
+  // Vault Headroom 
+  useEffect(() => {
+    let cancelled = false;
+    const evaluateVaultHeadroom = async () => {
+      setValidatingVault(true);
+      try {
+        if (!vaultId || !vaultData || caps == null) {
+          setValidatingVault(false);
+          return;
+        }
+        const vaultCapUnits = caps.vaultCapUnits;
+
+        const vaultSupplied =
+          parseUnits(String(vaultData.totalAssets), vaultData.assetDecimals) ??
+          0n;
+
         const vaultEffectiveSupplied =
           (vaultSupplied ?? 0n) +
-          totalPendingDeposits -
-          totalPendingWithdrawals;
+          (totalPendingDeposits ?? 0n) -
+          (totalPendingWithdrawals ?? 0n);
 
         const vaultHeadroomUnits =
           vaultCapUnits > vaultEffectiveSupplied
@@ -131,40 +181,42 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
             ? caps.vaultCapUnits - vaultSupplied
             : vaultHeadroomUnits;
 
-        const res: HeadroomState = {
-          userHeadroom: formatUnits(userHeadroomUnits, vaultData.assetDecimals),
-          vaultHeadroom: formatUnits(
-            vaultHeadroomUnitsFinal,
-            vaultData.assetDecimals
-          ),
-        };
+        const vaultHeadroomFormatted = formatUnits(
+          vaultHeadroomUnitsFinal,
+          vaultData.assetDecimals
+        );
+
         if (!cancelled) {
-          const shouldUpdate =
-            headroom.userHeadroom !== res.userHeadroom ||
-            headroom.vaultHeadroom !== res.vaultHeadroom;
-          if (shouldUpdate) {
-            setHeadroom(res);
-            onHeadroomComputed?.(res);
-          }
-          setValidating(false);
+          setHeadroom((prev) => {
+            if (prev.vaultHeadroom !== vaultHeadroomFormatted) {
+              return { ...prev, vaultHeadroom: vaultHeadroomFormatted };
+            }
+            return prev;
+          });
+          setValidatingVault(false);
         }
       } catch (e) {
         if (!cancelled) {
-          setValidating(false);
+          setValidatingVault(false);
         }
       }
     };
-    evaluate();
+    evaluateVaultHeadroom();
     return () => {
       cancelled = true;
     };
   }, [
     vaultId,
-    vaultData,
-    requestedAssets,
+    caps,
+    vaultData?.totalAssets,
+    vaultData?.assetDecimals,
     totalPendingDeposits,
     totalPendingWithdrawals,
   ]);
+
+  useEffect(() => {
+    onHeadroomComputed?.(headroom);
+  }, [headroom, onHeadroomComputed]);
 
   return (
     show && (
