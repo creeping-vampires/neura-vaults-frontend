@@ -106,11 +106,11 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
         );
 
         const pendingAmount =
-          claimableDepositAssetsUnits > 0n
-            ? claimableDepositAssetsUnits
-            : pendingDepositAssets;
+          pendingDepositAssets > 0n
+            ? pendingDepositAssets
+            : claimableDepositAssetsUnits;
         const userEffective = userSupplied + pendingAmount;
-
+        
         const userHeadroomUnits =
           perUserCapUnits > userEffective
             ? perUserCapUnits - userEffective

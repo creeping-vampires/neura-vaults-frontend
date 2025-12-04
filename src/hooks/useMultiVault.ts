@@ -5,14 +5,7 @@ import {
   useWalletClient,
   useAccount,
 } from "wagmi";
-import {
-  parseUnits,
-  formatUnits,
-  parseAbi,
-  parseAbiItem,
-  maxUint256,
-  Address,
-} from "viem";
+import { parseUnits, formatUnits, parseAbi, parseAbiItem, Address } from "viem";
 import { usePrice } from "@/hooks/usePrice";
 import {
   getMultiVaultBatchClient,
@@ -608,13 +601,17 @@ export const useMultiVault = () => {
         });
 
         if ((currentAllowance as bigint) < amountBigInt) {
+          console.log(
+            `Requesting approval for exact amount: ${amountBigInt.toString()}`
+          );
+
           const approveGas = await publicClient.estimateContractGas({
             address: assetAddress as `0x${string}`,
             abi: parseAbi([
               "function approve(address, uint256) returns (bool)",
             ]),
             functionName: "approve",
-            args: [vaultAddress as `0x${string}`, maxUint256],
+            args: [vaultAddress as `0x${string}`, amountBigInt],
             account: userAddress as `0x${string}`,
           });
 
@@ -624,15 +621,37 @@ export const useMultiVault = () => {
               "function approve(address, uint256) returns (bool)",
             ]),
             functionName: "approve",
-            args: [vaultAddress as `0x${string}`, maxUint256],
+            args: [vaultAddress as `0x${string}`, amountBigInt],
             chain: hyperliquid,
             account: userAddress as `0x${string}`,
             gas: (approveGas * 200n) / 100n,
           });
-          await publicClient.waitForTransactionReceipt({ hash: approveTx });
+
+          const approveReceipt = await publicClient.waitForTransactionReceipt({
+            hash: approveTx,
+          });
+
+          if (approveReceipt.status !== "success") {
+            throw new Error("Token approval transaction failed on-chain");
+          }
+
+          // Verify the approval matches the requested amount
+          const verifiedAllowance = await publicClient.readContract({
+            address: assetAddress as `0x${string}`,
+            abi: parseAbi([
+              "function allowance(address, address) view returns (uint256)",
+            ]),
+            functionName: "allowance",
+            args: [userAddress as `0x${string}`, vaultAddress as `0x${string}`],
+          });
+
+          if ((verifiedAllowance as bigint) < amountBigInt) {
+            throw new Error(
+              "Approval verification failed: Insufficient allowance after approval"
+            );
+          }
         }
 
-        // Use requestDeposit (ERC-7540)
         const depositGas = await publicClient.estimateContractGas({
           address: vaultAddress as `0x${string}`,
           abi: YieldAllocatorVaultABI,
@@ -1002,7 +1021,16 @@ export const useMultiVault = () => {
           gas: (gas * 200n) / 100n,
         });
         setTransactionHash(tx);
-        await publicClient.waitForTransactionReceipt({ hash: tx });
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: tx,
+        });
+
+        if (receipt.status === "success") {
+          console.log(
+            "Claim redeem successful, setting status to settled"
+          );
+          setWithdrawEventStatus("settled");
+        }
 
         toast({
           variant: "success",
