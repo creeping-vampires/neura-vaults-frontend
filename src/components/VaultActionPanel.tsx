@@ -168,6 +168,25 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     setWithdrawEligibility({ eligible: true });
   }, [pendingRedeemShares, claimableWithdrawAssets]);
 
+  const handleHeadroomComputed = useCallback(
+    (res: { userHeadroom?: string; vaultHeadroom?: string }) => {
+      setDepositEligibility((prev) => {
+        if (
+          prev.userHeadroom === res.userHeadroom &&
+          prev.vaultHeadroom === res.vaultHeadroom
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          userHeadroom: res.userHeadroom,
+          vaultHeadroom: res.vaultHeadroom,
+        };
+      });
+    },
+    []
+  );
+
   const [totalPendingDeposits, setTotalPendingDeposits] = useState<bigint>(0n);
   const [totalPendingWithdrawals, setTotalPendingWithdrawals] =
     useState<bigint>(0n);
@@ -1251,13 +1270,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             pendingRedeemShares={pendingRedeemShares}
             totalPendingDeposits={totalPendingDeposits}
             totalPendingWithdrawals={totalPendingWithdrawals}
-            onHeadroomComputed={(res) =>
-              setDepositEligibility((prev) => ({
-                ...prev,
-                userHeadroom: res.userHeadroom,
-                vaultHeadroom: res.vaultHeadroom,
-              }))
-            }
+            onHeadroomComputed={handleHeadroomComputed}
           />
         )}
 

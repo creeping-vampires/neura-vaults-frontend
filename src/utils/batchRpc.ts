@@ -130,45 +130,58 @@ export class BatchRpcClient {
       return this.fallbackToIndividual(calls);
     }
 
-    try {
-      // Use multicall for better performance with explicit typing
-      const contracts = calls.map((call) => ({
-        address: call.address as `0x${string}`,
-        abi: call.abi as any,
-        functionName: call.functionName as string,
-        args: (call.args || []) as any[],
-      }));
+    const chunkSize = 50; // Optimal batch size to avoid gas limits
+    const results: BatchResult[] = [];
 
-      // @ts-ignore
-      const multicallResults = (await this.publicClient.multicall({
-        contracts,
-        allowFailure: true,
-      })) as Array<{
-        status: "success" | "failure";
-        result?: any;
-        error?: any;
-      }>;
+    // Process in chunks
+    for (let i = 0; i < calls.length; i += chunkSize) {
+      const chunk = calls.slice(i, i + chunkSize);
+      try {
+        // Use multicall for better performance with explicit typing
+        const contracts = chunk.map((call) => ({
+          address: call.address as `0x${string}`,
+          abi: call.abi as any,
+          functionName: call.functionName as string,
+          args: (call.args || []) as any[],
+        }));
 
-      return multicallResults.map((result) => {
-        if (result.status === "success") {
-          return { success: true, data: result.result };
-        } else {
-          return {
-            success: false,
-            data: null,
-            error: result.error?.message || "Multicall failed",
-          };
-        }
-      });
-    } catch (error) {
-      console.warn(
-        "Multicall failed, falling back to individual calls:",
-        error
-      );
-      // Mark multicall as unsupported for future calls
-      this.supportsMulticall = false;
-      return this.fallbackToIndividual(calls);
+        // @ts-ignore
+        const multicallResults = (await this.publicClient.multicall({
+          contracts,
+          allowFailure: true,
+        })) as Array<{
+          status: "success" | "failure";
+          result?: any;
+          error?: any;
+        }>;
+
+        const chunkResults = multicallResults.map((result) => {
+          if (result.status === "success") {
+            return { success: true, data: result.result };
+          } else {
+            return {
+              success: false,
+              data: null,
+              error: result.error?.message || "Multicall failed",
+            };
+          }
+        });
+
+        results.push(...chunkResults);
+      } catch (error) {
+        console.warn(
+          `Multicall chunk ${
+            i / chunkSize
+          } failed, falling back to individual calls:`,
+          error
+        );
+        // Fallback to individual for this chunk
+        const individualResults = await this.fallbackToIndividual(chunk);
+        results.push(...individualResults);
+      }
     }
+
+    return results;
   }
 
   private async checkMulticallSupport(): Promise<void> {
@@ -194,7 +207,7 @@ export class BatchRpcClient {
           },
         ],
         functionName: "balanceOf",
-        args: ["0x0000000000000000000000000000000000000000"],
+        args: ["0x0000000000000000000000000000000000000000"] as any[],
       };
 
       // @ts-ignore
@@ -213,31 +226,41 @@ export class BatchRpcClient {
   private async fallbackToIndividual(
     calls: readonly BatchCall[]
   ): Promise<BatchResult[]> {
-    const results = await Promise.allSettled(
-      calls.map(async (call) => {
-        try {
-          const result = await this.publicClient.readContract({
-            address: call.address,
-            abi: call.abi,
-            functionName: call.functionName,
-            args: call.args || [],
-          });
-          return { success: true, data: result };
-        } catch (error) {
-          return {
-            success: false,
-            data: null,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
-        }
-      })
-    );
+    const chunkSize = 50;
+    const results: BatchResult[] = [];
 
-    return results.map((result) =>
-      result.status === "fulfilled"
-        ? result.value
-        : { success: false, data: null, error: "Promise rejected" }
-    );
+    for (let i = 0; i < calls.length; i += chunkSize) {
+      const chunk = calls.slice(i, i + chunkSize);
+      const chunkResults = await Promise.allSettled(
+        chunk.map(async (call) => {
+          try {
+            const result = await this.publicClient.readContract({
+              address: call.address,
+              abi: call.abi,
+              functionName: call.functionName,
+              args: call.args || [],
+            });
+            return { success: true, data: result };
+          } catch (error) {
+            return {
+              success: false,
+              data: null,
+              error: error instanceof Error ? error.message : "Unknown error",
+            };
+          }
+        })
+      );
+
+      results.push(
+        ...chunkResults.map((result) =>
+          result.status === "fulfilled"
+            ? result.value
+            : { success: false, data: null, error: "Promise rejected" }
+        )
+      );
+    }
+
+    return results;
   }
 
   /**

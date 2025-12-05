@@ -123,6 +123,20 @@ export const useMultiVault = () => {
         // Convert to VaultData keyed by address
         const processedVaultData: Record<string, VaultData> = {} as any;
 
+        // Calculate totals from batch data
+        let totalPendingDeposit = 0n;
+        let totalPendingRedeem = 0n;
+
+        if (userData) {
+          Object.values(userData).forEach((u: any) => {
+            totalPendingDeposit += u.pendingDepositAssets || 0n;
+            totalPendingRedeem += u.pendingRedeemShares || 0n;
+          });
+        }
+
+        setPendingDepositAssets(totalPendingDeposit);
+        setPendingRedeemShares(totalPendingRedeem);
+
         Object.entries(rawVaultData).forEach(([address, rawData]) => {
           const apiItem = (allVaultData || []).find(
             (v: any) => v.address?.toLowerCase() === address?.toLowerCase()
@@ -147,7 +161,7 @@ export const useMultiVault = () => {
             assetSymbol: (apiItem as any)?.underlyingSymbol,
             vaultDecimals: (rawData as any).vaultDecimals,
             totalRequestedAssets: metrics.totalRequestedAssets,
-            pendingDepositAssets: pendingDepositAssets,
+            pendingDepositAssets: userDataForVault?.pendingDepositAssets || 0n,
             isLoading: false,
             error: null,
             poolNetAPRs: (rawData as any).poolNetAPRs || [],
@@ -241,90 +255,9 @@ export const useMultiVault = () => {
     fetchAllVaultData();
   }, [fetchAllVaultData]);
 
-  // check pending redeem request
-  const checkPendingRedeemRequest = useCallback(async () => {
-    if (!publicClient || !userAddress || !allVaultData?.length) {
-      setPendingRedeemShares(0n);
-      return;
-    }
-
-    try {
-      // Check all vaults for pending redeem requests
-      let totalPendingShares = 0n;
-
-      for (const vault of allVaultData) {
-        try {
-          const pendingShares = (await publicClient.readContract({
-            address: vault.address as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "pendingRedeemRequest",
-            args: [0n, userAddress],
-          })) as bigint;
-
-          if (pendingShares > 0n) {
-            totalPendingShares += pendingShares;
-          }
-        } catch (e) {
-          console.warn(
-            `Failed to check pendingRedeemRequest for vault ${vault.address}`,
-            e
-          );
-        }
-      }
-
-      setPendingRedeemShares(totalPendingShares);
-    } catch (error) {
-      console.warn("Failed to check pending redeem requests", error);
-      setPendingRedeemShares(0n);
-    }
-  }, [publicClient, userAddress, allVaultData]);
-
-  // Check for pending deposit requests
-  const checkPendingDepositRequest = useCallback(async () => {
-    if (!publicClient || !userAddress || !allVaultData) return;
-
-    try {
-      let totalPendingAssets = 0n;
-
-      for (const vault of allVaultData) {
-        try {
-          // Check pendingDepositRequest with requestId 0 and user address
-          const pendingAssets = (await publicClient.readContract({
-            address: vault.address as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "pendingDepositRequest",
-            args: [0n, userAddress],
-          })) as bigint;
-
-          if (pendingAssets > 0n) {
-            totalPendingAssets += pendingAssets;
-          }
-        } catch (e) {
-          console.warn(
-            `Failed to check pendingDepositRequest for vault ${vault.address}`,
-            e
-          );
-        }
-      }
-
-      setPendingDepositAssets(totalPendingAssets);
-    } catch (error) {
-      console.warn("Failed to check pending deposit requests", error);
-      setPendingDepositAssets(0n);
-    }
-  }, [publicClient, userAddress, allVaultData]);
-
   useEffect(() => {
     fetchAllVaultData();
   }, [fetchAllVaultData]);
-
-  useEffect(() => {
-    checkPendingRedeemRequest();
-  }, [checkPendingRedeemRequest]);
-
-  useEffect(() => {
-    checkPendingDepositRequest();
-  }, [checkPendingDepositRequest]);
 
   const getVaultByAddress = useCallback(
     (address: string) => {
@@ -405,12 +338,12 @@ export const useMultiVault = () => {
               setPendingDepositAssets(0n);
               fetchAllVaultData(true);
               setDepositEventStatus("settled");
-              toast({
-                variant: "success",
-                title: "📦 Deposits Settled",
-                description:
-                  "New shares will be deposited shortly. Refreshing data...",
-              });
+              // toast({
+              //   variant: "success",
+              //   title: "📦 Deposits Settled",
+              //   description:
+              //     "New shares will be deposited shortly. Refreshing data...",
+              // });
             }
           },
         });
@@ -444,14 +377,15 @@ export const useMultiVault = () => {
               console.log(
                 `[MultiVault] Withdraw event detected for ${address}`
               );
-              setPendingRedeemShares(0n);
-              fetchAllVaultData(true);
-              setWithdrawEventStatus("settled");
-              toast({
-                variant: "success",
-                title: "💸 Withdrawals Settled",
-                description: "Assets may be claimable. Refreshing data...",
+              fetchAllVaultData(true).then(() => {
+                setPendingRedeemShares(0n);
+                setWithdrawEventStatus("settled");
               });
+              // toast({
+              //   variant: "success",
+              //   title: "💸 Withdrawals Settled",
+              //   description: "Assets may be claimable. Refreshing data...",
+              // });
             }
           },
         });
@@ -707,24 +641,16 @@ export const useMultiVault = () => {
                 setPendingDepositAssets(0n);
               }
             }
-          } else {
-            // No matching logs
-            toast({
-              variant: "default",
-              title: "Deposit Request Submitted",
-              description:
-                "Unable to locate requestId in logs for this transaction. Pending status may appear after refresh.",
-            });
           }
         } catch (e) {
           console.warn("Failed to query DepositRequest logs", e);
         }
 
-        toast({
-          variant: "success",
-          title: "✅ Deposit Request Submitted",
-          description: `Successfully requested deposit of ${amount} ${assetSymbol}. Your deposit will be processed in the next settlement.`,
-        });
+        // toast({
+        //   variant: "success",
+        //   title: "✅ Deposit Request Submitted",
+        //   description: `Successfully requested deposit of ${amount} ${assetSymbol}. Your deposit will be processed in the next settlement.`,
+        // });
 
         await refreshAllData();
 
@@ -917,7 +843,6 @@ export const useMultiVault = () => {
         });
 
         // Refresh pending deposit state after cancel
-        await checkPendingDepositRequest();
         await refreshAllData();
         return tx;
       } catch (error: any) {
@@ -941,13 +866,7 @@ export const useMultiVault = () => {
         setIsTransacting(false);
       }
     },
-    [
-      getWalletClient,
-      userAddress,
-      refreshAllData,
-      publicClient,
-      checkPendingDepositRequest,
-    ]
+    [getWalletClient, userAddress, refreshAllData, publicClient]
   );
 
   const claimRedeem = useCallback(
@@ -1011,17 +930,15 @@ export const useMultiVault = () => {
         });
 
         if (receipt.status === "success") {
-          console.log(
-            "Claim redeem successful, setting status to settled"
-          );
+          console.log("Claim redeem successful, setting status to settled");
           setWithdrawEventStatus("settled");
         }
 
-        toast({
-          variant: "success",
-          title: "✅ Assets Claimed",
-          description: "Successfully claimed settled withdrawal assets.",
-        });
+        // toast({
+        //   variant: "success",
+        //   title: "✅ Assets Claimed",
+        //   description: "Successfully claimed settled withdrawal assets.",
+        // });
 
         // After claiming, check for any remaining pending redeem request
         try {

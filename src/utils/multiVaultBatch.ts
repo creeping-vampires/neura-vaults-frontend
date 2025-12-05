@@ -146,6 +146,8 @@ export class MultiVaultBatchClient {
         userShares: bigint;
         userAssetBalance: bigint;
         assetAllowance: bigint;
+        pendingDepositAssets: bigint;
+        pendingRedeemShares: bigint;
       }
     >
   > {
@@ -176,6 +178,22 @@ export class MultiVaultBatchClient {
         functionName: "allowance",
         args: [userAddress, data.vaultAddress],
       },
+      {
+        address: data.vaultAddress,
+        abi: parseAbi([
+          "function pendingDepositRequest(uint256, address) view returns (uint256)",
+        ]) as readonly any[],
+        functionName: "pendingDepositRequest",
+        args: [0n, userAddress],
+      },
+      {
+        address: data.vaultAddress,
+        abi: parseAbi([
+          "function pendingRedeemRequest(uint256, address) view returns (uint256)",
+        ]) as readonly any[],
+        functionName: "pendingRedeemRequest",
+        args: [0n, userAddress],
+      },
     ]);
 
     const userDataResults = await this.batchClient.batchRead(userDataCalls, {
@@ -186,7 +204,13 @@ export class MultiVaultBatchClient {
     // Organize results keyed by vault address
     const results: Record<
       string,
-      { userShares: bigint; userAssetBalance: bigint; assetAllowance: bigint }
+      {
+        userShares: bigint;
+        userAssetBalance: bigint;
+        assetAllowance: bigint;
+        pendingDepositAssets: bigint;
+        pendingRedeemShares: bigint;
+      }
     > = {} as any;
     let index = 0;
 
@@ -194,11 +218,15 @@ export class MultiVaultBatchClient {
       const userShares = userDataResults[index++].data as bigint;
       const userAssetBalance = userDataResults[index++].data as bigint;
       const assetAllowance = userDataResults[index++].data as bigint;
+      const pendingDepositAssets = userDataResults[index++].data as bigint;
+      const pendingRedeemShares = userDataResults[index++].data as bigint;
 
       results[key] = {
         userShares,
         userAssetBalance,
         assetAllowance,
+        pendingDepositAssets,
+        pendingRedeemShares,
       };
     }
 
