@@ -7,12 +7,11 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { X, Lock } from 'lucide-react';
-import { Button } from './ui/button';
-import { isAddress } from 'viem';
+import { X } from "lucide-react";
+import { Button } from "./ui/button";
 import { useAccount } from "wagmi";
 import { userService } from "@/services/userService";
-import { useToast } from "@/hooks/use-toast";
+import { useToast, toast } from "@/hooks/use-toast";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import { apiPost, API_ROUTES } from "@/services/config";
 
@@ -31,6 +30,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
   description = "Enter your invite code to access the platform",
   hasAccess = false,
 }) => {
+  const { toast } = useToast();
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showWaitlist, setShowWaitlist] = useState(false);
@@ -39,7 +39,6 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
   const [waitlistError, setWaitlistError] = useState<string | null>(null);
   const [waitlistSuccess, setWaitlistSuccess] = useState(false);
   const { address: userAddress } = useAccount();
-  const { toast } = useToast();
   const { refreshUserAccess } = useUserAccess();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,7 +146,7 @@ export const AccessCodeModal: React.FC<AccessCodeModalProps> = ({
         wallet_address: userAddress as string,
         twitter_handle: normalizeTwitterHandle(twitterHandle),
       };
-      await apiPost(API_ROUTES.ACCESS_REQUESTS, payload, 0);
+      await apiPost(API_ROUTES.ACCESS_REQUESTS, payload);
 
       setWaitlistSuccess(true);
       toast({

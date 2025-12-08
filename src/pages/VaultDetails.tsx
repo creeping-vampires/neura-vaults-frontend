@@ -18,10 +18,10 @@ import {
   Target,
   Loader2,
 } from "lucide-react";
-import { useMultiVault } from "@/hooks/useMultiVault";
-import { usePrice } from "@/hooks/usePrice";
+import { useVaultContract } from "@/hooks/useVaultContract";
+import { useVaultApi } from "@/hooks/useVaultApi";
 import { useUserAccess } from "@/hooks/useUserAccess";
-import { toast } from "@/hooks/use-toast";
+import { useToast, toast } from "@/hooks/use-toast";
 import {
   ChartContainer,
   ChartTooltip,
@@ -58,45 +58,10 @@ const chartConfig = {
   },
 };
 
-const useCountdown = () => {
-  const [timeLeft, setTimeLeft] = useState({ minutes: 0, seconds: 0 });
-
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date();
-      const currentMinutes = now.getMinutes();
-      const nextSettlement = new Date(now);
-
-      if (currentMinutes < 30) {
-        nextSettlement.setMinutes(30, 0, 0);
-      } else {
-        nextSettlement.setHours(now.getHours() + 1, 0, 0, 0);
-      }
-
-      const difference = nextSettlement.getTime() - now.getTime();
-
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-      return { minutes, seconds };
-    };
-
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 60000); // Update every minute
-
-    setTimeLeft(calculateTimeLeft());
-    return () => clearInterval(timer);
-  }, []);
-
-  return timeLeft;
-};
-
 const VaultDetails = () => {
-  const { minutes } = useCountdown();
+  const { toast } = useToast();
   const { vaultId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const {
     getTotalTVL,
@@ -116,7 +81,7 @@ const VaultDetails = () => {
     getClaimableRedeemAmount,
     pendingDepositAssets,
     pendingRedeemShares,
-  } = useMultiVault();
+  } = useVaultContract();
 
   const vaultData = useMemo(
     () => getVaultByAddress(vaultId),
@@ -145,16 +110,15 @@ const VaultDetails = () => {
 
   const {
     chartData: priceChartData,
-    isLoading: chartLoading,
+    isChartLoading: chartLoading,
     error: chartError,
     fetchPriceChart,
-    isPriceLoading,
+    isVaultLoading,
     get24APY,
     get7APY,
     get30APY,
     getVaultDataByAddress,
-    priceData,
-  } = usePrice();
+  } = useVaultApi();
 
   const [selectedTimeframe, setSelectedTimeframe] = useState<"7D" | "1M">("7D");
   const [chartData, setChartData] = useState([]);
@@ -214,13 +178,23 @@ const VaultDetails = () => {
       return;
     }
 
-    const allTransformed = [];
+    const allTransformed: any[] = [];
 
     const relevantTokenData = priceChartData;
     relevantTokenData.forEach((tokenData) => {
       const points = (tokenData as any).dataPoints || tokenData.data || [];
 
-      const tokenTransformed = points
+      // Limit points to prevent excessive memory usage
+      // If points > 500, sample them
+      let processedPoints = points;
+      if (points.length > 500) {
+        const step = Math.ceil(points.length / 500);
+        processedPoints = points.filter(
+          (_: any, index: number) => index % step === 0
+        );
+      }
+
+      const tokenTransformed = processedPoints
         ?.map((point: any) => {
           const tsRaw = point.timestamp as number | string;
           const tsNum =
@@ -265,7 +239,7 @@ const VaultDetails = () => {
     });
     allTransformed.sort((a, b) => a.date - b.date);
 
-    setChartData(allTransformed);
+    setChartData(allTransformed as any);
   }, [priceChartData]);
 
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
@@ -280,7 +254,7 @@ const VaultDetails = () => {
       const amount = await getClaimableDepositAmount?.(vaultId);
       setClaimableDepositAssets(amount || 0);
     } catch (e) {
-      console.log("error refreshing withdraw claimable", e);
+      // console.log("error refreshing withdraw claimable", e);
     }
   }, [getClaimableDepositAmount, vaultId]);
 
@@ -288,8 +262,9 @@ const VaultDetails = () => {
     try {
       const amount = await getClaimableRedeemAmount?.(vaultId);
       setClaimableWithdrawAssets(amount || 0);
+      // console.log("amount", amount);
     } catch (e) {
-      console.log("error refreshing withdraw claimable", e);
+      // console.log("error refreshing withdraw claimable", e);
     }
   }, [getClaimableRedeemAmount, vaultId]);
 
@@ -299,6 +274,18 @@ const VaultDetails = () => {
     refreshClaimableDeposit();
     refreshClaimableWithdraw();
   }, [vaultId, isConnected, refreshClaimableDeposit, refreshClaimableWithdraw]);
+
+  useEffect(() => {
+    if (depositEventStatus === "settled") {
+      setClaimableDepositAssets(0);
+    }
+  }, [depositEventStatus, refreshClaimableDeposit]);
+
+  useEffect(() => {
+    if (withdrawEventStatus === "settled") {
+      setClaimableWithdrawAssets(0);
+    }
+  }, [withdrawEventStatus, refreshClaimableWithdraw]);
 
   useEffect(() => {
     if (pendingRedeemShares > 0n) {
@@ -452,7 +439,11 @@ const VaultDetails = () => {
                   try {
                     setClaimInProgress(true);
                     await claimRedeem?.(vaultId);
-                    await refreshClaimableWithdraw();
+                    setClaimableWithdrawAssets(0);
+                    toast({
+                      title: "Settlement complete",
+                      description: `Your Withdraw request has settled on-chain.`,
+                    });
                     refreshAllData?.();
                   } catch (error: any) {
                     console.error("Error claiming withdraw:", error);
@@ -499,7 +490,7 @@ const VaultDetails = () => {
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
                   <span className="text-primary text-xs sm:text-sm font-medium">
-                    {isPriceLoading ? "Loading..." : get7APY().toFixed(2)}% APY
+                    {isVaultLoading ? "Loading..." : get7APY().toFixed(2)}% APY
                     (7d)
                   </span>
                   <div className="flex items-center gap-1 relative">
@@ -1069,7 +1060,7 @@ const VaultDetails = () => {
         </div>
       </div>
 
-      <ChatBot />
+      {/* <ChatBot /> */}
 
       <AccessCodeModal
         isOpen={showAccessCodeModal}

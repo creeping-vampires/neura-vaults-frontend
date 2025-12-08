@@ -22,7 +22,7 @@
 - **Frontend**: React 18, TypeScript, Vite
 - **Styling**: Tailwind CSS, Shadcn/ui
 - **Web3**: Wagmi, Viem, Privy
-- **State Management**: React Query, Context API
+- **State Management**: React Query (Real-time/No-cache), Context API
 - **Testing**: Jest, React Testing Library
 
 ## 📋 Prerequisites

@@ -181,9 +181,12 @@ export const resolveHLName = async (address: Address | undefined | null): Promis
         abi: HL_NAMES_RESOLVER_ABI,
         functionName: "primaryName",
         args: [lowerCaseAddress],
-      });
+      } as any);
 
-      result = primaryName && primaryName.trim() !== "" ? primaryName : null;
+      result =
+        primaryName && (primaryName as string).trim() !== ""
+          ? (primaryName as string)
+          : null;
     } catch (error) {
       // Silently handle on-chain resolution errors
     }

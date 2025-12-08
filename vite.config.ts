@@ -34,10 +34,9 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             // Vendor chunks for better caching
             vendor: ['react', 'react-dom'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-tabs'],
+            ui: ['@radix-ui/react-dialog', '@radix-ui/react-tabs'],
             charts: ['recharts'],
             crypto: ['viem', 'wagmi', '@privy-io/react-auth', '@privy-io/wagmi'],
-            animations: ['framer-motion', 'animejs'],
             utils: ['axios', 'clsx', 'tailwind-merge']
           },
           // Optimize chunk naming for better caching

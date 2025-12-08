@@ -7,18 +7,15 @@ import {
   Check,
   Triangle,
   LogOut,
-  Upload,
   Menu,
   Key,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatAddress, switchToChain } from "@/lib/utils";
 import { AddressDisplay } from "@/components/shared/AddressDisplay";
-import { ethers } from "ethers";
 import { useAccount } from "wagmi";
 import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
-import { useQueryClient } from "@tanstack/react-query";
 import { useDisconnect } from "wagmi";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 
@@ -30,7 +27,6 @@ interface NavbarProps {
 const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const { disconnect } = useDisconnect();
 
   const { address: userAddress } = useAccount();
@@ -51,9 +47,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
     if (!window.ethereum) return;
 
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const network = await provider.getNetwork();
-      const chainId = `0x${network.chainId.toString(16)}`;
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
       setCurrentChainId(chainId);
     } catch (error) {
       console.error("Error checking network:", error);
@@ -121,7 +115,8 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
       .writeText(text)
       .then(() => {
         setCopiedWallet(true);
-        setTimeout(() => setCopiedWallet(false), 2000);
+        const timer = setTimeout(() => setCopiedWallet(false), 2000);
+        return () => clearTimeout(timer);
       })
       .catch((err) => {
         console.error("Failed to copy: ", err);
@@ -138,35 +133,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
     } catch (e) {
       console.warn("Error disconnecting wagmi connectors:", e);
     }
-    try {
-      // Clear app storage and caches (preserve security & session hygiene)
-      localStorage.clear();
-      sessionStorage.clear();
-      queryClient.clear();
-      if (typeof caches !== "undefined") {
-        const keys = await caches.keys();
-        await Promise.all(keys.map((k) => caches.delete(k)));
-      }
-      try {
-        const anyIndexedDB = indexedDB as any;
-        if (anyIndexedDB?.databases) {
-          const dbs = await anyIndexedDB.databases();
-          await Promise.all(
-            (dbs || []).map(
-              (db: any) =>
-                new Promise<void>((resolve) => {
-                  const req = indexedDB.deleteDatabase(db.name);
-                  req.onsuccess = req.onerror = req.onblocked = () => resolve();
-                })
-            )
-          );
-        }
-      } catch (e) {
-        console.warn("Error clearing IndexedDB:", e);
-      }
-    } catch (e) {
-      console.error("Error clearing app data:", e);
-    }
+    // Storage clearing logic removed
     setShowWalletModal(false);
     navigate("/", { replace: true });
   };

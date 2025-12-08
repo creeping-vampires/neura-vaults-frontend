@@ -37,9 +37,7 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
       );
       if (window.UnicornStudio) {
         window.UnicornStudio.destroy();
-        window.UnicornStudio.init().then((scenes) => {
-          console.log(scenes);
-        });
+        window.UnicornStudio.init();
       }
     };
     if (projectId) {

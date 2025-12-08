@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useAccount } from "wagmi";
-import { userService, UserAccessResponse } from "../services/userService";
+import { userService, UserAccessResponse } from "@/services/userService";
 
 export interface UserAccessState {
   isLoading: boolean;
@@ -10,7 +10,14 @@ export interface UserAccessState {
   adminData: UserAccessResponse | null;
 }
 
-export const useUserAccess = () => {
+export interface UserAccessContextType extends UserAccessState {
+  refreshUserAccess: () => void;
+  walletAddress: string | undefined;
+}
+
+const UserAccessContext = createContext<UserAccessContextType | undefined>(undefined);
+
+export const UserAccessProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { address: userAddress } = useAccount();
   const [state, setState] = useState<UserAccessState>({
     isLoading: true,
@@ -20,15 +27,29 @@ export const useUserAccess = () => {
     adminData: null,
   });
 
+  const lastCheckedAddress = useRef<string | null>(null);
+  const isChecking = useRef(false);
+
   const checkUserAccess = useCallback(
     async (walletAddress: string, force = false) => {
+      // Prevent duplicate calls for the same address unless forced
+      if (!force && lastCheckedAddress.current === walletAddress) {
+        // If we already have data for this address, just return (or ensure loading is false)
+        setState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+      
+      // Prevent concurrent checks for the same address
+      if (isChecking.current) return;
+
+      isChecking.current = true;
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
-        const response = await userService.checkAccessCached(
-          walletAddress,
-          force
-        );
+        const response = await userService.checkAccess(walletAddress);
+        
+        lastCheckedAddress.current = walletAddress;
+        
         setState({
           isLoading: false,
           isAdmin: response.is_admin,
@@ -54,17 +75,20 @@ export const useUserAccess = () => {
             redeemed_at: "",
           },
         });
+      } finally {
+        isChecking.current = false;
       }
     },
     []
   );
 
-  // Check user access when wallet address changes; caching prevents repeated calls
+  // Check user access when wallet address changes
   useEffect(() => {
     if (userAddress) {
       checkUserAccess(userAddress, false);
     } else {
       // Reset state when no wallet is connected
+      lastCheckedAddress.current = null;
       setState({
         isLoading: false,
         isAdmin: false,
@@ -82,11 +106,23 @@ export const useUserAccess = () => {
     }
   }, [userAddress, checkUserAccess]);
 
-  return {
+  const value = {
     ...state,
     refreshUserAccess,
     walletAddress: userAddress,
   };
+
+  return (
+    <UserAccessContext.Provider value={value}>
+      {children}
+    </UserAccessContext.Provider>
+  );
 };
 
-export default useUserAccess;
+export const useUserAccess= () => {
+  const context = useContext(UserAccessContext);
+  if (context === undefined) {
+    throw new Error("useUserAccessContext must be used within a UserAccessProvider");
+  }
+  return context;
+};

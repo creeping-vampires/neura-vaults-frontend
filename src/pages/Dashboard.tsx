@@ -3,10 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, DollarSign, Percent, Rocket } from "lucide-react";
-import { usePrice } from "@/hooks/usePrice";
+import { useVaultApi } from "@/hooks/useVaultApi";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { fetchHypeBalance } from "@/lib/utils";
-import { useMultiVault } from "@/hooks/useMultiVault";
+import { useVaultContract } from "@/hooks/useVaultContract";
 import yieldMonitorService from "@/services/vaultService";
 import { useAccount } from "wagmi";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +17,7 @@ const Dashboard = () => {
     getTotalTVL,
     // usdt0Vault,
     refreshAllData,
-  } = useMultiVault();
+  } = useVaultContract();
   const { isConnecting, connectWithFallback } = useWalletConnection();
   const { address: userAddress } = useAccount();
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ const Dashboard = () => {
     return usdt0 || vaults[0];
   }, [getAllVaults]);
 
-  const { get24APY, get7APY, get30APY } = usePrice();
+  const { get24APY, get7APY, get30APY, totalVolume } = useVaultApi();
 
   const [hypeBalance, setHypeBalance] = useState<number>(0);
 
@@ -80,23 +80,11 @@ const Dashboard = () => {
           return sum + (vault.data?.compoundedYield || 0);
         }, 0);
 
-        let totalAgentVolume = 0;
-        try {
-          const volumeData = await yieldMonitorService.getVolumeSummary();
-          if (volumeData.success && volumeData.data?.grandTotal) {
-            totalAgentVolume = parseFloat(
-              volumeData.data.grandTotal.totalDepositsFormatted
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching volume summary:", error);
-        }
-
         setDashboardData({
           tvl,
           currentAPY: get7APY(),
           interestEarned: totalInterestEarned,
-          totalSupply: totalAgentVolume,
+          totalSupply: totalVolume,
         });
       } catch (error) {
         console.error("Error calculating dashboard data:", error);
@@ -110,7 +98,7 @@ const Dashboard = () => {
     };
 
     calculateDashboardData();
-  }, [getAllVaults, getTotalTVL]);
+  }, [getAllVaults, getTotalTVL, totalVolume]);
 
   useEffect(() => {
     if (shouldRedirectAfterLogin && isConnected) {

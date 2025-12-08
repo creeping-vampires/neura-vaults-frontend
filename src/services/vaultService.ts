@@ -22,17 +22,6 @@ const yieldMonitorService = {
       throw error;
     }
   },
-  getDailyMetrics: async (): Promise<DailyMetricsResponse> => {
-    try {
-      const data = await apiGet<DailyMetricsResponse>(
-        API_ROUTES.GET_DAILY_METRICS
-      );
-      return data;
-    } catch (error) {
-      console.error("Error fetching daily metrics:", error);
-      throw error;
-    }
-  },
   getPriceChart: async (
     address: string,
     timeframe: "7D" | "1M"
@@ -47,11 +36,31 @@ const yieldMonitorService = {
       throw error;
     }
   },
-  getVaultPrice: async (): Promise<LatestVaultsResponse> => {
+  getVaultDetails: async (): Promise<LatestVaultsResponse> => {
     try {
+      const CACHE_KEY = "vaults_data_cache";
+      const CACHE_DURATION = 60 * 1000; // 1 minute
+
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          return data;
+        }
+      }
+
       const data = await apiGet<LatestVaultsResponse>(
         API_ROUTES.GET_VAULTS_LATEST
       );
+
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          data,
+          timestamp: Date.now(),
+        })
+      );
+
       return data;
     } catch (error) {
       console.error("Error fetching vaults data:", error);
@@ -78,8 +87,7 @@ const yieldMonitorService = {
     try {
       const data = await apiGet<PendingDepositsResponse>(
         API_ROUTES.GET_VAULT_PENDING_AMOUNT,
-        { vaultAddress },
-        10_000
+        { vaultAddress }
       );
       return data;
     } catch (error) {
@@ -93,8 +101,7 @@ const yieldMonitorService = {
     try {
       const data = await apiGet<PendingWithdrawalsResponse>(
         API_ROUTES.GET_VAULT_PENDING_WITHDRAWALS,
-        { vaultAddress },
-        10_000
+        { vaultAddress }
       );
       return data;
     } catch (error) {

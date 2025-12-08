@@ -1,24 +1,17 @@
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PrivyProvider } from "@privy-io/react-auth";
-import { WagmiProvider } from "@privy-io/wagmi";
-import { hyperliquid, wagmiConfig } from "./lib/privyConfig";
-import React, { Suspense, useEffect, useState, lazy } from "react";
-import { useMultiVault } from "./hooks/useMultiVault";
-import { usePrice } from "@/hooks/usePrice";
-import { useTransactionHistory } from "@/hooks/useTransactionHistory";
-import { useAccount } from "wagmi";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
 import SkeletonLoader from "@/components/skeleton";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/Sidebar";
+import { PrivyProvider } from "@privy-io/react-auth";
+import { hyperliquid, wagmiConfig } from "./lib/privyConfig";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider } from "@privy-io/wagmi";
+import { VaultApiProvider } from "./hooks/useVaultApi";
+import { VaultContractProvider } from "./hooks/useVaultContract";
+import { UserAccessProvider } from "./hooks/useUserAccess";
 const AppContainer = lazy(() => import("./pages/AppContainer"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Vaults = lazy(() => import("./pages/Vaults"));
@@ -30,8 +23,8 @@ const AdminRoute = lazy(() => import("./components/AdminRoute"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes cacheTime
+      staleTime: 10 * 1000, // 10 seconds
+      gcTime: 1 * 60 * 1000, // 1 minute cacheTime
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
       retry: 1,
@@ -41,7 +34,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
 const Loader = () => (
   <div className="h-screen flex flex-row relative">
     <Sidebar />
@@ -55,23 +47,24 @@ const Loader = () => (
     </div>
   </div>
 );
+
 const AppRoutes = () => {
-  const { isLoading: isVaultsLoading, error: vaultsError } = useMultiVault();
-  const { isPriceLoading, priceError } = usePrice();
-  const { address: userAddress } = useAccount();
-  const isConnected = Boolean(userAddress);
-  const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
+  // const { isLoading: isVaultsLoading, error: vaultsError } = useMultiVault();
+  // const { isPriceLoading, priceError } = usePrice();
+  // const { address: userAddress } = useAccount();
+  // const isConnected = Boolean(userAddress);
+  // const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
 
-  const isLoading =
-    isVaultsLoading || isPriceLoading || (isConnected && isTxLoading);
+  // const isLoading =
+  //   isVaultsLoading || isPriceLoading || (isConnected && isTxLoading);
 
-  const hasError = Boolean(
-    vaultsError || priceError || (isConnected && txError)
-  );
+  // const hasError = Boolean(
+  //   vaultsError || priceError || (isConnected && txError)
+  // );
 
-  if (isLoading || hasError) {
-    return <Loader />;
-  }
+  // if (isLoading || hasError) {
+  //   return <Loader />;
+  // }
 
   return (
     <Suspense fallback={<Loader />}>
@@ -98,14 +91,21 @@ const AppRoutes = () => {
 const AppContent = () => {
   return (
     <Router>
-      <AppRoutes />
+      <VaultApiProvider>
+        <VaultContractProvider>
+          <UserAccessProvider>
+            <TooltipProvider>
+              <AppRoutes />
+              <Toaster />
+            </TooltipProvider>
+          </UserAccessProvider>
+        </VaultContractProvider>
+      </VaultApiProvider>
     </Router>
   );
 };
 
-// Use hyperliquid chain definition from privyConfig
 function App() {
-  // Get Privy App ID with fallback
   const privyAppId =
     import.meta.env.VITE_PRIVY_APP_ID || process.env.VITE_PRIVY_APP_ID || "";
 
@@ -115,6 +115,20 @@ function App() {
     );
   }
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // @ts-ignore
+      if (performance.memory) {
+        console.log(
+          "Memory MB:",
+          // @ts-ignore
+          Math.round(performance.memory.usedJSHeapSize / 1048576)
+        );
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
   return (
     <PrivyProvider
       appId={privyAppId}
@@ -126,11 +140,7 @@ function App() {
     >
       <QueryClientProvider client={queryClient}>
         <WagmiProvider config={wagmiConfig}>
-          <TooltipProvider>
-            <AppContent />
-            <Toaster />
-            <Sonner position="top-center" />
-          </TooltipProvider>
+          <AppContent />
         </WagmiProvider>
       </QueryClientProvider>
     </PrivyProvider>

@@ -32,18 +32,7 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    try {
-      const key = "POST_LOGIN_REDIRECT_PATH";
-      const target = localStorage.getItem(key);
-      if (target && isConnected) {
-        if (location.pathname !== target) {
-          navigate(target, { replace: true });
-        }
-        localStorage.removeItem(key);
-      }
-    } catch (e) {
-      console.log("error", e);
-    }
+    // LocalStorage cache usage for POST_LOGIN_REDIRECT_PATH removed
   }, [isConnected, navigate, location.pathname]);
 
   useEffect(() => {

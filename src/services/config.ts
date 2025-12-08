@@ -233,18 +233,13 @@ export interface LatestWithdrawalsResponse {
 
 // API Routes
 export const API_ROUTES = {
-  GET_DAILY_METRICS: `${API_URL}/yield-monitor/daily-metrics/`,
-  GET_PRICE_CHART_7D: `${API_URL}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/7d`,
-  GET_PRICE_CHART_30D: `${API_URL}/neura-vault/vaults/0xa8d62b60A4C2384427aec533FFe8FCfF1298317C/history/30d`,
   GET_VAULTS_LATEST: `${API_URL}/neura-vault/vaults`,
+  GET_VAULT_ALLOCATIONS: `${API_URL}/neura-vault/allocations`,
+  GET_VOLUME_SUMMARY: `${API_URL}/neura-vault/volume/summary`,
   GET_VAULT_DEPOSITS_LATEST: `${API_URL}/neura-vault/deposits`,
   GET_VAULT_WITHDRAWALS_LATEST: `${API_URL}/neura-vault/withdrawals`,
-  GET_VAULT_ALLOCATIONS: `${API_URL}/neura-vault/allocations`,
   GET_VAULT_PENDING_AMOUNT: `${API_URL}/neura-vault/deposits/pendingAmount`,
   GET_VAULT_PENDING_WITHDRAWALS: `${API_URL}/neura-vault/withdrawals/pendingAmount`,
-  GET_VOLUME_SUMMARY: `${API_URL}/neura-vault/volume/summary`,
-  GET_VAULT_REBALANCES: `${API_URL}/vault/rebalances/combined/`,
-  GET_AGENT_THOUGHTS: `${API_URL}/agent-thoughts/`,
 
   // invite code & user access
   CHECK_USER_ACCESS: `${API_URL}/invite-codes/user/check_access`,
@@ -275,87 +270,20 @@ api.interceptors.response.use(
   }
 );
 
-const inflightRequests = new Map<string, Promise<any>>();
-const responseCache = new Map<string, { timestamp: number; data: any }>();
-const DEFAULT_CACHE_TTL_MS = 30_000;
-
-function buildKey(method: string, url: string, params?: any, data?: any) {
-  const p = params ? JSON.stringify(params, Object.keys(params).sort()) : "";
-  const d = data ? JSON.stringify(data) : "";
-  return `${method}:${url}?p=${p}&d=${d}`;
-}
-
 export async function apiGet<T = any>(
   url: string,
-  params?: Record<string, any>,
-  ttlMs: number = DEFAULT_CACHE_TTL_MS
+  params?: Record<string, any>
 ): Promise<T> {
-  const key = buildKey("GET", url, params);
-  const now = Date.now();
-
-  const cached = responseCache.get(key);
-  if (cached && now - cached.timestamp < ttlMs) {
-    return cached.data as T;
-  }
-
-  if (inflightRequests.has(key)) {
-    return inflightRequests.get(key) as Promise<T>;
-  }
-
-  const req = api
-    .get(url, { params })
-    .then((res) => {
-      responseCache.set(key, { timestamp: Date.now(), data: res.data });
-      inflightRequests.delete(key);
-      return res.data as T;
-    })
-    .catch((err) => {
-      inflightRequests.delete(key);
-      throw err;
-    });
-
-  inflightRequests.set(key, req);
-  return req;
+  const res = await api.get(url, { params });
+  return res.data as T;
 }
 
 export async function apiPost<T = any>(
   url: string,
-  data?: any,
-  ttlMs?: number // not cached by default; provide to enable cache if desired
+  data?: any
 ): Promise<T> {
-  const key = buildKey("POST", url, undefined, data);
-
-  if (ttlMs && ttlMs > 0) {
-    const now = Date.now();
-    const cached = responseCache.get(key);
-    if (cached && now - cached.timestamp < ttlMs) return cached.data as T;
-  }
-
-  if (inflightRequests.has(key)) {
-    return inflightRequests.get(key) as Promise<T>;
-  }
-
-  const req = api
-    .post(url, data)
-    .then((res) => {
-      if (ttlMs && ttlMs > 0) {
-        responseCache.set(key, { timestamp: Date.now(), data: res.data });
-      }
-      inflightRequests.delete(key);
-      return res.data as T;
-    })
-    .catch((err) => {
-      inflightRequests.delete(key);
-      throw err;
-    });
-
-  inflightRequests.set(key, req);
-  return req;
-}
-
-export function clearApiCaches() {
-  inflightRequests.clear();
-  responseCache.clear();
+  const res = await api.post(url, data);
+  return res.data as T;
 }
 
 export default api;
