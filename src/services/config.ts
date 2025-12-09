@@ -30,7 +30,6 @@ export interface DailyMetricsResponse {
 export interface ChartPoint {
   timestamp: number | string;
   share_price_formatted: string;
-  pool_apy: number | string;
   tvl?: number;
   apy?: number;
   apy7d?: number;
@@ -75,7 +74,6 @@ export interface VaultPriceItem {
   vault_address: string;
   token: string;
   protocol: string;
-  pool_apy: string;
   share_price: string;
   share_price_formatted: string;
   total_assets: string;

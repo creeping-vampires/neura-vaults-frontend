@@ -86,11 +86,8 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({
             share_price_formatted: isFinite(spNum)
               ? spNum.toFixed(6)
               : "0.000000",
-            pool_apy: Number(
-              (pt as any).apy ?? (pt as any).apy7d ?? (pt as any).apy30d ?? 0
-            ),
             tvl: Number((pt as any).totalAssets) / 1e6,
-            apy: Number((pt as any).apy),
+            apy: Number((pt as any).apy1d),
           };
         });
 

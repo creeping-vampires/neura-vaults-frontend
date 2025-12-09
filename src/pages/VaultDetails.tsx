@@ -221,7 +221,6 @@ const VaultDetails = () => {
           } else if (typeof spRaw === "number") {
             valueNum = spRaw;
           }
-
           const formattedValue = isNaN(valueNum)
             ? 0
             : parseFloat(valueNum.toFixed(8));
@@ -689,15 +688,10 @@ const VaultDetails = () => {
                               fontSize={12}
                               tickFormatter={(value) => {
                                 const date = new Date(value);
-                                return selectedTimeframe === "7D"
-                                  ? date.toLocaleTimeString("en-US", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : date.toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                    });
+                                return date.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                });
                               }}
                             />
                             <YAxis
@@ -794,15 +788,10 @@ const VaultDetails = () => {
                               fontSize={12}
                               tickFormatter={(value) => {
                                 const date = new Date(value);
-                                return selectedTimeframe === "7D"
-                                  ? date.toLocaleTimeString("en-US", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : date.toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                    });
+                                return date.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                });
                               }}
                             />
                             <YAxis
@@ -891,15 +880,10 @@ const VaultDetails = () => {
                               fontSize={12}
                               tickFormatter={(value) => {
                                 const date = new Date(value);
-                                return selectedTimeframe === "7D"
-                                  ? date.toLocaleTimeString("en-US", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : date.toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                    });
+                                return date.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                });
                               }}
                             />
                             <YAxis
@@ -918,7 +902,10 @@ const VaultDetails = () => {
                                         typeof value === "number"
                                           ? value
                                           : parseFloat(String(value));
-                                      return [`${numValue.toFixed(2)}%`, ""];
+                                      return [
+                                        `${numValue.toFixed(2)}%`,
+                                        " 1-Day APY",
+                                      ];
                                     }
                                     return [value, name];
                                   }}
