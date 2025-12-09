@@ -9,8 +9,11 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { hyperliquid, wagmiConfig } from "./lib/privyConfig";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { WagmiProvider } from "@privy-io/wagmi";
-import { VaultApiProvider } from "./hooks/useVaultApi";
-import { VaultContractProvider } from "./hooks/useVaultContract";
+import { VaultApiProvider, useVaultApi } from "./hooks/useVaultApi";
+import {
+  VaultContractProvider,
+  useVaultContract,
+} from "./hooks/useVaultContract";
 import { UserAccessProvider } from "./hooks/useUserAccess";
 const AppContainer = lazy(() => import("./pages/AppContainer"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -49,22 +52,16 @@ const Loader = () => (
 );
 
 const AppRoutes = () => {
-  // const { isLoading: isVaultsLoading, error: vaultsError } = useMultiVault();
-  // const { isPriceLoading, priceError } = usePrice();
-  // const { address: userAddress } = useAccount();
-  // const isConnected = Boolean(userAddress);
-  // const { isLoading: isTxLoading, error: txError } = useTransactionHistory();
+  const { isVaultLoading, vaultError } = useVaultApi();
+  const { isLoading: isContractLoading, error: contractError } =
+    useVaultContract();
 
-  // const isLoading =
-  //   isVaultsLoading || isPriceLoading || (isConnected && isTxLoading);
+  const isLoading = isVaultLoading || isContractLoading;
+  const hasError = Boolean(vaultError || contractError);
 
-  // const hasError = Boolean(
-  //   vaultsError || priceError || (isConnected && txError)
-  // );
-
-  // if (isLoading || hasError) {
-  //   return <Loader />;
-  // }
+  if (isLoading || hasError) {
+    return <Loader />;
+  }
 
   return (
     <Suspense fallback={<Loader />}>

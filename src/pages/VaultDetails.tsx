@@ -4,8 +4,8 @@ import React, {
   useCallback,
   useMemo,
   Suspense,
-} from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+  } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +21,7 @@ import {
 import { useVaultContract } from "@/hooks/useVaultContract";
 import { useVaultApi } from "@/hooks/useVaultApi";
 import { useUserAccess } from "@/hooks/useUserAccess";
-import { useToast, toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   ChartContainer,
   ChartTooltip,
@@ -39,7 +39,11 @@ import {
 } from "recharts";
 import ChatBot from "@/components/ChatBot";
 import yieldMonitorService from "@/services/vaultService";
-import { VaultAllocationsResponse } from "@/services/config";
+import {
+  VaultAllocationsResponse,
+  TokenPriceData,
+  LatestPriceChartPoint,
+} from "@/services/config";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useAccount } from "wagmi";
 
@@ -158,11 +162,8 @@ const VaultDetails = () => {
       try {
         const res = await yieldMonitorService.getVaultAllocations(vaultId);
         setAllocationsData(res);
-      } catch (err: any) {
-        const msg =
-          err?.response?.data?.error ||
-          err?.message ||
-          "Failed to load allocations";
+      } catch (err: unknown) {
+        let msg = "Failed to load allocations";
         setAllocationsError(msg);
         setAllocationsData(null);
       } finally {
@@ -178,11 +179,11 @@ const VaultDetails = () => {
       return;
     }
 
-    const allTransformed: any[] = [];
+    const allTransformed: { date: number; value: number }[] = [];
 
     const relevantTokenData = priceChartData;
-    relevantTokenData.forEach((tokenData) => {
-      const points = (tokenData as any).dataPoints || tokenData.data || [];
+    relevantTokenData.forEach((tokenData: TokenPriceData) => {
+      const points = tokenData.data || [];
 
       // Limit points to prevent excessive memory usage
       // If points > 500, sample them
@@ -190,13 +191,13 @@ const VaultDetails = () => {
       if (points.length > 500) {
         const step = Math.ceil(points.length / 500);
         processedPoints = points.filter(
-          (_: any, index: number) => index % step === 0
+          (_, index: number) => index % step === 0
         );
       }
 
       const tokenTransformed = processedPoints
-        ?.map((point: any) => {
-          const tsRaw = point.timestamp as number | string;
+        ?.map((point) => {
+          const tsRaw = point.timestamp;
           const tsNum =
             typeof tsRaw === "number" ? tsRaw : Date.parse(tsRaw as string);
           const ts = isNaN(tsNum)
@@ -206,20 +207,13 @@ const VaultDetails = () => {
             : tsNum;
 
           // only share price and timestamp
-          const spRaw = point.share_price_formatted ?? point.sharePrice;
+          const spRaw = point.share_price_formatted;
           let valueNum: number = 0;
           if (typeof spRaw === "string") {
-            const parsed = parseFloat(spRaw.replace(/[^0-9.\-]/g, ""));
+            const parsed = parseFloat(spRaw.replace(/[^0-9.-]/g, ""));
             valueNum = isNaN(parsed) ? 0 : parsed;
           } else if (typeof spRaw === "number") {
             valueNum = spRaw;
-          } else if (
-            point.totalAssets !== undefined &&
-            point.totalSupply !== undefined
-          ) {
-            const totalAssetsNum = Number(point.totalAssets);
-            const totalSupplyNum = Number(point.totalSupply);
-            valueNum = totalSupplyNum > 0 ? totalAssetsNum / totalSupplyNum : 0;
           }
 
           const formattedValue = isNaN(valueNum)
@@ -229,9 +223,9 @@ const VaultDetails = () => {
           return {
             date: ts,
             value: formattedValue,
-          } as any;
+          };
         })
-        .filter((d: any) => typeof d.date === "number" && !isNaN(d.date));
+        .filter((d) => typeof d.date === "number" && !isNaN(d.date));
 
       if (tokenTransformed) {
         allTransformed.push(...tokenTransformed);
@@ -239,7 +233,7 @@ const VaultDetails = () => {
     });
     allTransformed.sort((a, b) => a.date - b.date);
 
-    setChartData(allTransformed as any);
+    setChartData(allTransformed);
   }, [priceChartData]);
 
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
@@ -253,7 +247,7 @@ const VaultDetails = () => {
     try {
       const amount = await getClaimableDepositAmount?.(vaultId);
       setClaimableDepositAssets(amount || 0);
-    } catch (e) {
+    } catch {
       // console.log("error refreshing withdraw claimable", e);
     }
   }, [getClaimableDepositAmount, vaultId]);
@@ -263,13 +257,14 @@ const VaultDetails = () => {
       const amount = await getClaimableRedeemAmount?.(vaultId);
       setClaimableWithdrawAssets(amount || 0);
       // console.log("amount", amount);
-    } catch (e) {
+    } catch {
       // console.log("error refreshing withdraw claimable", e);
     }
   }, [getClaimableRedeemAmount, vaultId]);
 
-  // Initial refresh and on vault/auth changes
-  const isConnected = Boolean(userAddress);
+  const isLocalAuth = localStorage.getItem("auth") === "true";
+  const isConnected = isLocalAuth || Boolean(userAddress);
+  
   useEffect(() => {
     refreshClaimableDeposit();
     refreshClaimableWithdraw();
@@ -311,7 +306,7 @@ const VaultDetails = () => {
 
   const dynamicPoolData = useMemo(() => {
     const d = allocationsData?.data[0]?.allocations || [];
-    if (!d || d.length === 0) return [] as any[];
+    if (!d || d.length === 0) return [];
     return d.map((a) => {
       const n = a.protocol;
       const pct = Number(a.percentage) || 0;
@@ -331,7 +326,7 @@ const VaultDetails = () => {
           : "#F59E0B";
       return { name: n, value: parseFloat(pct.toFixed(1)), tvl: bal, color };
     });
-  }, [allocationsData]);
+  }, [allocationsData, vaultData?.assetDecimals]);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 sm:pt-4 max-w-7xl relative">
@@ -375,7 +370,6 @@ const VaultDetails = () => {
                   shortly after confirmation.
                 </p>
               </div>
-              {/* Cancel / Claim UX */}
               <div className="ml-auto flex items-center gap-2">
                 {pendingDepositAssets > 0n && (
                   <Button
@@ -387,13 +381,12 @@ const VaultDetails = () => {
                         await cancelDepositRequest?.(vaultId);
                         setTxCanceled(true);
                         await refreshAllData?.();
-                      } catch (error: any) {
+                      } catch (error: unknown) {
                         toast({
                           variant: "destructive",
                           title: "Cancel Failed",
                           description:
-                            error?.message ||
-                            "Unable to cancel pending deposit.",
+                            "Unable to cancel the pending deposit at this time.",
                         });
                       }
                     }}
@@ -445,13 +438,15 @@ const VaultDetails = () => {
                       description: `Your Withdraw request has settled on-chain.`,
                     });
                     refreshAllData?.();
-                  } catch (error: any) {
+                  } catch (error: unknown) {
                     console.error("Error claiming withdraw:", error);
                     toast({
                       variant: "destructive",
                       title: "Claim Failed",
                       description:
-                        error?.message ||
+                        (error instanceof Error
+                          ? error.message
+                          : String(error)) ||
                         "Unable to claim withdrawal assets. Please try again.",
                     });
                   } finally {
@@ -688,7 +683,7 @@ const VaultDetails = () => {
                       <ChartTooltip
                         content={
                           <ChartTooltipContent
-                            formatter={(value, name, props) => {
+                            formatter={(value, name) => {
                               if (name === "value") {
                                 const numValue =
                                   typeof value === "number"
@@ -1060,7 +1055,7 @@ const VaultDetails = () => {
         </div>
       </div>
 
-      {/* <ChatBot /> */}
+      <ChatBot />
 
       <AccessCodeModal
         isOpen={showAccessCodeModal}

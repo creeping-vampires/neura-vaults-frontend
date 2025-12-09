@@ -120,7 +120,6 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         await yieldMonitorService.getVaultDetails();
 
       const vaults = response?.data ?? [];
-      // console.log("vaults", vaults);
       setAllVaultData(vaults);
       setIsVaultLoading(false);
     } catch (error) {

@@ -1,16 +1,10 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
 import { getExplorerTxUrl } from "@/lib/utils";
-import { useToast, toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { usePublicClient } from "wagmi";
 import { Address, formatUnits, parseAbiItem } from "viem";
 import { useAccount } from "wagmi";
@@ -140,12 +134,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   const claimableDepositAssetsRef = useRef<number>(claimableDepositAssets ?? 0);
   const depositEventStatusRef = useRef<string | undefined>(depositEventStatus);
 
-  console.log({
-    claimableDepositAssets,
-    claimableWithdrawAssets,
-    pendingDepositAssets,
-    pendingRedeemShares,
-  });
   useEffect(() => {
     pendingDepositAssetsRef.current = pendingDepositAssets ?? 0n;
   }, [pendingDepositAssets]);
@@ -225,7 +213,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       setIsValidatingDeposit(true);
       const res = await yieldMonitorService.getPendingDepositAmount(vaultId);
       setTotalPendingDeposits(BigInt(res?.data?.pendingAmount));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch totalPendingDeposits:", err);
       setTotalPendingDeposits(0n);
     } finally {
@@ -256,7 +244,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         abi: YieldAllocatorVaultABI,
         functionName: "convertToAssets",
         args: [shares],
-      } as any)) as bigint;
+      })) as bigint;
       setTotalPendingWithdrawals(assets);
       return assets;
     } catch (e) {
@@ -290,18 +278,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       void fetchTotalPendingWithdrawals();
     }
   }, [withdrawEventStatus, fetchTotalPendingWithdrawals]);
-
-  // useEffect(() => {
-  //   if (!isDepositTransacting) {
-  //     fetchTotalPendingDeposits();
-  //   }
-  // }, [isDepositTransacting, fetchTotalPendingDeposits]);
-
-  // useEffect(() => {
-  //   if (!isWithdrawTransacting) {
-  //     fetchTotalPendingWithdrawals();
-  //   }
-  // }, [isWithdrawTransacting, fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
     setIsValidatingDeposit(true);
@@ -798,7 +774,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       if (transactionMonitors.current.has(id)) return;
 
       const monitor = setInterval(async () => {
-        console.log("monitoring");
+
         try {
           if (type === "deposit") {
             if (pendingDepositAssetsRef.current > 0n) {
@@ -830,7 +806,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       transactionMonitors.current.set(id, monitor);
       return () => clearInterval(monitor);
     },
-    [publicClient, vaultId, updateTransactionStatus]
+    [publicClient, claimableDepositAssetsRef, pendingDepositAssetsRef, depositEventStatusRef,vaultId, updateTransactionStatus]
   );
 
   useEffect(() => {
@@ -840,10 +816,6 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       });
     };
   }, []);
-
-  // Persist queue to localStorage - REMOVED
-
-  // Hydrate queue and restart monitors for backend settling items - REMOVED
 
   // check pending transaction on page refresh
   useEffect(() => {
@@ -1004,7 +976,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           backendId
         );
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (depositId) {
         updateTransactionStatus(depositId, "failed");
       }
@@ -1047,7 +1019,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           backendId
         );
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (withdrawId) {
         updateTransactionStatus(withdrawId, "failed");
       }
@@ -1112,7 +1084,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         await handleWithdraw(inputAmount);
       }
       setInputAmount("");
-    } catch (e: any) {}
+    } catch (e: unknown) {}
   };
 
   return (

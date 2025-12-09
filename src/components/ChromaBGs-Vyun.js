@@ -37,7 +37,9 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
       );
       if (window.UnicornStudio) {
         window.UnicornStudio.destroy();
-        window.UnicornStudio.init();
+        window.UnicornStudio.init().then((scenes) => {
+          console.log(scenes);
+        });
       }
     };
     if (projectId) {
@@ -89,4 +91,3 @@ export const __FramerMetadata__ = {
     __FramerMetadata__: { type: "variable" },
   },
 };
-//# sourceMappingURL=./ChromaBGs.map
