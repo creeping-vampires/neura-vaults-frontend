@@ -83,7 +83,7 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
       >
         <Navbar onToggleSidebar={toggleSidebar} isMobile={isMobile} />
         {/* Main content */}
-        <div className="h-full absolute inset-0">
+        <div className="h-screen scroll-smooth absolute inset-0">
           <UnicornStudioEmbed projectId="lHlDvoJDIXCxxXVqTNOC" />
         </div>
         <main className="w-full flex-1 overflow-auto relative z-1">
