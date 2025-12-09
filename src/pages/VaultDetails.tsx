@@ -590,17 +590,23 @@ const VaultDetails = () => {
             <Tabs defaultValue="tvl" className="w-full">
               <CardHeader className="pb-2 sm:pb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <TabsList className="bg-muted/50">
-                    <TabsTrigger value="tvl" className="text-xs sm:text-sm">
+                  <TabsList className="bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/80 rounded-lg">
+                    <TabsTrigger
+                      value="tvl"
+                      className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+                    >
                       TVL
                     </TabsTrigger>
                     <TabsTrigger
                       value="sharePrice"
-                      className="text-xs sm:text-sm"
+                      className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
                     >
                       Share Price
                     </TabsTrigger>
-                    <TabsTrigger value="apy" className="text-xs sm:text-sm">
+                    <TabsTrigger
+                      value="apy"
+                      className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+                    >
                       APY
                     </TabsTrigger>
                   </TabsList>
@@ -748,100 +754,6 @@ const VaultDetails = () => {
                         </ChartContainer>
                       </TabsContent>
 
-                      <TabsContent value="apy" className="mt-4">
-                        <ChartContainer config={chartConfig}>
-                          <AreaChart
-                            data={chartData}
-                            style={{
-                              cursor: "pointer",
-                              backgroundBlur: 1,
-                            }}
-                          >
-                            <defs>
-                              <linearGradient
-                                id="apyGradient"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
-                              >
-                                <stop
-                                  offset="5%"
-                                  stopColor="#3B82F6"
-                                  stopOpacity={0.3}
-                                />
-                                <stop
-                                  offset="95%"
-                                  stopColor="#3B82F6"
-                                  stopOpacity={0}
-                                />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid
-                              strokeDasharray="3 3"
-                              stroke="#374151"
-                              opacity={0.2}
-                            />
-                            <XAxis
-                              dataKey="date"
-                              stroke="#404040"
-                              fontSize={12}
-                              tickFormatter={(value) => {
-                                const date = new Date(value);
-                                return selectedTimeframe === "7D"
-                                  ? date.toLocaleTimeString("en-US", {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    })
-                                  : date.toLocaleDateString("en-US", {
-                                      month: "short",
-                                      day: "numeric",
-                                    });
-                              }}
-                            />
-                            <YAxis
-                              stroke="#404040"
-                              fontSize={12}
-                              domain={["auto", "auto"]}
-                              tickCount={6}
-                              tickFormatter={(value) => `${value?.toFixed(2)}%`}
-                            />
-                            <ChartTooltip
-                              content={
-                                <ChartTooltipContent
-                                  formatter={(value, name) => {
-                                    if (name === "apy") {
-                                      const numValue =
-                                        typeof value === "number"
-                                          ? value
-                                          : parseFloat(String(value));
-                                      return [`${numValue.toFixed(2)}%`, ""];
-                                    }
-                                    return [value, name];
-                                  }}
-                                />
-                              }
-                              labelFormatter={(label) => `APY`}
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="apy"
-                              stroke="#3B82F6"
-                              strokeWidth={2.5}
-                              fill="url(#apyGradient)"
-                              connectNulls={true}
-                              dot={false}
-                              activeDot={{
-                                r: 4,
-                                stroke: "#3B82F6",
-                                strokeWidth: 2,
-                                fill: "#3B82F6",
-                              }}
-                            />
-                          </AreaChart>
-                        </ChartContainer>
-                      </TabsContent>
-
                       <TabsContent value="sharePrice" className="mt-4">
                         <ChartContainer config={chartConfig}>
                           <AreaChart
@@ -933,6 +845,100 @@ const VaultDetails = () => {
                                 stroke: "#8884d8",
                                 strokeWidth: 2,
                                 fill: "#8884d8",
+                              }}
+                            />
+                          </AreaChart>
+                        </ChartContainer>
+                      </TabsContent>
+
+                      <TabsContent value="apy" className="mt-4">
+                        <ChartContainer config={chartConfig}>
+                          <AreaChart
+                            data={chartData}
+                            style={{
+                              cursor: "pointer",
+                              backgroundBlur: 1,
+                            }}
+                          >
+                            <defs>
+                              <linearGradient
+                                id="apyGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#3B82F6"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#3B82F6"
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#374151"
+                              opacity={0.2}
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#404040"
+                              fontSize={12}
+                              tickFormatter={(value) => {
+                                const date = new Date(value);
+                                return selectedTimeframe === "7D"
+                                  ? date.toLocaleTimeString("en-US", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })
+                                  : date.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                    });
+                              }}
+                            />
+                            <YAxis
+                              stroke="#404040"
+                              fontSize={12}
+                              domain={["auto", "auto"]}
+                              tickCount={6}
+                              tickFormatter={(value) => `${value?.toFixed(2)}%`}
+                            />
+                            <ChartTooltip
+                              content={
+                                <ChartTooltipContent
+                                  formatter={(value, name) => {
+                                    if (name === "apy") {
+                                      const numValue =
+                                        typeof value === "number"
+                                          ? value
+                                          : parseFloat(String(value));
+                                      return [`${numValue.toFixed(2)}%`, ""];
+                                    }
+                                    return [value, name];
+                                  }}
+                                />
+                              }
+                              labelFormatter={(label) => `APY`}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="apy"
+                              stroke="#3B82F6"
+                              strokeWidth={2.5}
+                              fill="url(#apyGradient)"
+                              connectNulls={true}
+                              dot={false}
+                              activeDot={{
+                                r: 4,
+                                stroke: "#3B82F6",
+                                strokeWidth: 2,
+                                fill: "#3B82F6",
                               }}
                             />
                           </AreaChart>
