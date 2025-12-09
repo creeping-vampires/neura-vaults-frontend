@@ -63,21 +63,15 @@ addPropertyControls(UnicornStudioEmbed, {
   projectId: {
     type: ControlType.Enum,
     title: "Type",
-    options: [
-      "lHlDvoJDIXCxxXVqTNOC",
-      "YnADGzDD7LGB9cUocyyN",
-      "ezEDNzFtrAgm8yCUWUeX",
-      "wYI4YirTR5lrja86ArSY",
-      "rJ39y9Nnyz3cJooDtmNM",
-    ],
-    optionTitles: ["Liquid", "Folds", "Smoke", "Flow", "Pixel"],
+    options: ["lHlDvoJDIXCxxXVqTNOC"],
+    optionTitles: ["Liquid"],
   },
 });
 export const __FramerMetadata__ = {
   exports: {
     default: {
       type: "reactComponent",
-      name: "UnicornStudioEmbed",
+      name: "ChromaBGs-Vyun",
       slots: [],
       annotations: {
         framerSupportedLayoutWidth: "fixed",
@@ -91,3 +85,4 @@ export const __FramerMetadata__ = {
     __FramerMetadata__: { type: "variable" },
   },
 };
+//# sourceMappingURL=./ChromaBGs.map
