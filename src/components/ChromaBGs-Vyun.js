@@ -60,7 +60,6 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
     style: {
       width: "100%",
       height: "100%",
-      // pointerEvents: "none",
       willChange: "transform",
       transform: "translateZ(0)",
     },
