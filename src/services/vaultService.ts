@@ -2,7 +2,7 @@ import {
   apiGet,
   API_ROUTES,
   DailyMetricsResponse,
-  LatestPriceChartResponse,
+  LatestChartResponse,
   LatestVaultsResponse,
   VaultAllocationsResponse,
   PendingDepositsResponse,
@@ -22,14 +22,14 @@ const yieldMonitorService = {
       throw error;
     }
   },
-  getPriceChart: async (
+  getChart: async (
     address: string,
     timeframe: "7D" | "1M"
-  ): Promise<LatestPriceChartResponse> => {
+  ): Promise<LatestChartResponse> => {
     try {
       const period = timeframe === "1M" ? "30d" : "7d";
       const route = `${API_ROUTES.GET_VAULTS_LATEST}/${address}/history/${period}`;
-      const data = await apiGet<LatestPriceChartResponse>(route);
+      const data = await apiGet<LatestChartResponse>(route);
       return data;
     } catch (error) {
       console.error("Error fetching price chart data (latest):", error);

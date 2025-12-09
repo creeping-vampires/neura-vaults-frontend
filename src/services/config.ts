@@ -27,23 +27,27 @@ export interface DailyMetricsResponse {
 }
 
 // Add Price Chart Types
-export interface PriceChartPoint {
+export interface ChartPoint {
   timestamp: number | string;
   share_price_formatted: string;
   pool_apy: number | string;
+  tvl?: number;
+  apy?: number;
+  apy7d?: number;
+  apy30d?: number;
 }
 
 export interface TokenPriceData {
   token: string;
-  data: PriceChartPoint[];
+  data: ChartPoint[];
 }
 
-export interface PriceChartResponse {
+export interface ChartResponse {
   chart_data: TokenPriceData[];
 }
 
 // Latest price chart types (new endpoint)
-export interface LatestPriceChartPoint {
+export interface LatestChartPoint {
   sharePrice: string;
   totalAssets: string;
   totalSupply: string;
@@ -54,16 +58,16 @@ export interface LatestPriceChartPoint {
   apy30d: number;
 }
 
-export interface LatestPriceChartData {
+export interface LatestChartData {
   vaultAddress: string;
   vaultName: string;
   period: string; // e.g., "7d"
-  dataPoints: LatestPriceChartPoint[];
+  dataPoints: LatestChartPoint[];
 }
 
-export interface LatestPriceChartResponse {
+export interface LatestChartResponse {
   success: boolean;
-  data: LatestPriceChartData;
+  data: LatestChartData;
 }
 
 export interface VaultPriceItem {

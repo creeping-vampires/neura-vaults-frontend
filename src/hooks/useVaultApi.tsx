@@ -1,18 +1,21 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import yieldMonitorService from "@/services/vaultService";
 import {
-  LatestPriceChartResponse,
+  LatestChartResponse,
   LatestVaultsResponse,
   LatestVaultItem,
   TokenPriceData,
-  LatestPriceChartPoint,
+  LatestChartPoint,
 } from "@/services/config";
 
 export interface VaultApiContextType {
   chartData: TokenPriceData[];
   isChartLoading: boolean;
   error: string | null;
-  fetchPriceChart: (params: { timeframe: "7D" | "1M"; address: string }) => Promise<void>;
+  fetchChart: (params: {
+    timeframe: "7D" | "1M";
+    address: string;
+  }) => Promise<void>;
   fetchVaultData: () => Promise<void>;
   fetchVolumeSummary: () => Promise<void>;
   isVaultLoading: boolean;
@@ -30,9 +33,13 @@ export interface VaultApiContextType {
   totalVolume: number;
 }
 
-const VaultApiContext = createContext<VaultApiContextType | undefined>(undefined);
+const VaultApiContext = createContext<VaultApiContextType | undefined>(
+  undefined
+);
 
-export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [chartData, setChartData] = useState<TokenPriceData[]>([]);
   const [allVaultData, setAllVaultData] = useState<LatestVaultItem[]>([]);
   const [totalVolume, setTotalVolume] = useState<number>(0);
@@ -42,22 +49,19 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [error, setError] = useState<string | null>(null);
   const [vaultError, setVaultError] = useState<string | null>(null);
 
-  const fetchPriceChart = useCallback(
+  const fetchChart = useCallback(
     async (params: { timeframe: "7D" | "1M"; address: string }) => {
       setIsChartLoading(true);
 
       try {
         setError(null);
-        const response: LatestPriceChartResponse =
-          await yieldMonitorService.getPriceChart(
-            params.address,
-            params.timeframe
-          );
+        const response: LatestChartResponse =
+          await yieldMonitorService.getChart(params.address, params.timeframe);
 
         const tokenSeparatedData: TokenPriceData[] = [];
         const points = response?.data?.dataPoints || [];
 
-        const transformed = points.map((pt: LatestPriceChartPoint) => {
+        const transformed = points.map((pt: LatestChartPoint) => {
           const ts = Number(pt.timestamp);
           let spNum = 0;
           const spRaw: any = (pt as any).sharePrice;
@@ -85,6 +89,8 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             pool_apy: Number(
               (pt as any).apy ?? (pt as any).apy7d ?? (pt as any).apy30d ?? 0
             ),
+            tvl: Number((pt as any).totalAssets) / 1e6,
+            apy: Number((pt as any).apy),
           };
         });
 
@@ -220,7 +226,7 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       chartData,
       isChartLoading,
       error,
-      fetchPriceChart,
+      fetchChart,
       fetchVaultData,
       isVaultLoading,
       vaultError,
@@ -241,7 +247,7 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       chartData,
       isChartLoading,
       error,
-      fetchPriceChart,
+      fetchChart,
       fetchVaultData,
       isVaultLoading,
       vaultError,
