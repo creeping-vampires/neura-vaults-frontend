@@ -112,20 +112,6 @@ function App() {
     );
   }
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      // @ts-ignore
-      if (performance.memory) {
-        console.log(
-          "Memory MB:",
-          // @ts-ignore
-          Math.round(performance.memory.usedJSHeapSize / 1048576)
-        );
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
   return (
     <PrivyProvider
       appId={privyAppId}
