@@ -57,7 +57,13 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
     "data-us-fps": "60",
     "data-us-lazyload": "true",
     "data-us-production": "true",
-    style: { width: "100%", height: "100%" },
+    style: {
+      width: "100%",
+      height: "100%",
+      pointerEvents: "none",
+      willChange: "transform",
+      transform: "translateZ(0)",
+    },
   });
 }
 UnicornStudioEmbed.displayName = "Chroma Background";
