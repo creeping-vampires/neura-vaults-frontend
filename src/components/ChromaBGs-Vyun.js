@@ -52,9 +52,11 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
   }, [projectId]);
   return /*#__PURE__*/ _jsx("div", {
     ref: elementRef,
-    "data-us-dpi": "1.5",
+    "data-us-dpi": "1.0",
     "data-us-scale": "1",
     "data-us-fps": "60",
+    "data-us-lazyload": "true",
+    "data-us-production": "true",
     style: { width: "100%", height: "100%" },
   });
 }
