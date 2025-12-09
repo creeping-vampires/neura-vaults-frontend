@@ -686,6 +686,7 @@ const VaultDetails = () => {
                               dataKey="date"
                               stroke="#404040"
                               fontSize={12}
+                              minTickGap={70}
                               tickFormatter={(value) => {
                                 const date = new Date(value);
                                 return date.toLocaleDateString("en-US", {
@@ -786,6 +787,7 @@ const VaultDetails = () => {
                               dataKey="date"
                               stroke="#404040"
                               fontSize={12}
+                              minTickGap={70}
                               tickFormatter={(value) => {
                                 const date = new Date(value);
                                 return date.toLocaleDateString("en-US", {
@@ -878,6 +880,7 @@ const VaultDetails = () => {
                               dataKey="date"
                               stroke="#404040"
                               fontSize={12}
+                              minTickGap={70}
                               tickFormatter={(value) => {
                                 const date = new Date(value);
                                 return date.toLocaleDateString("en-US", {
@@ -904,7 +907,7 @@ const VaultDetails = () => {
                                           : parseFloat(String(value));
                                       return [
                                         `${numValue.toFixed(2)}%`,
-                                        " 1-Day APY",
+                                        selectedTimeframe === "7D" ? " 7-Day APY" : " 30-Day APY",
                                       ];
                                     }
                                     return [value, name];

@@ -87,7 +87,7 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({
               ? spNum.toFixed(6)
               : "0.000000",
             tvl: Number((pt as any).totalAssets) / 1e6,
-            apy: Number((pt as any).apy1d),
+            apy: params.timeframe === "7D" ? Number((pt as any).apy7d) : Number((pt as any).apy30d),
           };
         });
 
