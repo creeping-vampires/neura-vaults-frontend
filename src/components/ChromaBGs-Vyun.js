@@ -54,7 +54,8 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
     ref: elementRef,
     "data-us-dpi": "1.0",
     "data-us-scale": "1",
-    "data-us-fps": "60",
+    "data-us-fps": "10",
+    "data-us-quality": "low",
     "data-us-lazyload": "true",
     "data-us-production": "true",
     style: {
