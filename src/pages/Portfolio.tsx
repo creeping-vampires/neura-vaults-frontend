@@ -109,7 +109,7 @@ const Portfolio = () => {
     );
   }
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Portfolio Overview Card */}
       <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl select-none">
         <CardContent className="p-4 sm:p-6 relative">
