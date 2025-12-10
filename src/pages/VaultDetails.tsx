@@ -907,7 +907,7 @@ const VaultDetails = () => {
                                           : parseFloat(String(value));
                                       return [
                                         `${numValue.toFixed(2)}%`,
-                                        selectedTimeframe === "7D" ? " 7-Day APY" : " 30-Day APY",
+                                        " 1-Day APY",
                                       ];
                                     }
                                     return [value, name];
