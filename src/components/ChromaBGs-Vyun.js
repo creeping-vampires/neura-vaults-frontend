@@ -8,7 +8,7 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
  * @framerSupportedLayoutHeight fixed
  * @framerIntrinsicHeight 400
  * @framerIntrinsicWidth 800
- */ export default function UnicornStudioEmbed({ projectId }) {
+ */ export default function UnicornStudioEmbed({ projectId, fps = 8 }) {
   const elementRef = useRef(null);
   useEffect(() => {
     const isEditingOrPreviewing = ["CANVAS", "PREVIEW"].includes(
@@ -51,11 +51,11 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
     }
   }, [projectId]);
   return /*#__PURE__*/ _jsx("div", {
-    ref: elementRef,
-    "data-us-dpi": "1.0",
-    "data-us-scale": "1",
-    "data-us-fps": "5",
-    "data-us-quality": "low",
+     ref: elementRef,
+    "data-us-dpi": "1",
+    "data-us-scale": "0.5",
+    "data-us-fps": fps.toString(),
+    "data-us-quality": "100%",
     "data-us-lazyload": "true",
     "data-us-production": "true",
     style: {
@@ -63,6 +63,7 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
       height: "100%",
       willChange: "transform",
       transform: "translateZ(0)",
+      pointerEvents: "none",
     },
   });
 }
