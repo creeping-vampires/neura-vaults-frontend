@@ -1,6 +1,5 @@
 import { jsx as _jsx } from "react/jsx-runtime";
-import { useEffect, useRef } from "react";
-import { RenderTarget, addPropertyControls, ControlType } from "framer";
+import { useEffect, useRef, useState } from "react";
 /**
  * @framerDisableUnlink
  *
@@ -8,12 +7,49 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
  * @framerSupportedLayoutHeight fixed
  * @framerIntrinsicHeight 400
  * @framerIntrinsicWidth 800
- */ export default function UnicornStudioEmbed({ projectId, fps = 8 }) {
+ */ export default function UnicornStudioEmbed({ projectId }) {
   const elementRef = useRef(null);
+  const [currentFps, setCurrentFps] = useState(30);
+  const scrollTimeoutRef = useRef(null);
+
   useEffect(() => {
-    const isEditingOrPreviewing = ["CANVAS", "PREVIEW"].includes(
-      RenderTarget.current()
-    );
+    const handleScroll = () => {
+      setCurrentFps((prev) => (prev !== 1 ? 1 : prev));
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = setTimeout(() => setCurrentFps(30), 200);
+    };
+
+    const scrollContainer = document.querySelector("main.content") || window;
+
+    scrollContainer.addEventListener("scroll", handleScroll, {
+      passive: true,
+      capture: true,
+    });
+
+    if (scrollContainer !== window) {
+      window.addEventListener("scroll", handleScroll, {
+        passive: true,
+        capture: true,
+      });
+    }
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", handleScroll);
+      if (scrollContainer !== window) {
+        window.removeEventListener("scroll", handleScroll);
+      }
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    console.log("current FPS", currentFps);
+  }, [currentFps]);
+
+  useEffect(() => {
+    const isEditingOrPreviewing = false;
+    let animationInterval;
+
     const initializeScript = (callback) => {
       const existingScript = document.querySelector(
         'script[src^="https://cdn.unicorn.studio"]'
@@ -21,12 +57,15 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
       if (!existingScript) {
         const script = document.createElement("script");
         script.src = "https://cdn.unicorn.studio/v1.2.3/unicornStudio.umd.js";
+        script.async = true;
+        script.crossOrigin = "anonymous";
         script.onload = callback;
         document.head.appendChild(script);
       } else {
         callback();
       }
     };
+
     const initializeUnicornStudio = () => {
       const cacheBuster = isEditingOrPreviewing
         ? "?update=" + Math.random()
@@ -42,6 +81,7 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
         });
       }
     };
+
     if (projectId) {
       if (window.UnicornStudio) {
         initializeUnicornStudio();
@@ -49,12 +89,19 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
         initializeScript(initializeUnicornStudio);
       }
     }
+
+    // Cleanup function
+    return () => {
+      if (animationInterval) {
+        clearTimeout(animationInterval);
+      }
+    };
   }, [projectId]);
   return /*#__PURE__*/ _jsx("div", {
-     ref: elementRef,
+    ref: elementRef,
     "data-us-dpi": "1",
     "data-us-scale": "0.5",
-    "data-us-fps": fps.toString(),
+    "data-us-fps": currentFps.toString(),
     "data-us-quality": "100%",
     "data-us-lazyload": "true",
     "data-us-production": "true",
@@ -68,30 +115,3 @@ import { RenderTarget, addPropertyControls, ControlType } from "framer";
   });
 }
 UnicornStudioEmbed.displayName = "Chroma Background";
-addPropertyControls(UnicornStudioEmbed, {
-  projectId: {
-    type: ControlType.Enum,
-    title: "Type",
-    options: ["lHlDvoJDIXCxxXVqTNOC"],
-    optionTitles: ["Liquid"],
-  },
-});
-export const __FramerMetadata__ = {
-  exports: {
-    default: {
-      type: "reactComponent",
-      name: "ChromaBGs-Vyun",
-      slots: [],
-      annotations: {
-        framerSupportedLayoutWidth: "fixed",
-        framerIntrinsicWidth: "800",
-        framerContractVersion: "1",
-        framerSupportedLayoutHeight: "fixed",
-        framerIntrinsicHeight: "400",
-        framerDisableUnlink: "*",
-      },
-    },
-    __FramerMetadata__: { type: "variable" },
-  },
-};
-//# sourceMappingURL=./ChromaBGs.map
