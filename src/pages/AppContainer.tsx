@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
-import UnicornStudioEmbed from "@/components/ChromaBGs-Vyun";
+// import UnicornStudioEmbed from "@/components/ChromaBGs-Vyun";
 import ComingSoon from "@/components/ComingSoon";
 import { useAccount } from "wagmi";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -83,9 +83,9 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
       >
         <Navbar onToggleSidebar={toggleSidebar} isMobile={isMobile} />
         {/* Main content */}
-        <div className="unicorn-bg pointer-events-none">
+        {/* <div className="unicorn-bg pointer-events-none">
           <UnicornStudioEmbed projectId="lHlDvoJDIXCxxXVqTNOC" />
-        </div>
+        </div> */}
         <main className="w-full scroll-smooth flex-1 overflow-auto relative z-10">
           {children}
         </main>
