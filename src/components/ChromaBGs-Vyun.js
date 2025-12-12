@@ -9,14 +9,14 @@ import { useEffect, useRef, useState } from "react";
  * @framerIntrinsicWidth 800
  */ export default function UnicornStudioEmbed({ projectId }) {
   const elementRef = useRef(null);
-  const [currentFps, setCurrentFps] = useState(30);
+  const [currentFps, setCurrentFps] = useState(20);
   const scrollTimeoutRef = useRef(null);
 
   useEffect(() => {
     const handleScroll = () => {
       setCurrentFps((prev) => (prev !== 1 ? 1 : prev));
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => setCurrentFps(30), 200);
+      scrollTimeoutRef.current = setTimeout(() => setCurrentFps(20), 200);
     };
 
     const scrollContainer = document.querySelector("main.content") || window;
