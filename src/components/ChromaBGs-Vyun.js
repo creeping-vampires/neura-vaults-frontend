@@ -43,10 +43,6 @@ import { useEffect, useRef, useState } from "react";
   }, []);
 
   useEffect(() => {
-    console.log("current FPS", currentFps);
-  }, [currentFps]);
-
-  useEffect(() => {
     const isEditingOrPreviewing = false;
     let animationInterval;
 
