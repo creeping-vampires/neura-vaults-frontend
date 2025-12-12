@@ -32,18 +32,7 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    try {
-      const key = "POST_LOGIN_REDIRECT_PATH";
-      const target = localStorage.getItem(key);
-      if (target && isConnected) {
-        if (location.pathname !== target) {
-          navigate(target, { replace: true });
-        }
-        localStorage.removeItem(key);
-      }
-    } catch (e) {
-      console.log("error", e);
-    }
+    // LocalStorage cache usage for POST_LOGIN_REDIRECT_PATH removed
   }, [isConnected, navigate, location.pathname]);
 
   useEffect(() => {
@@ -94,10 +83,10 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
       >
         <Navbar onToggleSidebar={toggleSidebar} isMobile={isMobile} />
         {/* Main content */}
-        <div className="h-full absolute inset-0">
+        <div className="unicorn-bg pointer-events-none">
           <UnicornStudioEmbed projectId="lHlDvoJDIXCxxXVqTNOC" />
         </div>
-        <main className="w-full flex-1 overflow-auto relative z-1">
+        <main className="w-full scroll-smooth flex-1 overflow-auto relative z-10">
           {children}
         </main>
       </div>

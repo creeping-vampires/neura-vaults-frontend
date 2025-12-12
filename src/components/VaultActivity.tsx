@@ -7,7 +7,7 @@ import { getExplorerTxUrl } from "@/lib/utils";
 import { fetchVaultActivities } from "@/services/vaultActivityService";
 import { LatestVaultActionItem } from "@/services/config";
 import { formatUnits } from "viem";
-import { usePrice } from "@/hooks/usePrice";
+import { useVaultApi } from "@/hooks/useVaultApi";
 
 interface VaultActivityProps {
   vaultId?: string;
@@ -47,7 +47,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
     fetchActivities();
   }, [fetchActivities]);
 
-  const { getVaultDataByAddress } = usePrice();
+  const { getVaultDataByAddress } = useVaultApi();
   const decimals = (() => {
     const info = getVaultDataByAddress?.(vaultId || "");
     return Number((info as any)?.underlyingDecimals ?? 6);

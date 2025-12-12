@@ -1,17 +1,10 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
 import { getExplorerTxUrl } from "@/lib/utils";
-import { toast } from "@/hooks/use-toast";
-
+import { useToast } from "@/hooks/use-toast";
 import { usePublicClient } from "wagmi";
 import { Address, formatUnits, parseAbiItem } from "viem";
 import { useAccount } from "wagmi";
@@ -103,6 +96,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   assetDecimals,
   vaultDecimals,
 }) => {
+  const { toast } = useToast();
   const publicClient = usePublicClient();
   const { address: userAddress } = useAccount();
   const [activeTab, setActiveTab] = useState<"deposit" | "withdraw">("deposit");
@@ -111,9 +105,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   const [latestTransactions, setLatestTransactions] = useState<
     PendingTransaction[]
   >([]);
-  const [transactionMonitors, setTransactionMonitors] = useState<
-    Map<string, NodeJS.Timeout>
-  >(new Map());
+  const transactionMonitors = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Deposit validation state (caps + request-state)
   const [isValidatingDeposit, setIsValidatingDeposit] = useState(false);
@@ -133,6 +125,14 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   // Refs to avoid stale values inside backend monitoring interval
   const pendingDepositAssetsRef = useRef<bigint>(pendingDepositAssets ?? 0n);
   const pendingRedeemSharesRef = useRef<bigint>(pendingRedeemShares ?? 0n);
+  const claimableWithdrawAssetsRef = useRef<number>(
+    claimableWithdrawAssets ?? 0
+  );
+  const withdrawEventStatusRef = useRef<string | undefined>(
+    withdrawEventStatus
+  );
+  const claimableDepositAssetsRef = useRef<number>(claimableDepositAssets ?? 0);
+  const depositEventStatusRef = useRef<string | undefined>(depositEventStatus);
 
   useEffect(() => {
     pendingDepositAssetsRef.current = pendingDepositAssets ?? 0n;
@@ -141,6 +141,22 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     pendingRedeemSharesRef.current = pendingRedeemShares ?? 0n;
   }, [pendingRedeemShares]);
+
+  useEffect(() => {
+    claimableWithdrawAssetsRef.current = claimableWithdrawAssets ?? 0;
+  }, [claimableWithdrawAssets]);
+
+  useEffect(() => {
+    withdrawEventStatusRef.current = withdrawEventStatus;
+  }, [withdrawEventStatus]);
+
+  useEffect(() => {
+    claimableDepositAssetsRef.current = claimableDepositAssets ?? 0;
+  }, [claimableDepositAssets]);
+
+  useEffect(() => {
+    depositEventStatusRef.current = depositEventStatus;
+  }, [depositEventStatus]);
 
   // Evaluate withdraw request-state guards locally in the panel
   useEffect(() => {
@@ -168,6 +184,25 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     setWithdrawEligibility({ eligible: true });
   }, [pendingRedeemShares, claimableWithdrawAssets]);
 
+  const handleHeadroomComputed = useCallback(
+    (res: { userHeadroom?: string; vaultHeadroom?: string }) => {
+      setDepositEligibility((prev) => {
+        if (
+          prev.userHeadroom === res.userHeadroom &&
+          prev.vaultHeadroom === res.vaultHeadroom
+        ) {
+          return prev;
+        }
+        return {
+          ...prev,
+          userHeadroom: res.userHeadroom,
+          vaultHeadroom: res.vaultHeadroom,
+        };
+      });
+    },
+    []
+  );
+
   const [totalPendingDeposits, setTotalPendingDeposits] = useState<bigint>(0n);
   const [totalPendingWithdrawals, setTotalPendingWithdrawals] =
     useState<bigint>(0n);
@@ -178,7 +213,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       setIsValidatingDeposit(true);
       const res = await yieldMonitorService.getPendingDepositAmount(vaultId);
       setTotalPendingDeposits(BigInt(res?.data?.pendingAmount));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch totalPendingDeposits:", err);
       setTotalPendingDeposits(0n);
     } finally {
@@ -187,15 +222,23 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   }, [vaultId]);
 
   const fetchTotalPendingWithdrawals = useCallback(async () => {
-    if (!vaultId) return 0;
+    if (!vaultId || !pendingRedeemShares) {
+      setTotalPendingWithdrawals(0n);
+      return 0;
+    }
     try {
-      const res = await yieldMonitorService.getPendingWithdrawalAmount(vaultId);
-      const sharesStr = (res as any)?.data?.pendingShares ?? "0";
-      const shares = BigInt(String(sharesStr || "0"));
+      const shares = pendingRedeemShares;
+
+      if (shares === 0n) {
+        setTotalPendingWithdrawals(0n);
+        return 0;
+      }
+
       if (!publicClient) {
         setTotalPendingWithdrawals(0n);
         return 0;
       }
+      // @ts-ignore
       const assets = (await publicClient.readContract({
         address: vaultId as `0x${string}`,
         abi: YieldAllocatorVaultABI,
@@ -204,19 +247,18 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       })) as bigint;
       setTotalPendingWithdrawals(assets);
       return assets;
-    } catch (err: any) {
-      console.error("Failed to fetch totalPendingWithdrawals:", err);
-      setTotalPendingWithdrawals(0n);
+    } catch (e) {
+      console.error("Error fetching pending withdrawals:", e);
       return 0;
     }
-  }, [vaultId, assetDecimals, publicClient]);
+  }, [vaultId, pendingRedeemShares, publicClient]);
 
   useEffect(() => {
-    fetchTotalPendingDeposits();
+    void fetchTotalPendingDeposits();
   }, [vaultId, pendingDepositAssets, fetchTotalPendingDeposits]);
 
   useEffect(() => {
-    fetchTotalPendingWithdrawals();
+    void fetchTotalPendingWithdrawals();
   }, [vaultId, pendingRedeemShares, fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
@@ -224,7 +266,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       depositEventStatus === "submitted" ||
       depositEventStatus === "settled"
     ) {
-      fetchTotalPendingDeposits();
+      void fetchTotalPendingDeposits();
     }
   }, [depositEventStatus, fetchTotalPendingDeposits]);
 
@@ -233,21 +275,9 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       withdrawEventStatus === "submitted" ||
       withdrawEventStatus === "settled"
     ) {
-      fetchTotalPendingWithdrawals();
+      void fetchTotalPendingWithdrawals();
     }
   }, [withdrawEventStatus, fetchTotalPendingWithdrawals]);
-
-  // useEffect(() => {
-  //   if (!isDepositTransacting) {
-  //     fetchTotalPendingDeposits();
-  //   }
-  // }, [isDepositTransacting, fetchTotalPendingDeposits]);
-
-  // useEffect(() => {
-  //   if (!isWithdrawTransacting) {
-  //     fetchTotalPendingWithdrawals();
-  //   }
-  // }, [isWithdrawTransacting, fetchTotalPendingWithdrawals]);
 
   useEffect(() => {
     setIsValidatingDeposit(true);
@@ -354,7 +384,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         controller,
       };
 
-      setLatestTransactions((prev) => [...prev, newTransaction]);
+      setLatestTransactions((prev) => {
+        const updated = [...prev, newTransaction];
+        return updated.slice(-20); // Limit to last 50 transactions
+      });
 
       if (hash) {
         startTransactionMonitoring(id, hash);
@@ -423,14 +456,10 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       try {
         // Clear any active monitor on terminal states outside the state updater to avoid side-effects
         if (becameTerminal) {
-          const monitor = transactionMonitors.get(id);
+          const monitor = transactionMonitors.current.get(id);
           if (monitor) {
             clearInterval(monitor);
-            setTransactionMonitors((prev) => {
-              const newMap = new Map(prev);
-              newMap.delete(id);
-              return newMap;
-            });
+            transactionMonitors.current.delete(id);
           }
         }
 
@@ -457,35 +486,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             }
           }
 
-          // Structured console logging for observability
-          const logPayload = {
-            id: changedTx.id,
-            type: changedTx.type,
-            origin: changedTx.origin,
-            amount: changedTx.amount,
-            status: nextStatus,
-            prevStatus: previousStatus,
-            hash: changedTx.hash,
-            requestId: changedTx.requestId?.toString(),
-            controller: changedTx.controller,
-            vaultId,
-            userAddress,
-            timestamp: Date.now(),
-          };
-
-          console.info("[VaultActionPanel] Tx status change", logPayload);
-
-          // UX feedback
           if (nextStatus === "failed") {
             toast({
               title: "Transaction failed",
               description: `Your ${changedTx.type} of ${changedTx.amount} ${currentAssetSymbol} failed.`,
               variant: "destructive",
-            });
-          } else if (nextStatus === "settled") {
-            toast({
-              title: "Settlement complete",
-              description: `Your ${changedTx.type} request has settled on-chain.`,
             });
           }
         }
@@ -494,16 +499,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       }
     },
     [
-      transactionMonitors,
-      setTransactionMonitors,
+      withdrawEventStatusRef,
       depositEventStatus,
-      withdrawEventStatus,
-      setDepositEventStatus,
-      setWithdrawEventStatus,
       vaultId,
       userAddress,
       currentAssetSymbol,
-      toast,
     ]
   );
 
@@ -771,41 +771,30 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
     ) => {
       if (!publicClient || !vaultId) return;
       // Avoid starting duplicate monitors for the same transaction id
-      if (transactionMonitors.has(id)) return;
+      if (transactionMonitors.current.has(id)) return;
 
       const monitor = setInterval(async () => {
+
         try {
           if (type === "deposit") {
             if (pendingDepositAssetsRef.current > 0n) {
               updateTransactionStatus(id, "settling");
-            } else {
+            } else if ((claimableDepositAssetsRef.current ?? 0) > 0) {
+              updateTransactionStatus(id, "settling");
+            } else if (depositEventStatusRef.current === "settled") {
               updateTransactionStatus(id, "settled");
               clearInterval(monitor);
-              setTransactionMonitors((prev) => {
-                const newMap = new Map(prev);
-                newMap.delete(id);
-                return newMap;
-              });
+              transactionMonitors.current.delete(id);
             }
           } else {
             if (pendingRedeemSharesRef.current > 0n) {
-              console.debug("[BackendMonitor] Withdraw still settling", {
-                id,
-                pendingRedeemShares: pendingRedeemSharesRef.current.toString(),
-              });
               updateTransactionStatus(id, "settling");
-            } else {
-              console.debug("[BackendMonitor] Withdraw settled", {
-                id,
-                pendingRedeemShares: pendingRedeemSharesRef.current.toString(),
-              });
+            } else if ((claimableWithdrawAssetsRef.current ?? 0) > 0) {
+              updateTransactionStatus(id, "settling");
+            } else if (withdrawEventStatusRef.current === "settled") {
               updateTransactionStatus(id, "settled");
               clearInterval(monitor);
-              setTransactionMonitors((prev) => {
-                const newMap = new Map(prev);
-                newMap.delete(id);
-                return newMap;
-              });
+              transactionMonitors.current.delete(id);
             }
           }
         } catch (e) {
@@ -814,52 +803,18 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         }
       }, 5000);
 
-      setTransactionMonitors((prev) => new Map(prev.set(id, monitor)));
+      transactionMonitors.current.set(id, monitor);
+      return () => clearInterval(monitor);
     },
-    [publicClient, vaultId, updateTransactionStatus, transactionMonitors]
+    [publicClient, claimableDepositAssetsRef, pendingDepositAssetsRef, depositEventStatusRef,vaultId, updateTransactionStatus]
   );
 
   useEffect(() => {
     return () => {
-      transactionMonitors.forEach((monitor) => {
+      transactionMonitors.current.forEach((monitor) => {
         clearInterval(monitor);
       });
     };
-  }, [transactionMonitors]);
-
-  // Persist queue to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "VAULT_TX_QUEUE",
-        JSON.stringify(latestTransactions)
-      );
-    } catch {}
-  }, [latestTransactions]);
-
-  // Hydrate queue and restart monitors for backend settling items
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("VAULT_TX_QUEUE");
-      if (raw) {
-        const parsed: PendingTransaction[] = JSON.parse(raw);
-        setLatestTransactions(parsed);
-        parsed.forEach((tx) => {
-          if (
-            tx.origin === "backend" &&
-            tx.status === "settling" &&
-            (tx.type === "deposit" || tx.type === "withdraw")
-          ) {
-            startBackendMonitoring(
-              tx.id,
-              tx.type as "deposit" | "withdraw",
-              tx.requestId ?? 0n,
-              (tx.controller as Address) || (userAddress as Address)
-            );
-          }
-        });
-      }
-    } catch {}
   }, []);
 
   // check pending transaction on page refresh
@@ -885,7 +840,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             origin: "backend",
             timestamp: Date.now(),
           };
-          setLatestTransactions((prev) => [...prev, depositTx]);
+          setLatestTransactions((prev) => [...prev, depositTx].slice(-50));
           if (userAddress) {
             startBackendMonitoring(
               depositTx.id,
@@ -923,7 +878,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             origin: "backend",
             timestamp: Date.now(),
           };
-          setLatestTransactions((prev) => [...prev, withdrawTx]);
+          setLatestTransactions((prev) => [...prev, withdrawTx].slice(-50));
           if (userAddress) {
             startBackendMonitoring(
               withdrawTx.id,
@@ -948,15 +903,16 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         (pendingRedeemShares ?? 0n) === 0n &&
         claimableWithdrawAssets === 0
       ) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           setLatestTransactions((prev) =>
             prev.filter((tx) => tx.origin !== "backend")
           );
         }, 30 * 60 * 1000);
+        return () => clearTimeout(timer);
       }
     };
 
-    removeBackendPendingTransactions();
+    return removeBackendPendingTransactions();
   }, [
     pendingDepositAssets,
     claimableDepositAssets,
@@ -1020,7 +976,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           backendId
         );
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (depositId) {
         updateTransactionStatus(depositId, "failed");
       }
@@ -1063,7 +1019,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           backendId
         );
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (withdrawId) {
         updateTransactionStatus(withdrawId, "failed");
       }
@@ -1128,7 +1084,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
         await handleWithdraw(inputAmount);
       }
       setInputAmount("");
-    } catch (e: any) {}
+    } catch (e: unknown) {}
   };
 
   return (
@@ -1251,13 +1207,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             pendingRedeemShares={pendingRedeemShares}
             totalPendingDeposits={totalPendingDeposits}
             totalPendingWithdrawals={totalPendingWithdrawals}
-            onHeadroomComputed={(res) =>
-              setDepositEligibility((prev) => ({
-                ...prev,
-                userHeadroom: res.userHeadroom,
-                vaultHeadroom: res.vaultHeadroom,
-              }))
-            }
+            onHeadroomComputed={handleHeadroomComputed}
           />
         )}
 

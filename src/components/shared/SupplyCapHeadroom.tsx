@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { formatUnits, parseUnits } from "viem";
 import { getSupplyCapsForVault, RAW_CAPS } from "@/services/supplyCaps";
 import { formatCurrency } from "@/utils/currency";
-import { useMultiVault } from "@/hooks/useMultiVault";
+import { useVaultContract } from "@/hooks/useVaultContract";
 
 interface HeadroomState {
   userHeadroom?: string;
@@ -34,7 +34,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   className,
   onHeadroomComputed,
 }) => {
-  const { getVaultByAddress } = useMultiVault();
+  const { getVaultByAddress } = useVaultContract();
 
   const vaultData = useMemo(
     () => getVaultByAddress(vaultId || ""),
@@ -150,7 +150,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
     claimableDepositAssets,
   ]);
 
-  // Vault Headroom 
+  // Vault Headroom
   useEffect(() => {
     let cancelled = false;
     const evaluateVaultHeadroom = async () => {

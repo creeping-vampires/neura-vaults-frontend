@@ -1,7 +1,7 @@
 import { apiPost, apiGet, API_ROUTES } from './config';
 
-// Simple in-memory cache for user access responses per wallet
-const userAccessCache = new Map<string, UserAccessResponse>();
+// Simple in-memory cache for user access responses per wallet - REMOVED
+// const userAccessCache = new Map<string, UserAccessResponse>();
 
 async function fetchUserAccess(
   walletAddress: string
@@ -100,18 +100,15 @@ export const userService = {
 
   /**
    * Cached variant: returns cached response unless force=true; caches fresh responses.
+   * NOTE: Caching has been disabled.
    */
   checkAccessCached: async (
     walletAddress: string,
     force: boolean = false
   ): Promise<UserAccessResponse> => {
     try {
-      if (!force && userAccessCache.has(walletAddress)) {
-        return userAccessCache.get(walletAddress)!;
-      }
-
+      // Caching disabled
       const response = await fetchUserAccess(walletAddress);
-      userAccessCache.set(walletAddress, response);
       return response;
     } catch (error) {
       console.error("Error checking user access (cached):", error);
@@ -134,8 +131,7 @@ export const userService = {
 
       const response = await apiPost<RedeemInviteCodeResponse>(
         API_ROUTES.REDEEM_INVITE_CODE,
-        requestBody,
-        0 // No caching
+        requestBody
       );
 
       return response;
@@ -162,8 +158,7 @@ export const userService = {
 
       const response = await apiPost<CreateInviteCodeResponse>(
         urlWithApiKey,
-        requestBody,
-        0 // No caching
+        requestBody
       );
 
       return response;
@@ -179,9 +174,7 @@ export const userService = {
   getInviteCodes: async (): Promise<GetInviteCodesResponse> => {
     try {
       const response = await apiGet<GetInviteCodesResponse>(
-        API_ROUTES.GET_INVITE_CODES,
-        undefined,
-        0
+        API_ROUTES.GET_INVITE_CODES
       );
 
       return response;
@@ -200,8 +193,7 @@ export const userService = {
     try {
       const response = await apiGet<GetAccessRequestsResponse>(
         API_ROUTES.ACCESS_REQUESTS,
-        { api_key: walletAddress },
-        0
+        { api_key: walletAddress }
       );
       return response;
     } catch (error) {

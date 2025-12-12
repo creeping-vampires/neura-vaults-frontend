@@ -8,7 +8,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Key, Users, Copy, Check, Trash2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { userService, InviteCode as ApiInviteCode } from "@/services/userService";
+import {
+  userService,
+  InviteCode as ApiInviteCode,
+} from "@/services/userService";
 import type { AccessRequest } from "@/services/userService";
 import { useAccount } from "wagmi";
 import { formatAddress } from "@/lib/utils";
@@ -53,6 +56,7 @@ const convertApiInviteCode = (apiCode: ApiInviteCode): InviteCode => {
 };
 
 const Admin: React.FC = () => {
+  const {toast}=useToast()
   const [inviteCodes, setInviteCodes] = useState<InviteCode[]>([]);
   const [newCodeData, setNewCodeData] = useState({
     expiresAt: "",
@@ -60,7 +64,6 @@ const Admin: React.FC = () => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
   const { address: userAddress } = useAccount();
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>([]);
   const [requestsSort, setRequestsSort] = useState<{
@@ -72,7 +75,7 @@ const Admin: React.FC = () => {
     setIsLoading(true);
     try {
       const apiCodes = await userService.getInviteCodes();
-      console.log("apiCodes", apiCodes);
+      // console.log("apiCodes", apiCodes);
       const convertedCodes = apiCodes.map(convertApiInviteCode);
       setInviteCodes(convertedCodes);
     } catch (error) {
@@ -205,7 +208,7 @@ const Admin: React.FC = () => {
       minute: "2-digit",
     });
   };
-  
+
   const stats = {
     total: inviteCodes.length,
     active: inviteCodes.filter((code) => code.status === "active").length,
@@ -367,53 +370,57 @@ const Admin: React.FC = () => {
                     </TableRow>
                   ) : (
                     inviteCodes
-                      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                      .sort(
+                        (a, b) =>
+                          new Date(b.createdAt).getTime() -
+                          new Date(a.createdAt).getTime()
+                      )
                       .map((code) => (
-                      <TableRow key={code.id}>
-                        <TableCell className="font-mono font-medium">
-                          <div className="flex gap-2 items-center">
-                            {code.code}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleCopyCode(code.code)}
-                            >
-                              {copiedCode === code.code ? (
-                                <Check className="h-3 w-3" />
-                              ) : (
-                                <Copy className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(code.status)}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {code.redeemableCredits || 0}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{formatDate(code.createdAt)}</TableCell>
-                        <TableCell>
-                          {code.expiresAt
-                            ? formatDate(code.expiresAt)
-                            : "Never"}
-                        </TableCell>
-                        <TableCell>
-                          {code.redeemedBy ? (
-                            <span className="text-sm">
-                              {code.redeemedByPrivyId
-                                ? `${code.redeemedByPrivyId.slice(
-                                    0,
-                                    6
-                                  )}...${code.redeemedByPrivyId.slice(-4)}`
-                                : `User ${code.redeemedBy}`}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))
+                        <TableRow key={code.id}>
+                          <TableCell className="font-mono font-medium">
+                            <div className="flex gap-2 items-center">
+                              {code.code}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCopyCode(code.code)}
+                              >
+                                {copiedCode === code.code ? (
+                                  <Check className="h-3 w-3" />
+                                ) : (
+                                  <Copy className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
+                          </TableCell>
+                          <TableCell>{getStatusBadge(code.status)}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary">
+                              {code.redeemableCredits || 0}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{formatDate(code.createdAt)}</TableCell>
+                          <TableCell>
+                            {code.expiresAt
+                              ? formatDate(code.expiresAt)
+                              : "Never"}
+                          </TableCell>
+                          <TableCell>
+                            {code.redeemedBy ? (
+                              <span className="text-sm">
+                                {code.redeemedByPrivyId
+                                  ? `${code.redeemedByPrivyId.slice(
+                                      0,
+                                      6
+                                    )}...${code.redeemedByPrivyId.slice(-4)}`
+                                  : `User ${code.redeemedBy}`}
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
                   )}
                 </TableBody>
               </Table>

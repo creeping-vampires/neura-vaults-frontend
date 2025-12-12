@@ -8,8 +8,8 @@ import {
   Search,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useMultiVault } from "@/hooks/useMultiVault";
-import { usePrice } from "@/hooks/usePrice";
+import { useVaultContract } from "@/hooks/useVaultContract";
+import { useVaultApi } from "@/hooks/useVaultApi";
 
 interface MarketItem {
   address: `0x${string}`;
@@ -30,8 +30,8 @@ const Vaults = () => {
     getTotalTVL,
     isLoading: isVaultsLoading,
     error: vaultsError,
-  } = useMultiVault();
-  const { get24APY, get7APY, get30APY, getVaultDataByAddress } = usePrice();
+  } = useVaultContract();
+  const { get24APY, get7APY, get30APY, getVaultDataByAddress } = useVaultApi();
 
   const marketData: MarketItem[] = useMemo(() => {
     const allVaults = getAllVaults();
@@ -41,7 +41,6 @@ const Vaults = () => {
       totalDeposits: data?.tvl || 0,
       name: name || `ai${symbol}`,
       symbol,
-      // status: symbol === "USDC" ? "active" : "coming-soon",
     }));
 
     return [...vaultItems];
@@ -76,7 +75,7 @@ const Vaults = () => {
     navigate(`/vaults/${market.address}`);
   };
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-screen">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Market Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="bg-gradient-to-br from-card/70 to-background/70 border-border shadow-xl">
@@ -109,7 +108,9 @@ const Vaults = () => {
               <div className="absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                 <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                 <div className="flex items-center gap-1">
-                  <div className="font-medium text-muted-foreground">1-Day APY</div>
+                  <div className="font-medium text-muted-foreground">
+                    1-Day APY
+                  </div>
                   <div className="font-medium text-foreground ml-auto">:</div>
                   <div className="font-medium text-foreground ml-1">
                     {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
@@ -241,8 +242,12 @@ const Vaults = () => {
                         <div className="absolute top-12 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                           <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                           <div className="flex items-center gap-1">
-                            <div className="font-medium text-muted-foreground">1-Day APY</div>
-                            <div className="font-medium text-foreground ml-auto">:</div>
+                            <div className="font-medium text-muted-foreground">
+                              1-Day APY
+                            </div>
+                            <div className="font-medium text-foreground ml-auto">
+                              :
+                            </div>
                             <div className="font-medium text-foreground ml-1">
                               {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
                             </div>

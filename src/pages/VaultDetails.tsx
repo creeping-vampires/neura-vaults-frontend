@@ -4,8 +4,8 @@ import React, {
   useCallback,
   useMemo,
   Suspense,
-} from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+  } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,10 +18,10 @@ import {
   Target,
   Loader2,
 } from "lucide-react";
-import { useMultiVault } from "@/hooks/useMultiVault";
-import { usePrice } from "@/hooks/usePrice";
+import { useVaultContract } from "@/hooks/useVaultContract";
+import { useVaultApi } from "@/hooks/useVaultApi";
 import { useUserAccess } from "@/hooks/useUserAccess";
-import { toast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   ChartContainer,
   ChartTooltip,
@@ -39,7 +39,11 @@ import {
 } from "recharts";
 import ChatBot from "@/components/ChatBot";
 import yieldMonitorService from "@/services/vaultService";
-import { VaultAllocationsResponse } from "@/services/config";
+import {
+  VaultAllocationsResponse,
+  TokenPriceData,
+  LatestChartPoint,
+} from "@/services/config";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useAccount } from "wagmi";
 
@@ -50,53 +54,22 @@ import { formatUnits } from "viem";
 const chartConfig = {
   value: {
     label: "Value",
-    color: "#10B981",
+    color: "#8884d8",
   },
   apy: {
     label: "APY",
     color: "#3B82F6",
   },
-};
-
-const useCountdown = () => {
-  const [timeLeft, setTimeLeft] = useState({ minutes: 0, seconds: 0 });
-
-  useEffect(() => {
-    const calculateTimeLeft = () => {
-      const now = new Date();
-      const currentMinutes = now.getMinutes();
-      const nextSettlement = new Date(now);
-
-      if (currentMinutes < 30) {
-        nextSettlement.setMinutes(30, 0, 0);
-      } else {
-        nextSettlement.setHours(now.getHours() + 1, 0, 0, 0);
-      }
-
-      const difference = nextSettlement.getTime() - now.getTime();
-
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-      return { minutes, seconds };
-    };
-
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 60000); // Update every minute
-
-    setTimeLeft(calculateTimeLeft());
-    return () => clearInterval(timer);
-  }, []);
-
-  return timeLeft;
+  tvl: {
+    label: "TVL",
+    color: "#00d6c1",
+  },
 };
 
 const VaultDetails = () => {
-  const { minutes } = useCountdown();
+  const { toast } = useToast();
   const { vaultId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const {
     getTotalTVL,
@@ -116,7 +89,7 @@ const VaultDetails = () => {
     getClaimableRedeemAmount,
     pendingDepositAssets,
     pendingRedeemShares,
-  } = useMultiVault();
+  } = useVaultContract();
 
   const vaultData = useMemo(
     () => getVaultByAddress(vaultId),
@@ -144,17 +117,16 @@ const VaultDetails = () => {
   }, [getTotalTVL]);
 
   const {
-    chartData: priceChartData,
-    isLoading: chartLoading,
+    chartData: ChartData,
+    isChartLoading: chartLoading,
     error: chartError,
-    fetchPriceChart,
-    isPriceLoading,
+    fetchChart,
+    isVaultLoading,
     get24APY,
     get7APY,
     get30APY,
     getVaultDataByAddress,
-    priceData,
-  } = usePrice();
+  } = useVaultApi();
 
   const [selectedTimeframe, setSelectedTimeframe] = useState<"7D" | "1M">("7D");
   const [chartData, setChartData] = useState([]);
@@ -183,8 +155,8 @@ const VaultDetails = () => {
       return;
     }
 
-    fetchPriceChart({ address: vaultId, timeframe: selectedTimeframe });
-  }, [selectedTimeframe, vaultId, fetchPriceChart]);
+    fetchChart({ address: vaultId, timeframe: selectedTimeframe });
+  }, [selectedTimeframe, vaultId, fetchChart]);
 
   useEffect(() => {
     const run = async () => {
@@ -194,11 +166,8 @@ const VaultDetails = () => {
       try {
         const res = await yieldMonitorService.getVaultAllocations(vaultId);
         setAllocationsData(res);
-      } catch (err: any) {
-        const msg =
-          err?.response?.data?.error ||
-          err?.message ||
-          "Failed to load allocations";
+      } catch (err: unknown) {
+        let msg = "Failed to load allocations";
         setAllocationsError(msg);
         setAllocationsData(null);
       } finally {
@@ -209,20 +178,33 @@ const VaultDetails = () => {
   }, [vaultId]);
 
   useEffect(() => {
-    if (!priceChartData || priceChartData.length === 0) {
+    if (!ChartData || ChartData.length === 0) {
       setChartData([]);
       return;
     }
 
-    const allTransformed = [];
+    const allTransformed: {
+      date: number;
+      value: number;
+      tvl: number;
+      apy: number;
+    }[] = [];
 
-    const relevantTokenData = priceChartData;
-    relevantTokenData.forEach((tokenData) => {
-      const points = (tokenData as any).dataPoints || tokenData.data || [];
+    const relevantTokenData = ChartData;
+    relevantTokenData.forEach((tokenData: TokenPriceData) => {
+      const points = tokenData.data || [];
 
-      const tokenTransformed = points
-        ?.map((point: any) => {
-          const tsRaw = point.timestamp as number | string;
+      let processedPoints = points;
+      if (points.length > 500) {
+        const step = Math.ceil(points.length / 500);
+        processedPoints = points.filter(
+          (_, index: number) => index % step === 0
+        );
+      }
+
+      const tokenTransformed = processedPoints
+        ?.map((point) => {
+          const tsRaw = point.timestamp;
           const tsNum =
             typeof tsRaw === "number" ? tsRaw : Date.parse(tsRaw as string);
           const ts = isNaN(tsNum)
@@ -231,23 +213,14 @@ const VaultDetails = () => {
             ? tsNum * 1000
             : tsNum;
 
-          // only share price and timestamp
-          const spRaw = point.share_price_formatted ?? point.sharePrice;
+          const spRaw = point.share_price_formatted;
           let valueNum: number = 0;
           if (typeof spRaw === "string") {
-            const parsed = parseFloat(spRaw.replace(/[^0-9.\-]/g, ""));
+            const parsed = parseFloat(spRaw.replace(/[^0-9.-]/g, ""));
             valueNum = isNaN(parsed) ? 0 : parsed;
           } else if (typeof spRaw === "number") {
             valueNum = spRaw;
-          } else if (
-            point.totalAssets !== undefined &&
-            point.totalSupply !== undefined
-          ) {
-            const totalAssetsNum = Number(point.totalAssets);
-            const totalSupplyNum = Number(point.totalSupply);
-            valueNum = totalSupplyNum > 0 ? totalAssetsNum / totalSupplyNum : 0;
           }
-
           const formattedValue = isNaN(valueNum)
             ? 0
             : parseFloat(valueNum.toFixed(8));
@@ -255,9 +228,11 @@ const VaultDetails = () => {
           return {
             date: ts,
             value: formattedValue,
-          } as any;
+            tvl: point.tvl || 0,
+            apy: point.apy || 0,
+          };
         })
-        .filter((d: any) => typeof d.date === "number" && !isNaN(d.date));
+        .filter((d) => typeof d.date === "number" && !isNaN(d.date));
 
       if (tokenTransformed) {
         allTransformed.push(...tokenTransformed);
@@ -266,7 +241,7 @@ const VaultDetails = () => {
     allTransformed.sort((a, b) => a.date - b.date);
 
     setChartData(allTransformed);
-  }, [priceChartData]);
+  }, [ChartData]);
 
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
 
@@ -279,8 +254,8 @@ const VaultDetails = () => {
     try {
       const amount = await getClaimableDepositAmount?.(vaultId);
       setClaimableDepositAssets(amount || 0);
-    } catch (e) {
-      console.log("error refreshing withdraw claimable", e);
+    } catch {
+      // console.log("error refreshing withdraw claimable", e);
     }
   }, [getClaimableDepositAmount, vaultId]);
 
@@ -288,17 +263,31 @@ const VaultDetails = () => {
     try {
       const amount = await getClaimableRedeemAmount?.(vaultId);
       setClaimableWithdrawAssets(amount || 0);
-    } catch (e) {
-      console.log("error refreshing withdraw claimable", e);
+      // console.log("amount", amount);
+    } catch {
+      // console.log("error refreshing withdraw claimable", e);
     }
   }, [getClaimableRedeemAmount, vaultId]);
 
-  // Initial refresh and on vault/auth changes
-  const isConnected = Boolean(userAddress);
+  const isLocalAuth = localStorage.getItem("auth") === "true";
+  const isConnected = isLocalAuth || Boolean(userAddress);
+
   useEffect(() => {
     refreshClaimableDeposit();
     refreshClaimableWithdraw();
   }, [vaultId, isConnected, refreshClaimableDeposit, refreshClaimableWithdraw]);
+
+  useEffect(() => {
+    if (depositEventStatus === "settled") {
+      setClaimableDepositAssets(0);
+    }
+  }, [depositEventStatus, refreshClaimableDeposit]);
+
+  useEffect(() => {
+    if (withdrawEventStatus === "settled") {
+      setClaimableWithdrawAssets(0);
+    }
+  }, [withdrawEventStatus, refreshClaimableWithdraw]);
 
   useEffect(() => {
     if (pendingRedeemShares > 0n) {
@@ -324,7 +313,7 @@ const VaultDetails = () => {
 
   const dynamicPoolData = useMemo(() => {
     const d = allocationsData?.data[0]?.allocations || [];
-    if (!d || d.length === 0) return [] as any[];
+    if (!d || d.length === 0) return [];
     return d.map((a) => {
       const n = a.protocol;
       const pct = Number(a.percentage) || 0;
@@ -344,7 +333,7 @@ const VaultDetails = () => {
           : "#F59E0B";
       return { name: n, value: parseFloat(pct.toFixed(1)), tvl: bal, color };
     });
-  }, [allocationsData]);
+  }, [allocationsData, vaultData?.assetDecimals]);
 
   return (
     <div className="container mx-auto p-4 sm:p-6 sm:pt-4 max-w-7xl relative">
@@ -384,11 +373,9 @@ const VaultDetails = () => {
                   Pending Deposit
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Deposit settlement in progress. Shares will be available
-                  shortly after confirmation.
+                  Settlement in progress—your shares will arrive shortly.
                 </p>
               </div>
-              {/* Cancel / Claim UX */}
               <div className="ml-auto flex items-center gap-2">
                 {pendingDepositAssets > 0n && (
                   <Button
@@ -400,13 +387,12 @@ const VaultDetails = () => {
                         await cancelDepositRequest?.(vaultId);
                         setTxCanceled(true);
                         await refreshAllData?.();
-                      } catch (error: any) {
+                      } catch (error: unknown) {
                         toast({
                           variant: "destructive",
                           title: "Cancel Failed",
                           description:
-                            error?.message ||
-                            "Unable to cancel pending deposit.",
+                            "Unable to cancel the pending deposit at this time.",
                         });
                       }
                     }}
@@ -430,8 +416,8 @@ const VaultDetails = () => {
                   Pending Withdrawal
                 </span>
                 <p className="text-xs text-muted-foreground">
-                  Withdrawal settlement in progress. Please wait for
-                  confirmation, then withdraw your assets.
+                  Settlement in progress—assets will be available to claim
+                  shortly.
                 </p>
               </div>
             </Card>
@@ -452,15 +438,21 @@ const VaultDetails = () => {
                   try {
                     setClaimInProgress(true);
                     await claimRedeem?.(vaultId);
-                    await refreshClaimableWithdraw();
+                    setClaimableWithdrawAssets(0);
+                    toast({
+                      title: "Settlement complete",
+                      description: `Your Withdraw request has settled on-chain.`,
+                    });
                     refreshAllData?.();
-                  } catch (error: any) {
+                  } catch (error: unknown) {
                     console.error("Error claiming withdraw:", error);
                     toast({
                       variant: "destructive",
                       title: "Claim Failed",
                       description:
-                        error?.message ||
+                        (error instanceof Error
+                          ? error.message
+                          : String(error)) ||
                         "Unable to claim withdrawal assets. Please try again.",
                     });
                   } finally {
@@ -499,7 +491,7 @@ const VaultDetails = () => {
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
                   <span className="text-primary text-xs sm:text-sm font-medium">
-                    {isPriceLoading ? "Loading..." : get7APY().toFixed(2)}% APY
+                    {isVaultLoading ? "Loading..." : get7APY().toFixed(2)}% APY
                     (7d)
                   </span>
                   <div className="flex items-center gap-1 relative">
@@ -594,146 +586,359 @@ const VaultDetails = () => {
           </div>
 
           <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
-            <CardHeader className="pb-2 sm:pb-6">
-              <div className="flex flex-row items-start sm:items-center justify-between gap-3">
-                <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
-                  Performance
-                </CardTitle>
-                <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto w-full sm:w-auto">
-                  {timeframes.map((timeframe) => (
-                    <Button
-                      key={timeframe}
-                      variant={
-                        selectedTimeframe === timeframe ? "default" : "ghost"
-                      }
-                      size="sm"
-                      onClick={() => setSelectedTimeframe(timeframe)}
-                      className="text-xs flex-shrink-0 px-2 sm:px-3"
+            <Tabs defaultValue="tvl" className="w-full">
+              <CardHeader className="pb-2 sm:pb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <TabsList className="bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/80 rounded-lg">
+                    <TabsTrigger
+                      value="tvl"
+                      className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
                     >
-                      {timeframe}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="h-full w-full sm:px-10">
-                {chartLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-muted-foreground">
-                      Loading performance data...
-                    </div>
-                  </div>
-                ) : chartError ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-muted-foreground">
-                      Failed to load performance data
-                    </div>
-                  </div>
-                ) : chartData.length === 0 ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-muted-foreground">
-                      No performance data available
-                    </div>
-                  </div>
-                ) : (
-                  <ChartContainer config={chartConfig}>
-                    <AreaChart
-                      data={chartData}
-                      style={{
-                        cursor: "pointer",
-                        backgroundBlur: 1,
-                      }}
+                      TVL
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="sharePrice"
+                      className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
                     >
-                      <defs>
-                        <linearGradient
-                          id="valueGradient"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="#00d6c1"
-                            stopOpacity={0.3}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="#00d6c1"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#374151"
-                        opacity={0.2}
-                      />
-                      <XAxis
-                        dataKey="date"
-                        stroke="#404040"
-                        fontSize={12}
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return selectedTimeframe === "7D"
-                            ? date.toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : date.toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              });
-                        }}
-                      />
-                      <YAxis
-                        stroke="#404040"
-                        fontSize={12}
-                        domain={["dataMin * 0.999", "dataMax * 1.001"]}
-                        tickCount={6}
-                        tickFormatter={(value) => value?.toFixed(4)}
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name, props) => {
-                              if (name === "value") {
-                                const numValue =
-                                  typeof value === "number"
-                                    ? value
-                                    : parseFloat(String(value));
-                                const label = ` ${currentAssetSymbol}`;
-                                return [numValue?.toFixed(4), label];
-                              }
-                              return [value, name];
-                            }}
-                          />
+                      Share Price
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="apy"
+                      className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+                    >
+                      APY
+                    </TabsTrigger>
+                  </TabsList>
+                  <div className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto w-full sm:w-auto">
+                    {timeframes.map((timeframe) => (
+                      <Button
+                        key={timeframe}
+                        variant={
+                          selectedTimeframe === timeframe ? "default" : "ghost"
                         }
-                        labelFormatter={(label, payload) => {
-                          return `Share Price`;
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="value"
-                        stroke="#00d6c1"
-                        strokeWidth={2.5}
-                        fill="url(#valueGradient)"
-                        connectNulls={true}
-                        dot={false}
-                        activeDot={{
-                          r: 4,
-                          stroke: "#00d6c1",
-                          strokeWidth: 2,
-                          fill: "#00d6c1",
-                        }}
-                      />
-                    </AreaChart>
-                  </ChartContainer>
-                )}
-              </div>
-            </CardContent>
+                        size="sm"
+                        onClick={() => setSelectedTimeframe(timeframe)}
+                        className="text-xs flex-shrink-0 px-2 sm:px-3"
+                      >
+                        {timeframe}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="h-full w-full sm:px-10">
+                  {chartLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-muted-foreground">
+                        Loading performance data...
+                      </div>
+                    </div>
+                  ) : chartError ? (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-muted-foreground">
+                        Failed to load performance data
+                      </div>
+                    </div>
+                  ) : chartData.length === 0 ? (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-muted-foreground">
+                        No performance data available
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <TabsContent value="tvl" className="mt-4">
+                        <ChartContainer config={chartConfig}>
+                          <AreaChart
+                            data={chartData}
+                            style={{
+                              cursor: "pointer",
+                              backgroundBlur: 1,
+                            }}
+                          >
+                            <defs>
+                              <linearGradient
+                                id="tvlGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#00d6c1"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#00d6c1"
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#374151"
+                              opacity={0.2}
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#404040"
+                              fontSize={12}
+                              minTickGap={70}
+                              tickFormatter={(value) => {
+                                const date = new Date(value);
+                                return date.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                });
+                              }}
+                            />
+                            <YAxis
+                              stroke="#404040"
+                              fontSize={12}
+                              domain={["auto", "auto"]}
+                              tickCount={6}
+                              tickFormatter={(value) => {
+                                if (value >= 1e9)
+                                  return (value / 1e9).toFixed(2) + "B";
+                                if (value >= 1e6)
+                                  return (value / 1e6).toFixed(2) + "M";
+                                if (value >= 1e3)
+                                  return (value / 1e3).toFixed(2) + "K";
+                                return value.toFixed(0);
+                              }}
+                            />
+                            <ChartTooltip
+                              content={
+                                <ChartTooltipContent
+                                  formatter={(value, name) => {
+                                    if (name === "tvl") {
+                                      const numValue =
+                                        typeof value === "number"
+                                          ? value
+                                          : parseFloat(String(value));
+                                      return [
+                                        `$${numValue.toLocaleString()}`,
+                                        ` ${currentAssetSymbol}`,
+                                      ];
+                                    }
+                                    return [value, name];
+                                  }}
+                                />
+                              }
+                              labelFormatter={(label) => `TVL`}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="tvl"
+                              stroke="#00d6c1"
+                              strokeWidth={2.5}
+                              fill="url(#tvlGradient)"
+                              connectNulls={true}
+                              dot={false}
+                              activeDot={{
+                                r: 4,
+                                stroke: "#00d6c1",
+                                strokeWidth: 2,
+                                fill: "#00d6c1",
+                              }}
+                            />
+                          </AreaChart>
+                        </ChartContainer>
+                      </TabsContent>
+
+                      <TabsContent value="sharePrice" className="mt-4">
+                        <ChartContainer config={chartConfig}>
+                          <AreaChart
+                            data={chartData}
+                            style={{
+                              cursor: "pointer",
+                              backgroundBlur: 1,
+                            }}
+                          >
+                            <defs>
+                              <linearGradient
+                                id="valueGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#8884d8"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#8884d8"
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#374151"
+                              opacity={0.2}
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#404040"
+                              fontSize={12}
+                              minTickGap={70}
+                              tickFormatter={(value) => {
+                                const date = new Date(value);
+                                return date.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                });
+                              }}
+                            />
+                            <YAxis
+                              stroke="#404040"
+                              fontSize={12}
+                              domain={["dataMin * 0.999", "dataMax * 1.001"]}
+                              tickCount={6}
+                              tickFormatter={(value) => value?.toFixed(4)}
+                            />
+                            <ChartTooltip
+                              content={
+                                <ChartTooltipContent
+                                  formatter={(value, name) => {
+                                    if (name === "value") {
+                                      const numValue =
+                                        typeof value === "number"
+                                          ? value
+                                          : parseFloat(String(value));
+                                      const label = ` ${currentAssetSymbol}`;
+                                      return [numValue?.toFixed(4), label];
+                                    }
+                                    return [value, name];
+                                  }}
+                                />
+                              }
+                              labelFormatter={(label, payload) => {
+                                return `Share Price`;
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="value"
+                              stroke="#8884d8"
+                              strokeWidth={2.5}
+                              fill="url(#valueGradient)"
+                              connectNulls={true}
+                              dot={false}
+                              activeDot={{
+                                r: 4,
+                                stroke: "#8884d8",
+                                strokeWidth: 2,
+                                fill: "#8884d8",
+                              }}
+                            />
+                          </AreaChart>
+                        </ChartContainer>
+                      </TabsContent>
+
+                      <TabsContent value="apy" className="mt-4">
+                        <ChartContainer config={chartConfig}>
+                          <AreaChart
+                            data={chartData}
+                            style={{
+                              cursor: "pointer",
+                              backgroundBlur: 1,
+                            }}
+                          >
+                            <defs>
+                              <linearGradient
+                                id="apyGradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="5%"
+                                  stopColor="#3B82F6"
+                                  stopOpacity={0.3}
+                                />
+                                <stop
+                                  offset="95%"
+                                  stopColor="#3B82F6"
+                                  stopOpacity={0}
+                                />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#374151"
+                              opacity={0.2}
+                            />
+                            <XAxis
+                              dataKey="date"
+                              stroke="#404040"
+                              fontSize={12}
+                              minTickGap={70}
+                              tickFormatter={(value) => {
+                                const date = new Date(value);
+                                return date.toLocaleDateString("en-US", {
+                                  month: "short",
+                                  day: "numeric",
+                                });
+                              }}
+                            />
+                            <YAxis
+                              stroke="#404040"
+                              fontSize={12}
+                              domain={["auto", "auto"]}
+                              tickCount={6}
+                              tickFormatter={(value) => `${value?.toFixed(2)}%`}
+                            />
+                            <ChartTooltip
+                              content={
+                                <ChartTooltipContent
+                                  formatter={(value, name) => {
+                                    if (name === "apy") {
+                                      const numValue =
+                                        typeof value === "number"
+                                          ? value
+                                          : parseFloat(String(value));
+                                      return [
+                                        `${numValue.toFixed(2)}%`,
+                                        " 1-Day APY",
+                                      ];
+                                    }
+                                    return [value, name];
+                                  }}
+                                />
+                              }
+                              labelFormatter={(label) => `APY`}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="apy"
+                              stroke="#3B82F6"
+                              strokeWidth={2.5}
+                              fill="url(#apyGradient)"
+                              connectNulls={true}
+                              dot={false}
+                              activeDot={{
+                                r: 4,
+                                stroke: "#3B82F6",
+                                strokeWidth: 2,
+                                fill: "#3B82F6",
+                              }}
+                            />
+                          </AreaChart>
+                        </ChartContainer>
+                      </TabsContent>
+                    </>
+                  )}
+                </div>
+              </CardContent>
+            </Tabs>
           </Card>
 
           <Tabs defaultValue="details" className="w-full">

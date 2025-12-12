@@ -9,25 +9,19 @@ export interface ConnectionEvent {
   timestamp: number;
 }
 
-const STORAGE_KEY = 'connection_events';
+const STORAGE_KEY = 'connection_events'; // Unused
 const MAX_EVENTS = 200;
 
+// In-memory storage only
+let eventsCache: ConnectionEvent[] = [];
+
 function readEvents(): ConnectionEvent[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return [...eventsCache];
 }
 
 function writeEvents(events: ConnectionEvent[]) {
-  try {
-    const pruned = events.slice(-MAX_EVENTS);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(pruned));
-  } catch {}
+  const pruned = events.slice(-MAX_EVENTS);
+  eventsCache = pruned;
 }
 
 export function logConnectionEvent(event: Omit<ConnectionEvent, 'timestamp'>) {
@@ -43,7 +37,5 @@ export function getConnectionEvents(): ConnectionEvent[] {
 }
 
 export function clearConnectionEvents() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-  } catch {}
+  eventsCache = [];
 }
