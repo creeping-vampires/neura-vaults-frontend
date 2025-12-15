@@ -71,12 +71,7 @@ const AppContainer: React.FC<AppContainerProps> = ({ children }) => {
       )}
 
       {/* Sidebar */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isMobile={isMobile}
-      />
-
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       {/* Main content area */}
       <div
         className={`w-full flex flex-col overflow-hidden transition-all duration-300`}

@@ -1,28 +1,39 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Target, BarChart3, Shield } from "lucide-react";
+import {
+  Home,
+  Target,
+  BarChart3,
+  Shield,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useUserAccess } from "../hooks/useUserAccess";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
-  isMobile?: boolean;
 }
 
 const socials = [
   { name: "twitter", link: "https://x.com/Neuravaults" },
-  { name: "discord", link: "discord.gg/officialneuravaults" },
+  { name: "discord", link: "https://discord.gg/officialneuravaults" },
   { name: "gitbook", link: "https://neura-vaults.gitbook.io/neura-vaults/" },
 ];
 
-const Sidebar = ({
-  isOpen = false,
-  onClose,
-  isMobile = false,
-}: SidebarProps) => {
+const Sidebar = ({ isOpen = false, onClose }: SidebarProps) => {
   const location = useLocation();
   const [isLoaded, setIsLoaded] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem("sidebarCollapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
   const { isAdmin } = useUserAccess();
 
   const menuItems = [
@@ -36,26 +47,51 @@ const Sidebar = ({
     setIsLoaded(true);
   }, []);
 
+  const toggleSidebar = () => {
+    const newState = !isCollapsed;
+    setIsCollapsed(newState);
+    localStorage.setItem("sidebarCollapsed", JSON.stringify(newState));
+  };
+
   return (
     <div
-      className={`sidebar-container w-64 backdrop-blur-[10px] bg-background/80 border-r border-border transition-all duration-300 flex flex-col h-full z-50 ${
-        isMobile
-          ? `absolute left-0 top-[-10px] h-full transform ${
-              isOpen ? "translate-x-0" : "-translate-x-full"
-            } shadow-xl`
-          : "relative"
-      }`}
-      aria-hidden={isMobile && !isOpen}
+      className={`sidebar-container
+        fixed left-0 flex flex-col h-full
+        transition-all duration-300 border-r border-border
+        shadow-xl lg:shadow-none
+        w-52 ${
+          isCollapsed ? "lg:w-[80px] lg:min-w-[80px]" : "lg:w-52 lg:min-w-52"
+        }
+        ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        } lg:translate-x-0 lg:relative backdrop-blur-[10px] bg-background/70 z-[101]
+      `}
+      aria-hidden={!isOpen}
     >
+      <button
+        onClick={toggleSidebar}
+        className="hidden lg:flex absolute top-14 -right-3.5 z-50 h-7 w-7 items-center justify-center rounded-full border border-border bg-background shadow-md hover:bg-accent transition-colors"
+      >
+        {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+      </button>
+
       <div className="p-4 py-2 border-b border-border">
-        <div className={`flex items-center transition-all duration-1000`}>
+        <div
+          className={`flex items-center transition-all duration-1000 ${
+            isCollapsed ? "lg:justify-center" : ""
+          }`}
+        >
           <div className="relative group">
             <img
               src="/logo.webp"
-              className="w-[65px] h-[65px] -my-[6.5px] rounded-xl transition-all duration-300"
+              className="min-w-[65px] h-[65px] -my-[6.5px] rounded-xl transition-all duration-300"
             />
           </div>
-          <div className="overflow-hidden">
+          <div
+            className={`overflow-hidden transition-all duration-300 ${
+              isCollapsed ? "lg:w-0 lg:opacity-0 lg:ml-0" : "w-auto opacity-100"
+            }`}
+          >
             <h1 className="text-sidebar-foreground font-medium text-xl font-libertinus transition-all duration-300 group-hover:text-white">
               Neura
             </h1>
@@ -75,62 +111,81 @@ const Sidebar = ({
             const isHovered = hoveredItem === item.path;
 
             return (
-              <div
-                key={item.path}
-                className={`transition-all duration-700`}
-                style={{
-                  transitionDelay: isLoaded ? `${index * 150 + 300}ms` : "0ms",
-                }}
-              >
-                <Link
-                  to={item.path}
-                  onMouseEnter={() => setHoveredItem(item.path)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  onClick={() => isMobile && onClose?.()}
-                  className={`
-                    relative flex items-center px-4 py-2.5 rounded-lg transition-colors group overflow-hidden border
-                    ${
-                      isActive
-                        ? "bg-[#262626] text-foreground shadow-lg transform scale-[1.03] border-border"
-                        : "text-sidebar-foreground bg-background border-border hover:bg-border"
-                    }
-                  `}
-                >
-                  {/* Animated wave indicator */}
+              <Tooltip key={item.path} delayDuration={0}>
+                <TooltipTrigger asChild>
                   <div
-                    className={`
-                    absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-white via-gray-300 to-gray-500 transition-all duration-500
-                    ${
-                      isActive
-                        ? "opacity-100 scale-y-100"
-                        : "opacity-0 scale-y-0"
-                    }
-                  `}
-                  />
-
-                  {/* Icon with subtle animation */}
-                  <div className="relative z-10">
-                    <item.icon
-                      className={`
-                      h-5 w-5 transition-all duration-5000 text-sidebar-foreground
-                    `}
-                    />
-                  </div>
-
-                  {/* Text with subtle hover effect */}
-                  <span
-                    className={`
-                    ml-4 font-medium font-libertinus transition-all duration-5000 relative z-10
-                    ${isActive ? "text-white font-bold tracking-wide" : ""}
-                  `}
+                    className={`transition-all duration-700`}
+                    style={{
+                      transitionDelay: isLoaded
+                        ? `${index * 150 + 300}ms`
+                        : "0ms",
+                    }}
                   >
-                    {item.tooltip}
-                  </span>
+                    <Link
+                      to={item.path}
+                      onMouseEnter={() => setHoveredItem(item.path)}
+                      onMouseLeave={() => setHoveredItem(null)}
+                      onClick={() => onClose?.()}
+                      className={`
+                        relative flex items-center ${
+                          isCollapsed ? "lg:justify-center lg:px-2" : "px-4"
+                        } py-2.5 rounded-lg transition-colors group overflow-hidden border
+                        ${
+                          isActive
+                            ? "bg-[#262626] text-foreground shadow-lg transform scale-[1.03] border-border"
+                            : "text-sidebar-foreground bg-background border-border hover:bg-border"
+                        }
+                      `}
+                    >
+                      {/* Animated wave indicator */}
+                      <div
+                        className={`
+                        absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-white via-gray-300 to-gray-500 transition-all duration-500
+                        ${
+                          isActive
+                            ? "opacity-100 scale-y-100"
+                            : "opacity-0 scale-y-0"
+                        }
+                      `}
+                      />
 
-                  {/* Exact navbar button hover animation */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
-                </Link>
-              </div>
+                      {/* Icon with subtle animation */}
+                      <div className="relative z-10">
+                        <item.icon
+                          className={`
+                          h-5 w-5 transition-all duration-5000 text-sidebar-foreground
+                        `}
+                        />
+                      </div>
+
+                      {/* Text with subtle hover effect */}
+                      <span
+                        className={`
+                        font-medium font-libertinus transition-all duration-300 relative z-10 whitespace-nowrap overflow-hidden
+                        ${isActive ? "text-white font-bold tracking-wide" : ""}
+                        ${
+                          isCollapsed
+                            ? "lg:w-0 lg:opacity-0 lg:ml-0"
+                            : "w-auto opacity-100 ml-4"
+                        }
+                      `}
+                      >
+                        {item.tooltip}
+                      </span>
+
+                      {/* Exact navbar button hover animation */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+                    </Link>
+                  </div>
+                </TooltipTrigger>
+                {isCollapsed && (
+                  <div className="hidden lg:block">
+                    <TooltipContent side="right">
+                      <p>{item.tooltip}</p>
+                    </TooltipContent>
+                  </div>
+                )}
+              </Tooltip>
             );
           })}
         </div>
@@ -138,7 +193,13 @@ const Sidebar = ({
 
       {/* User Profile */}
       <div className="p-4 border-t border-border">
-        <div className="flex items-center justify-center gap-6 ml-auto">
+        <div
+          className={`flex items-center ${
+            isCollapsed
+              ? "lg:flex-col lg:gap-4"
+              : "justify-center gap-6 ml-auto"
+          }`}
+        >
           {socials.map(({ name, link }, idx) => (
             <a
               href={link}

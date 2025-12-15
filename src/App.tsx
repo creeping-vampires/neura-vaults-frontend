@@ -41,7 +41,7 @@ const Loader = () => (
   <div className="h-screen flex flex-row relative">
     <Sidebar />
     <div
-      className={`w-full flex flex-col overflow-hidden transition-all duration-300`}
+      className={`flex-1 flex flex-col overflow-hidden transition-all duration-300`}
     >
       <Navbar />
       <main className="w-full flex-1 overflow-auto relative z-1">
