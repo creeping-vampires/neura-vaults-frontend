@@ -272,6 +272,7 @@ const Vaults = () => {
                               ?.allocations || []
                           )
                             .map((a) => a.protocol.toLowerCase())
+                            .filter((value, index, self) => self.indexOf(value) === index)
                             .map((reward, idx) => (
                               <div
                                 key={`${reward}-${idx}`}

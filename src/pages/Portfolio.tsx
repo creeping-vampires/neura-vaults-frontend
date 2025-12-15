@@ -300,6 +300,7 @@ const Portfolio = () => {
                                   ?.allocations || []
                               )
                                 .map((a) => a.protocol.toLowerCase())
+                                .filter((value, index, self) => self.indexOf(value) === index)
                                 .map((reward, i) => (
                                   <div key={i} className="relative group">
                                     <img
