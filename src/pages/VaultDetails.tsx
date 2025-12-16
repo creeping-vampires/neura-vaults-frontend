@@ -942,7 +942,7 @@ const VaultDetails = () => {
             </Tabs>
           </Card>
 
-          <Tabs defaultValue="details" className="w-full">
+          <Tabs defaultValue="terminal" className="w-full">
             <TabsList className="h-10 sm:h-12 bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/50 rounded-lg">
               <TabsTrigger
                 value="terminal"
@@ -971,7 +971,7 @@ const VaultDetails = () => {
             </TabsList>
 
             <TabsContent value="terminal" className="mt-4 sm:mt-6">
-                        <AgentTerminal className="mt-4" symbol={currentAssetSymbol} />
+              <AgentTerminal className="mt-4" symbol={currentAssetSymbol} />
             </TabsContent>
             <TabsContent value="details" className="mt-4 sm:mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[360px]">
