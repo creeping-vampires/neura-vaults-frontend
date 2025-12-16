@@ -11,12 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import {
   ArrowLeft,
   TrendingUp,
   DollarSign,
@@ -738,7 +732,7 @@ const VaultDetails = () => {
                               labelFormatter={(label) => `TVL`}
                             />
                             <Area
-                              type="linear"
+                              type="monotone"
                               dataKey="tvl"
                               stroke="#00d6c1"
                               strokeWidth={2.5}
@@ -831,7 +825,7 @@ const VaultDetails = () => {
                               }}
                             />
                             <Area
-                              type="linear"
+                              type="monotone"
                               dataKey="value"
                               stroke="#8884d8"
                               strokeWidth={2.5}
@@ -924,7 +918,7 @@ const VaultDetails = () => {
                               labelFormatter={(label) => `APY`}
                             />
                             <Area
-                              type="linear"
+                              type="monotone"
                               dataKey="apy"
                               stroke="#3B82F6"
                               strokeWidth={2.5}
@@ -948,251 +942,106 @@ const VaultDetails = () => {
             </Tabs>
           </Card>
 
-          <AgentTerminal className="mt-4" symbol={currentAssetSymbol} />
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="h-10 sm:h-12 bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/50 rounded-lg">
+              <TabsTrigger
+                value="terminal"
+                className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+              >
+                AI Terminal
+              </TabsTrigger>
+              <TabsTrigger
+                value="details"
+                className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+              >
+                Details
+              </TabsTrigger>
+              <TabsTrigger
+                value="pools"
+                className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+              >
+                Whitelisted Pools
+              </TabsTrigger>
+              <TabsTrigger
+                value="composition"
+                className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+              >
+                Composition
+              </TabsTrigger>
+            </TabsList>
 
-          <Accordion type="single" collapsible className="w-full space-y-3">
-            <AccordionItem value="details" className="border-0">
-              <AccordionTrigger className="bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-sm border border-border rounded-lg px-6 hover:no-underline hover:bg-card/70 data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
-                <span className="text-[#e4dfcb] font-bold sm:text-lg">
-                  About this Vault
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="border-x border-b border-border/50 rounded-b-lg bg-gradient-to-br from-card/30 to-background/30 px-6 pt-2">
-                <div className="grid grid-cols-1 lg:grid-cols-1 gap-4 sm:gap-6">
-                  <div className="bg-transparent border-0 shadow-none">
-                    <div className="p-0">
-                      <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
-                        Autonomous Liquidity {currentAssetSymbol} is a tokenized
-                        AI yield optimization strategy that maximizes
-                        risk-adjusted returns on stablecoin investments across
-                        numerous DeFi protocols. By continuously scanning the
-                        DeFi.
-                      </p>
-                      <div className="pt-4">
-                        <h4 className="text-foreground font-medium text-sm mb-2">
-                          Allowed Protocols
-                        </h4>
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-muted-foreground">
-                              Felix, Hypurrfi & Hyperlend
-                            </span>
-                          </div>
+            <TabsContent value="terminal" className="mt-4 sm:mt-6">
+                        <AgentTerminal className="mt-4" symbol={currentAssetSymbol} />
+            </TabsContent>
+            <TabsContent value="details" className="mt-4 sm:mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[360px]">
+                <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+                  <CardHeader className="pb-3 sm:pb-6">
+                    <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
+                      About this Vault
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 sm:space-y-4 pt-0">
+                    <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                      Autonomous Liquidity {currentAssetSymbol} is a tokenized
+                      AI yield optimization strategy that maximizes
+                      risk-adjusted returns on stablecoin investments across
+                      numerous DeFi protocols. By continuously scanning the
+                      DeFi.
+                    </p>
+
+                    {/* <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs sm:text-sm">
+                          Total Pending Deposits
+                        </span>
+                        <span className="text-foreground font-medium text-xs sm:text-sm">
+                          {vaultData.pendingDepositAssets?.toFixed(4) || "0.00"}{" "}
+                          {currentAssetSymbol}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs sm:text-sm">
+                          Total Pending Withdrawals
+                        </span>
+                        <span className="text-foreground font-medium text-xs sm:text-sm">
+                          {vaultData.totalRequestedAssets?.toFixed(4) || "0.00"}{" "}
+                          {currentAssetSymbol}
+                        </span>
+                      </div>
+                    </div> */}
+
+                    <div className="pt-3 sm:pt-4">
+                      <h4 className="text-foreground font-medium mb-2 sm:mb-3 text-sm">
+                        Allowed Protocols
+                      </h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs sm:text-sm">
+                          <span className="text-muted-foreground">
+                            Felix, Hypurrfi & Hyperlend
+                          </span>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
+                  </CardContent>
+                </Card>
 
-            <AccordionItem value="pools" className="border-0">
-              <AccordionTrigger className="bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-sm border border-border rounded-lg px-6 hover:no-underline hover:bg-card/70 data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
-                <span className="text-[#e4dfcb] font-bold sm:text-lg">
-                  Whitelisted Pools
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="border-x border-b border-border/50 rounded-b-lg bg-gradient-to-br from-card/30 to-background/30 px-6 pt-4">
-                <div className="bg-transparent border-0 shadow-none">
-                  <div className="p-0">
-                    <div className="space-y-4">
-                      {(() => {
-                        const currentVaultData = vaultId
-                          ? getVaultDataByAddress(vaultId)
-                          : null;
-                        const allocations = currentVaultData?.allocations || [];
-
-                        return allocations.length > 0 ? (
-                          allocations.map((allocation, index) => (
-                            <div
-                              key={index}
-                              className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border"
-                            >
-                              <div className="flex items-center space-x-3">
-                                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-                                  <img
-                                    src={`/pools/${allocation.protocol.toLowerCase()}.svg`}
-                                    alt={allocation.protocol}
-                                    className="min-w-9 h-9 rounded-full border transform hover:scale-110 transition-transform duration-200 cursor-pointer"
-                                    onError={(e) => {
-                                      const target =
-                                        e.target as HTMLImageElement;
-                                      target.style.display = "none";
-                                      target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${allocation.protocol
-                                        .charAt(0)
-                                        .toUpperCase()}</div>`;
-                                    }}
-                                  />
-                                </div>
-                                <div>
-                                  <p className="text-foreground font-medium">
-                                    {allocation.name}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-3">
-                                <div className="text-right">
-                                  <p className="text-foreground font-medium">
-                                    {allocation.currentAPY.toFixed(2)}% APY
-                                  </p>
-                                  <p className="text-muted-foreground text-sm">
-                                    Current Rate
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-center py-8">
-                            <p className="text-muted-foreground">
-                              No protocol allocations found for this vault.
-                            </p>
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="composition" className="border-0">
-              <AccordionTrigger className="bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-sm border border-border rounded-lg px-6 hover:no-underline hover:bg-card/70 data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
-                <span className="text-[#e4dfcb] font-bold sm:text-lg">
-                  {" "}
-                  Portfolio Composition
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="border-x border-b border-border/50 rounded-b-lg bg-gradient-to-br from-card/30 to-background/30 px-6 pt-4">
-                <div className="bg-transparent border-0 shadow-none">
-                  <div className="p-0">
-                    {allocationsLoading ? (
-                      <div className="flex items-center justify-center h-[300px]">
-                        <Loader2 className="h-8 w-8 animate-spin" />
-                      </div>
-                    ) : allocationsError ? (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          {allocationsError}
-                        </p>
-                      </div>
-                    ) : allocationsData?.data[0]?.allocations &&
-                      allocationsData.data[0].allocations.length > 0 ? (
-                      <>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-                          <div>
-                            <h3 className="text-foreground font-medium mb-4">
-                              By Protocol
-                            </h3>
-                            <div className="h-[250px]">
-                              <ChartContainer
-                                config={chartConfig}
-                                className="w-full h-full"
-                              >
-                                <RechartsPieChart>
-                                  <ChartTooltip
-                                    content={<ChartTooltipContent />}
-                                  />
-                                  <Pie
-                                    data={dynamicPoolData}
-                                    dataKey="value"
-                                    nameKey="name"
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={60}
-                                    outerRadius={120}
-                                  >
-                                    {dynamicPoolData.map((entry, index) => (
-                                      <Cell
-                                        key={`cell-${index}`}
-                                        fill={entry.color}
-                                      />
-                                    ))}
-                                  </Pie>
-                                </RechartsPieChart>
-                              </ChartContainer>
-                            </div>
-                          </div>
-                          <div>
-                            <h3 className="text-foreground font-medium mb-4">
-                              Allocation Details
-                            </h3>
-                            <div className="space-y-3">
-                              {dynamicPoolData.map((item, index) => (
-                                <div
-                                  key={index}
-                                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border"
-                                >
-                                  <div className="flex items-center space-x-3">
-                                    <img
-                                      src={
-                                        item.name === "safe"
-                                          ? "/logo.webp"
-                                          : `/pools/${item.name.toLowerCase()}.svg`
-                                      }
-                                      alt={item.name}
-                                      className="min-w-9 h-9 rounded-full border transform hover:scale-110 transition-transform duration-200 cursor-pointer"
-                                      onError={(e) => {
-                                        const target =
-                                          e.target as HTMLImageElement;
-                                        target.style.display = "none";
-                                        target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${item.name
-                                          .charAt(0)
-                                          .toUpperCase()}</div>`;
-                                      }}
-                                    />
-                                    <div>
-                                      <span className="text-foreground font-medium block capitalize">
-                                        {item.name === "safe"
-                                          ? "Safe (Idle)"
-                                          : item.name === "hypurrFinance"
-                                          ? "HypurrFi"
-                                          : item.name}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        Balance: ${item.tvl.toFixed(2)}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <span className="text-foreground font-medium block">
-                                      {item.value}%
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          No allocation data available.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="activity" className="border-0">
-              <AccordionTrigger className="bg-gradient-to-br from-card/50 to-background/50 backdrop-blur-sm border border-border rounded-lg px-6 hover:no-underline hover:bg-card/70 data-[state=open]:rounded-b-none data-[state=open]:border-b-0">
-                <span className="text-[#e4dfcb] font-bold sm:text-lg">
-                  Vault Activity
-                </span>
-              </AccordionTrigger>
-              <AccordionContent className="min-h-[300px]">
                 <Suspense
                   fallback={
-                    <div className="bg-transparent border-0 shadow-none">
-                      <div className="p-0">
+                    <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+                      <CardHeader className="pb-3 sm:pb-6">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
+                            Vault Activity
+                          </CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
                         <div className="text-muted-foreground text-sm text-center py-4">
                           Loading activities...
                         </div>
-                      </div>
-                    </div>
+                      </CardContent>
+                    </Card>
                   }
                 >
                   <VaultActivity
@@ -1200,9 +1049,197 @@ const VaultDetails = () => {
                     currentVault={currentAssetSymbol}
                   />
                 </Suspense>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="pools" className="mt-4 sm:mt-6">
+              <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
+                    Active Pools
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {(() => {
+                      const currentVaultData = vaultId
+                        ? getVaultDataByAddress(vaultId)
+                        : null;
+                      const allocations = currentVaultData?.allocations || [];
+
+                      return allocations.length > 0 ? (
+                        allocations.map((allocation, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between  p-3 bg-muted/50 rounded-lg border border-border/50"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
+                                <img
+                                  src={`/pools/${allocation.protocol.toLowerCase()}.svg`}
+                                  alt={allocation.protocol}
+                                  className="min-w-9 h-9 rounded-full border transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = "none";
+                                    target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${allocation.protocol
+                                      .charAt(0)
+                                      .toUpperCase()}</div>`;
+                                  }}
+                                />
+                              </div>
+                              <div>
+                                <p className="text-foreground font-medium">
+                                  {allocation.name}
+                                </p>
+                                {/* <p className="text-muted-foreground text-sm">
+                                  {allocation.protocol}
+                                </p> */}
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-3">
+                              <div className="text-right">
+                                <p className="text-foreground font-medium">
+                                  {allocation.currentAPY.toFixed(2)}% APY
+                                </p>
+                                <p className="text-muted-foreground text-sm">
+                                  Current Rate
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">
+                            No protocol allocations found for this vault.
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="composition" className="mt-4 sm:mt-6">
+              <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+                <CardHeader>
+                  <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
+                    Portfolio Composition
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {allocationsLoading ? (
+                    <div className="flex items-center justify-center h-[300px]">
+                      <Loader2 className="h-8 w-8 animate-spin" />
+                    </div>
+                  ) : allocationsError ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        {allocationsError}
+                      </p>
+                    </div>
+                  ) : allocationsData?.data[0]?.allocations &&
+                    allocationsData.data[0].allocations.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+                        <div>
+                          <h3 className="text-foreground font-medium mb-4">
+                            By Protocol
+                          </h3>
+                          <div className="h-[250px]">
+                            <ChartContainer
+                              config={chartConfig}
+                              className="w-full h-full"
+                            >
+                              <RechartsPieChart>
+                                <ChartTooltip
+                                  content={<ChartTooltipContent />}
+                                />
+                                <Pie
+                                  data={dynamicPoolData}
+                                  dataKey="value"
+                                  nameKey="name"
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={120}
+                                >
+                                  {dynamicPoolData.map((entry, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={entry.color}
+                                    />
+                                  ))}
+                                </Pie>
+                              </RechartsPieChart>
+                            </ChartContainer>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-foreground font-medium mb-4">
+                            Allocation Details
+                          </h3>
+                          <div className="space-y-3">
+                            {dynamicPoolData.map((item, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                              >
+                                <div className="flex items-center space-x-3">
+                                  <img
+                                    src={
+                                      item.name === "safe"
+                                        ? "/logo.webp"
+                                        : `/pools/${item.name.toLowerCase()}.svg`
+                                    }
+                                    alt={item.name}
+                                    className="min-w-9 h-9 rounded-full border transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                    onError={(e) => {
+                                      const target =
+                                        e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                      target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${item.name
+                                        .charAt(0)
+                                        .toUpperCase()}</div>`;
+                                    }}
+                                  />
+                                  <div>
+                                    <span className="text-foreground font-medium block capitalize">
+                                      {item.name === "safe"
+                                        ? "Safe (Idle)"
+                                        : item.name === "hypurrFinance"
+                                        ? "HypurrFi"
+                                        : item.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      Balance: ${item.tvl.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-foreground font-medium block">
+                                    {item.value}%
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">
+                        No allocation data available.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="w-full lg:w-80 flex-shrink-0 space-y-4 sm:space-y-6">

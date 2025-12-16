@@ -64,9 +64,9 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
   };
 
   return (
-    <div className="border-border shadow-xl">
+    <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
       <div className="pt-0">
-        <div className="space-y-3 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent px-6 py-3">
+        <div className="space-y-3 max-h-[360px] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent px-6 py-6">
           {activitiesLoading ? (
             <div className="text-muted-foreground text-sm text-center py-4">
               Loading activities...
@@ -166,7 +166,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </Card>
   );
 };
 

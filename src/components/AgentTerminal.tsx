@@ -63,7 +63,7 @@ const AgentTerminal = ({
   return (
     <Card className="w-full px-0 rounded-xl border border-border bg-gradient-to-br from-card/50 to-background/50 min-h-[360px] text-xs sm:text-sm shadow-xl relative overflow-hidden">
       <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/50 backdrop-blur-md">
-        <span className="text-2xl font-bold tracking-wider text-foreground">
+        <span className="text-2xl font-bold tracking-wider text-[#e4dfcb]">
           COMING SOON
         </span>
       </div>
