@@ -116,6 +116,18 @@ function App() {
     <PrivyProvider
       appId={privyAppId}
       config={{
+        appearance: {
+          accentColor: "#e4dfcb",
+          theme: "#0a0a0a",
+          logo: "https://app.neuravaults.xyz/logo.webp",
+          walletChainType: "ethereum-only",
+          walletList: [
+            "rabby_wallet",
+            "metamask",
+            "wallet_connect",
+            "detected_ethereum_wallets",
+          ],
+        },
         defaultChain: hyperliquid,
         supportedChains: [hyperliquid],
         loginMethods: ["wallet"],

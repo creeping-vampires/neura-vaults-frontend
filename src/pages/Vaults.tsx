@@ -187,9 +187,6 @@ const Vaults = () => {
                     <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                       Vault
                     </th>
-                    <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
-                      Asset
-                    </th>
                     <th className="text-center text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                       TVL
                     </th>
@@ -198,9 +195,6 @@ const Vaults = () => {
                     </th>
                     <th className="text-center text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                       REWARDS
-                    </th>
-                    <th className="text-right text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
-                      {/* Actions */}
                     </th>
                   </tr>
                 </thead>
@@ -212,20 +206,19 @@ const Vaults = () => {
                       onClick={() => handleVaultClick(market)}
                     >
                       <td className="py-4">
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={`/vaults/${market.symbol}.png`}
+                            alt={market.name}
+                            className="w-10 h-10 rounded-full border border-white/50 transform transition-transform duration-200"
+                          />
                           <div>
-                            <div className="font-medium text-foreground">
+                            <p className="text-foreground font-semibold text-sm">
                               {market.name}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4">
-                        <div className="flex items-center">
-                          <div>
-                            <div className="font-medium text-muted-foreground">
+                            </p>
+                            <p className="text-muted-foreground text-xs">
                               {market.symbol}
-                            </div>
+                            </p>
                           </div>
                         </div>
                       </td>
@@ -239,7 +232,7 @@ const Vaults = () => {
                       </td>
                       <td className="text-primary font-semibold py-6 flex items-center justify-center gap-1 relative group">
                         {get7APY().toFixed(2)}%
-                        <div className="absolute top-12 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                        <div className="absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                           <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                           <div className="flex items-center gap-1">
                             <div className="font-medium text-muted-foreground">
@@ -272,7 +265,10 @@ const Vaults = () => {
                               ?.allocations || []
                           )
                             .map((a) => a.protocol.toLowerCase())
-                            .filter((value, index, self) => self.indexOf(value) === index)
+                            .filter(
+                              (value, index, self) =>
+                                self.indexOf(value) === index
+                            )
                             .map((reward, idx) => (
                               <div
                                 key={`${reward}-${idx}`}
