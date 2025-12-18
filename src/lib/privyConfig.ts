@@ -21,22 +21,27 @@ export const hyperliquid = defineChain({
 
 const QUICKNODE_RPC_URLS = [
   "https://fabled-palpable-frost.hype-mainnet.quiknode.pro/84574a9f2fa13a080e64a67217155a3946894216/evm/",
-  "https://special-chaotic-shadow.hype-mainnet.quiknode.pro/57a587f805ee0af8b921820701ae8adfa798d775/evm",
-  "https://falling-side-knowledge.hype-mainnet.quiknode.pro/4343317b096c30f4a761052426a49bde58fbb339/evm",
-  "https://broken-sleek-wave.hype-mainnet.quiknode.pro/2fbd820d764bee7768e86104db34da48c9b8157e/evm",
-  "https://quiet-sleek-scion.hype-mainnet.quiknode.pro/70b9a3f4fed3a0792c62f6709f63c36b8a494f1b/evm",
 ];
 
-const PUBLIC_RPC_URL = "https://rpc.hyperliquid.xyz/evm";
+const PUBLIC_RPC_URL = [
+  "https://hyperliquid.drpc.org",
+  "https://rpc.hyperliquid.xyz/evm",
+  "https://rpc.hypurrscan.io",
+  "https://rpc.hyperlend.finance",
+  "https://hyperliquid-json-rpc.stakely.io",
+  "https://hyperliquid.rpc.blxrbdn.com",
+];
 
 export const publicClient = createPublicClient({
   chain: hyperliquid,
   transport: fallback([
+    http(PUBLIC_RPC_URL[0], { batch: true }),
+    http(PUBLIC_RPC_URL[1], { batch: true }),
+    http(PUBLIC_RPC_URL[2], { batch: true }),
+    http(PUBLIC_RPC_URL[3], { batch: true }),
+    http(PUBLIC_RPC_URL[4], { batch: true }),
+    http(PUBLIC_RPC_URL[5], { batch: true }),
     http(QUICKNODE_RPC_URLS[0], { batch: true }),
-    http(PUBLIC_RPC_URL, { batch: true }),
-    http(QUICKNODE_RPC_URLS[1], { batch: true }),
-    http(QUICKNODE_RPC_URLS[2], { batch: true }),
-    http(QUICKNODE_RPC_URLS[3], { batch: true }),
   ]),
 });
 
@@ -44,31 +49,43 @@ export const wagmiConfig = createConfig({
   chains: [hyperliquid],
   transports: {
     [hyperliquid.id]: fallback([
+      http(PUBLIC_RPC_URL[0], {
+        batch: {
+          batchSize: 10,
+          wait: 50,
+        },
+      }),
+      http(PUBLIC_RPC_URL[1], {
+        batch: {
+          batchSize: 10,
+          wait: 50,
+        },
+      }),
+      http(PUBLIC_RPC_URL[2], {
+        batch: {
+          batchSize: 10,
+          wait: 50,
+        },
+      }),
+      http(PUBLIC_RPC_URL[3], {
+        batch: {
+          batchSize: 10,
+          wait: 50,
+        },
+      }),
+      http(PUBLIC_RPC_URL[4], {
+        batch: {
+          batchSize: 10,
+          wait: 50,
+        },
+      }),
+      http(PUBLIC_RPC_URL[5], {
+        batch: {
+          batchSize: 10,
+          wait: 50,
+        },
+      }),
       http(QUICKNODE_RPC_URLS[0], {
-        batch: {
-          batchSize: 10,
-          wait: 50,
-        },
-      }),
-      http(PUBLIC_RPC_URL, {
-        batch: {
-          batchSize: 10,
-          wait: 50,
-        },
-      }),
-      http(QUICKNODE_RPC_URLS[1], {
-        batch: {
-          batchSize: 10,
-          wait: 50,
-        },
-      }),
-      http(QUICKNODE_RPC_URLS[2], {
-        batch: {
-          batchSize: 10,
-          wait: 50,
-        },
-      }),
-      http(QUICKNODE_RPC_URLS[3], {
         batch: {
           batchSize: 10,
           wait: 50,

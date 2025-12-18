@@ -65,15 +65,8 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
 
   return (
     <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
-      <CardHeader className="pb-3 sm:pb-6">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
-            Vault Activity
-          </CardTitle>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="space-y-3 max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+      <div className="pt-0">
+        <div className="space-y-3 max-h-[360px] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent px-6 py-6">
           {activitiesLoading ? (
             <div className="text-muted-foreground text-sm text-center py-4">
               Loading activities...
@@ -109,7 +102,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
                 return (
                   <div
                     key={`${i}-${activity.blockNumber}-${activity.txHash}`}
-                    className="flex items-center justify-between py-1 sm:py-3 border-b border-border/50 last:border-b-0"
+                    className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border"
                   >
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-0.5">
@@ -172,7 +165,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
               })
           )}
         </div>
-      </CardContent>
+      </div>
     </Card>
   );
 };

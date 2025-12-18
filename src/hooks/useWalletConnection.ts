@@ -34,7 +34,7 @@ function isProviderConflictError(error: any): boolean {
 
 export function useWalletConnection() {
   const { toast } = useToast();
-  const { connectWallet } = usePrivy();
+  const { login } = usePrivy();
   const [isConnecting, setIsConnecting] = useState(false);
 
   const connectWithFallback = useCallback(
@@ -47,7 +47,7 @@ export function useWalletConnection() {
         }
         logConnectionEvent({ type: "attempt", providerName });
 
-        await connectWallet();
+        await login();
         logConnectionEvent({ type: "success", providerName });
       } catch (error: any) {
         logConnectionEvent({
@@ -74,7 +74,7 @@ export function useWalletConnection() {
         setIsConnecting(false);
       }
     },
-    [connectWallet]
+    [login]
   );
 
   return { isConnecting, connectWithFallback };

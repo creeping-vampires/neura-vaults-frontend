@@ -8,6 +8,7 @@ import {
   PendingDepositsResponse,
   PendingWithdrawalsResponse,
   VolumeSummaryResponse,
+  PointsResponse,
 } from "./config";
 
 const yieldMonitorService = {
@@ -106,6 +107,17 @@ const yieldMonitorService = {
       return data;
     } catch (error) {
       console.error("Error fetching pending withdrawal amount:", error);
+      throw error;
+    }
+  },
+  getPointsByProtocol: async (address: string): Promise<PointsResponse> => {
+    try {
+      const data = await apiGet<PointsResponse>(
+        `${API_ROUTES.GET_POINTS_BY_PROTOCOL}/${address}`
+      );
+      return data;
+    } catch (error) {
+      console.error("Error fetching points by protocol:", error);
       throw error;
     }
   },

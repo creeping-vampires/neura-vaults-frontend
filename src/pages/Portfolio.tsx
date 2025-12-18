@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { DollarSign } from "lucide-react";
+import { DollarSign, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useVaultContract } from "@/hooks/useVaultContract";
 import { useAccount } from "wagmi";
@@ -13,12 +13,23 @@ import { useWalletConnection } from "@/hooks/useWalletConnection";
 const Portfolio = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("positions");
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  const toggleRow = (vaultAddress: string) => {
+    setExpandedRow(expandedRow === vaultAddress ? null : vaultAddress);
+  };
 
   const { getAllVaults, getTotalTVL, getTotalUserDeposits, refreshAllData } =
     useVaultContract();
 
-  const { get24APY, get7APY, get30APY, getVaultDataByAddress } =
-    useVaultApi();
+  const {
+    get24APY,
+    get7APY,
+    get30APY,
+    getVaultDataByAddress,
+    userPoints,
+    fetchUserPoints,
+  } = useVaultApi();
 
   const [portfolioData, setPortfolioData] = useState({
     totalBalance: 0,
@@ -62,7 +73,7 @@ const Portfolio = () => {
       })
       .map((vault) => ({
         vaultAddress: vault.address,
-        asset: vault.symbol,
+        symbol: vault.symbol,
         name: vault.name || `ai${vault.symbol}`,
         balance: vault.data?.userShares || 0,
         value: vault.data?.userDeposits || 0,
@@ -84,8 +95,9 @@ const Portfolio = () => {
   useEffect(() => {
     if (isConnected && userAddress) {
       refreshAllData();
+      fetchUserPoints(userAddress);
     }
-  }, [isConnected, userAddress, refreshAllData]);
+  }, [isConnected, userAddress, refreshAllData, fetchUserPoints]);
 
   if (!isConnected) {
     return (
@@ -111,7 +123,7 @@ const Portfolio = () => {
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Portfolio Overview Card */}
-      <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl select-none">
+      <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl select-none relative z-10">
         <CardContent className="p-4 sm:p-6 relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 w-full">
@@ -137,7 +149,7 @@ const Portfolio = () => {
                 </div>
                 <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
                   {get7APY().toFixed(2)}%
-                  <div className="absolute top-6 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                  <div className="absolute top-8 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                     <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                     <div className="flex items-center gap-1">
                       <div className="font-medium text-muted-foreground">
@@ -209,122 +221,216 @@ const Portfolio = () => {
                   </div>
                 </div>
               ) : (
-                <div className="overflow-x-auto sm:overflow-visible">
-                  <table className="w-full">
+                <div className="relative overflow-x-auto sm:overflow-visible">
+                  <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-border">
                         <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           Vault
                         </th>
-                        <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
+                        <th className="text-center text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           Shares
                         </th>
-                        <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
-                          Value
-                        </th>
-                        <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
+                        <th className="text-center text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           APY
                         </th>
-                        <th className="text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
+                        <th className="text-center text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           REWARDS
+                        </th>
+                        <th className="w-[200px] pl-10 text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
+                          CTA
                         </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {positions.map((position, index) => (
-                        <tr
-                          key={index}
-                          className="border-b border-border hover:bg-accent/30 transition-colors cursor-pointer"
-                          onClick={() => handlePositionClick(position)}
-                        >
-                          <td className="py-4">
-                            <div className="flex items-center">
-                              <div className="w-10 h-10 bg-muted rounded-full mr-3 flex items-center justify-center text-lg">
-                                {position.icon}
-                              </div>
-                              <div>
-                                <p className="text-foreground font-semibold text-sm">
-                                  {position.name}
-                                </p>
-                                <p className="text-muted-foreground text-xs">
-                                  {position.asset}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="text-foreground font-semibold py-4">
-                            {position?.balance?.toLocaleString()}
-                          </td>
-                          <td className="text-foreground font-semibold py-4">
-                            $
-                            {position?.value?.toLocaleString(undefined, {
-                              maximumFractionDigits: 2,
-                            })}
-                          </td>
-                          <td className="text-primary font-semibold py-6 gap-1 relative group">
-                            {get7APY().toFixed(2)}%
-                            <div className="absolute top-12 left-5 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                              <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
-                              <div className="flex items-center gap-1">
-                                <div className="font-medium text-muted-foreground">
-                                  1-Day APY
+                      {positions.map((position) => {
+                        const isExpanded =
+                          expandedRow === position.vaultAddress;
+                        const allocations =
+                          getVaultDataByAddress(position.vaultAddress)
+                            ?.allocations || [];
+                        const uniqueProtocols = Array.from(
+                          new Set(
+                            allocations.map((a) => a.protocol.toLowerCase())
+                          )
+                        );
+
+                        return (
+                          <React.Fragment key={position.vaultAddress}>
+                            <tr
+                              className={`border-b border-border hover:bg-accent/30 cursor-pointer transition-colors select-none ${
+                                isExpanded ? "bg-accent/30" : ""
+                              }`}
+                              onClick={() => toggleRow(position.vaultAddress)}
+                            >
+                              <td className="py-4">
+                                <div className="flex items-center gap-3">
+                                  <img
+                                    src={`/vaults/${position.symbol}.png`}
+                                    alt={position.name}
+                                    className="w-10 h-10 rounded-full border border-white/50 transform transition-transform duration-200"
+                                  />
+                                  <div>
+                                    <p className="text-foreground font-semibold text-sm">
+                                      {position.name}
+                                    </p>
+                                    <p className="text-muted-foreground text-xs">
+                                      {position.symbol}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="font-medium text-foreground ml-auto">
-                                  :
-                                </div>
-                                <div className="font-medium text-foreground ml-1">
-                                  {get24APY()
-                                    ? `${get24APY().toFixed(2)}%`
-                                    : "-"}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <div className="font-medium text-muted-foreground">
-                                  30-Day APY
-                                </div>
-                                <div className="font-medium text-foreground ml-auto">
-                                  :
-                                </div>
-                                <div className="font-medium text-foreground ml-1">
-                                  {get30APY()
-                                    ? `${get30APY().toFixed(2)}%`
-                                    : "-"}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 sm:w-32">
-                            <div className="flex space-x-2">
-                              {(
-                                getVaultDataByAddress(position.vaultAddress)
-                                  ?.allocations || []
-                              )
-                                .map((a) => a.protocol.toLowerCase())
-                                .map((reward, i) => (
-                                  <div key={i} className="relative group">
-                                    <img
-                                      src={`/pools/${reward}.svg`}
-                                      alt={reward}
-                                      className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
-                                      onError={(e) => {
-                                        const target =
-                                          e.target as HTMLImageElement;
-                                        target.style.display = "none";
-                                        target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${reward
-                                          .charAt(0)
-                                          .toUpperCase()}</div>`;
-                                      }}
-                                    />
-                                    <div className="absolute border border-white/30 top-8 uppercase left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                      {reward}
+                              </td>
+                              <td className="text-center py-4">
+                                <span>
+                                  ${position?.balance?.toLocaleString()}
+                                </span>
+                              </td>
+                              <td className="text-primary font-semibold py-6 flex items-center justify-center gap-1 relative group">
+                                {get7APY().toFixed(2)}%
+                                <div className="absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                                  <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                                  <div className="flex items-center gap-1">
+                                    <div className="font-medium text-muted-foreground">
+                                      1-Day APY
+                                    </div>
+                                    <div className="font-medium text-foreground ml-auto">
+                                      :
+                                    </div>
+                                    <div className="font-medium text-foreground ml-1">
+                                      {get24APY()
+                                        ? `${get24APY().toFixed(2)}%`
+                                        : "-"}
                                     </div>
                                   </div>
-                                ))}
-                            </div>
-                          </td>
-                          <td className="text-right py-4"></td>
-                        </tr>
-                      ))}
+                                  <div className="flex items-center gap-1">
+                                    <div className="font-medium text-muted-foreground">
+                                      30-Day APY
+                                    </div>
+                                    <div className="font-medium text-foreground ml-auto">
+                                      :
+                                    </div>
+                                    <div className="font-medium text-foreground ml-1">
+                                      {get30APY()
+                                        ? `${get30APY().toFixed(2)}%`
+                                        : "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="text-center py-4">
+                                <div className="flex items-center justify-center gap-1">
+                                  {uniqueProtocols.map((reward, idx) => (
+                                    <div
+                                      key={`${reward}-${idx}`}
+                                      className="relative group"
+                                    >
+                                      <img
+                                        src={`/pools/${reward}.svg`}
+                                        alt={reward}
+                                        className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                        onError={(e) => {
+                                          const target =
+                                            e.target as HTMLImageElement;
+                                          target.style.display = "none";
+                                          target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${reward
+                                            .charAt(0)
+                                            .toUpperCase()}</div>`;
+                                        }}
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="text-center py-4 flex justify-between items-center gap-3 ml-auto">
+                                <Button
+                                  variant="wallet"
+                                  className="m-0 w-auto"
+                                  onClick={() => handlePositionClick(position)}
+                                >
+                                  View Details
+                                </Button>
+                                {isExpanded ? (
+                                  <ChevronUp className="w-6 h-6 mx-auto text-muted-foreground" />
+                                ) : (
+                                  <ChevronDown className="w-6 h-6 mx-auto text-muted-foreground" />
+                                )}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="bg-accent/10 border-b border-border select-none">
+                                <td colSpan={5} className="p-0">
+                                  <div className="w-[60%] mx-auto p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                    <div className="w-full">
+                                      <div>
+                                        <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                                          Allocations & Rewards
+                                        </h4>
+                                        <div className="space-y-3">
+                                          {uniqueProtocols.map(
+                                            (protocol, idx) => {
+                                              const protocolKey =
+                                                protocol.toUpperCase();
+                                              const protocolPoints =
+                                                userPoints?.pointsByProtocol?.[
+                                                  protocolKey
+                                                ];
+                                              const hasPoints =
+                                                protocolPoints &&
+                                                Number(protocolPoints.points) >
+                                                  0;
+
+                                              return (
+                                                <div
+                                                  key={idx}
+                                                  className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border"
+                                                >
+                                                  <div className="flex items-center gap-3">
+                                                    <img
+                                                      src={`/pools/${protocol}.svg`}
+                                                      alt={protocol}
+                                                      className="w-6 h-6 rounded-full"
+                                                      onError={(e) => {
+                                                        const target =
+                                                          e.target as HTMLImageElement;
+                                                        target.style.display =
+                                                          "none";
+                                                        target.parentElement!.innerHTML = `<div class="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-xs">${protocol
+                                                          .charAt(0)
+                                                          .toUpperCase()}</div>`;
+                                                      }}
+                                                    />
+                                                    <span className="uppercase font-medium text-foreground">
+                                                      {protocol}
+                                                    </span>
+                                                  </div>
+                                                  <div className="text-sm">
+                                                    {hasPoints ? (
+                                                      <span className="text-primary font-medium">
+                                                        {Number(
+                                                          protocolPoints.points
+                                                        ).toFixed(6)}{" "}
+                                                        Points
+                                                      </span>
+                                                    ) : (
+                                                      <span className="text-muted-foreground">
+                                                        Yield Only
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              );
+                                            }
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

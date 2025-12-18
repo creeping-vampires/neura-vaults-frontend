@@ -18,6 +18,7 @@ import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useDisconnect } from "wagmi";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
+import { usePrivy } from "@privy-io/react-auth";
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -28,6 +29,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { disconnect } = useDisconnect();
+  const { logout } = usePrivy();
 
   const { address: userAddress } = useAccount();
 
@@ -126,6 +128,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const handleLogout = async () => {
     try {
       await disconnect();
+      await logout();
       try {
         const { logConnectionEvent } = await import("@/services/walletService");
         logConnectionEvent({ type: "disconnect" });

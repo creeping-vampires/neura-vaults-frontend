@@ -49,6 +49,7 @@ import { useAccount } from "wagmi";
 
 const VaultActivity = React.lazy(() => import("@/components/VaultActivity"));
 import VaultActionPanel from "@/components/VaultActionPanel";
+import AgentTerminal from "@/components/AgentTerminal";
 import { formatUnits } from "viem";
 
 const chartConfig = {
@@ -336,7 +337,7 @@ const VaultDetails = () => {
   }, [allocationsData, vaultData?.assetDecimals]);
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 sm:pt-4 max-w-7xl relative">
+    <div className="p-4 sm:p-6 sm:pt-4 relative">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
         <div className="flex items-center space-x-3 sm:space-x-4">
           <Button
@@ -941,8 +942,14 @@ const VaultDetails = () => {
             </Tabs>
           </Card>
 
-          <Tabs defaultValue="details" className="w-full">
+          <Tabs defaultValue="terminal" className="w-full">
             <TabsList className="h-10 sm:h-12 bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/50 rounded-lg">
+              <TabsTrigger
+                value="terminal"
+                className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
+              >
+                AI Terminal
+              </TabsTrigger>
               <TabsTrigger
                 value="details"
                 className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
@@ -963,8 +970,11 @@ const VaultDetails = () => {
               </TabsTrigger>
             </TabsList>
 
+            <TabsContent value="terminal" className="mt-4 sm:mt-6">
+              <AgentTerminal className="mt-4" symbol={currentAssetSymbol} />
+            </TabsContent>
             <TabsContent value="details" className="mt-4 sm:mt-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[360px]">
                 <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                   <CardHeader className="pb-3 sm:pb-6">
                     <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
@@ -1050,7 +1060,7 @@ const VaultDetails = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {(() => {
                       const currentVaultData = vaultId
                         ? getVaultDataByAddress(vaultId)
@@ -1061,7 +1071,7 @@ const VaultDetails = () => {
                         allocations.map((allocation, index) => (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-4 bg-gradient-to-r from-card/30 to-background/30 rounded-lg border border-border/50"
+                            className="flex items-center justify-between  p-3 bg-muted/50 rounded-lg border border-border/50"
                           >
                             <div className="flex items-center space-x-3">
                               <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
