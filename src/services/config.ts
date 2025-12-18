@@ -1,10 +1,15 @@
 import axios, { AxiosInstance } from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const POINTS_API_URL = import.meta.env.VITE_POINTS_API_URL;
 const API_KEY = import.meta.env.VITE_API_KEY;
 
 if (!API_URL) {
   throw new Error("VITE_API_URL environment variable is not defined");
+}
+
+if (!POINTS_API_URL) {
+  throw new Error("VITE_POINTS_API_URL environment variable is not defined");
 }
 
 if (!API_KEY) {
@@ -249,6 +254,9 @@ export const API_ROUTES = {
   CREATE_INVITE_CODE: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
   GET_INVITE_CODES: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
   ACCESS_REQUESTS: `${API_URL}/access-requests/`,
+
+  // Points API
+  GET_POINTS_BY_PROTOCOL: `${POINTS_API_URL}/points`,
 } as const;
 
 // Axios instance
@@ -280,10 +288,7 @@ export async function apiGet<T = any>(
   return res.data as T;
 }
 
-export async function apiPost<T = any>(
-  url: string,
-  data?: any
-): Promise<T> {
+export async function apiPost<T = any>(url: string, data?: any): Promise<T> {
   const res = await api.post(url, data);
   return res.data as T;
 }
@@ -413,4 +418,17 @@ export interface VolumeSummaryData {
 export interface VolumeSummaryResponse {
   success: boolean;
   data: VolumeSummaryData;
+}
+
+export interface PointsProtocolData {
+  name: string;
+  points: string;
+  pointsRaw: string;
+}
+
+export interface PointsResponse {
+  address: string;
+  totalPoints: string;
+  totalPointsRaw: string;
+  pointsByProtocol: Record<string, PointsProtocolData>;
 }

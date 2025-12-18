@@ -6,6 +6,7 @@ import {
   LatestVaultItem,
   TokenPriceData,
   LatestChartPoint,
+  PointsResponse,
 } from "@/services/config";
 
 export interface VaultApiContextType {
@@ -31,6 +32,8 @@ export interface VaultApiContextType {
   get7APY: () => number;
   get30APY: () => number;
   totalVolume: number;
+  userPoints: PointsResponse | null;
+  fetchUserPoints: (address: string) => Promise<void>;
 }
 
 const VaultApiContext = createContext<VaultApiContextType | undefined>(
@@ -218,6 +221,17 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({
     return Number(apy) || 0;
   }, [allVaultData]);
 
+  const [userPoints, setUserPoints] = useState<PointsResponse | null>(null);
+
+  const fetchUserPoints = useCallback(async (address: string) => {
+    try {
+      const data = await yieldMonitorService.getPointsByProtocol(address);
+      setUserPoints(data);
+    } catch (error) {
+      console.error("Error fetching user points:", error);
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       chartData,
@@ -239,6 +253,8 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({
       get30APY,
       totalVolume,
       fetchVolumeSummary,
+      userPoints,
+      fetchUserPoints,
     }),
     [
       chartData,
@@ -260,6 +276,8 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({
       get30APY,
       totalVolume,
       fetchVolumeSummary,
+      userPoints,
+      fetchUserPoints,
     ]
   );
 

@@ -22,7 +22,14 @@ const Portfolio = () => {
   const { getAllVaults, getTotalTVL, getTotalUserDeposits, refreshAllData } =
     useVaultContract();
 
-  const { get24APY, get7APY, get30APY, getVaultDataByAddress } = useVaultApi();
+  const {
+    get24APY,
+    get7APY,
+    get30APY,
+    getVaultDataByAddress,
+    userPoints,
+    fetchUserPoints,
+  } = useVaultApi();
 
   const [portfolioData, setPortfolioData] = useState({
     totalBalance: 0,
@@ -88,8 +95,9 @@ const Portfolio = () => {
   useEffect(() => {
     if (isConnected && userAddress) {
       refreshAllData();
+      fetchUserPoints(userAddress);
     }
-  }, [isConnected, userAddress, refreshAllData]);
+  }, [isConnected, userAddress, refreshAllData, fetchUserPoints]);
 
   if (!isConnected) {
     return (
@@ -229,7 +237,8 @@ const Portfolio = () => {
                         <th className="text-center text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
                           REWARDS
                         </th>
-                        <th className="w-[200px] text-center text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
+                        <th className="w-[200px] pl-10 text-left text-muted-foreground text-xs font-medium uppercase tracking-wide py-3">
+                          CTA
                         </th>
                       </tr>
                     </thead>
@@ -332,24 +341,25 @@ const Portfolio = () => {
                                   ))}
                                 </div>
                               </td>
-                              <td className="max-w-[200px] text-center py-4 flex justify-center items-center gap-3 ml-auto">
-                                <Button variant="wallet"
+                              <td className="text-center py-4 flex justify-between items-center gap-3 ml-auto">
+                                <Button
+                                  variant="wallet"
                                   className="m-0 w-auto"
                                   onClick={() => handlePositionClick(position)}
                                 >
-                                  View Vault Details
+                                  View Details
                                 </Button>
                                 {isExpanded ? (
-                                  <ChevronUp className="w-6 h-6 text-muted-foreground" />
+                                  <ChevronUp className="w-6 h-6 mx-auto text-muted-foreground" />
                                 ) : (
-                                  <ChevronDown className="w-6 h-6 text-muted-foreground" />
+                                  <ChevronDown className="w-6 h-6 mx-auto text-muted-foreground" />
                                 )}
                               </td>
                             </tr>
                             {isExpanded && (
                               <tr className="bg-accent/10 border-b border-border select-none">
                                 <td colSpan={5} className="p-0">
-                                  <div className="p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                  <div className="w-[60%] mx-auto p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
                                     <div className="w-full">
                                       <div>
                                         <h4 className="text-sm font-medium text-muted-foreground mb-3">
@@ -357,43 +367,59 @@ const Portfolio = () => {
                                         </h4>
                                         <div className="space-y-3">
                                           {uniqueProtocols.map(
-                                            (protocol, idx) => (
-                                              <div
-                                                key={idx}
-                                                className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border"
-                                              >
-                                                <div className="flex items-center gap-3">
-                                                  <img
-                                                    src={`/pools/${protocol}.svg`}
-                                                    alt={protocol}
-                                                    className="w-6 h-6 rounded-full"
-                                                    onError={(e) => {
-                                                      const target =
-                                                        e.target as HTMLImageElement;
-                                                      target.style.display =
-                                                        "none";
-                                                      target.parentElement!.innerHTML = `<div class="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-xs">${protocol
-                                                        .charAt(0)
-                                                        .toUpperCase()}</div>`;
-                                                    }}
-                                                  />
-                                                  <span className="uppercase font-medium text-foreground">
-                                                    {protocol}
-                                                  </span>
-                                                </div>
-                                                <div className="text-sm">
-                                                  {protocol === "felix" ? (
-                                                    <span className="text-primary font-medium">
-                                                      2.25 Points
+                                            (protocol, idx) => {
+                                              const protocolKey =
+                                                protocol.toUpperCase();
+                                              const protocolPoints =
+                                                userPoints?.pointsByProtocol?.[
+                                                  protocolKey
+                                                ];
+                                              const hasPoints =
+                                                protocolPoints &&
+                                                Number(protocolPoints.points) >
+                                                  0;
+
+                                              return (
+                                                <div
+                                                  key={idx}
+                                                  className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border"
+                                                >
+                                                  <div className="flex items-center gap-3">
+                                                    <img
+                                                      src={`/pools/${protocol}.svg`}
+                                                      alt={protocol}
+                                                      className="w-6 h-6 rounded-full"
+                                                      onError={(e) => {
+                                                        const target =
+                                                          e.target as HTMLImageElement;
+                                                        target.style.display =
+                                                          "none";
+                                                        target.parentElement!.innerHTML = `<div class="w-6 h-6 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-xs">${protocol
+                                                          .charAt(0)
+                                                          .toUpperCase()}</div>`;
+                                                      }}
+                                                    />
+                                                    <span className="uppercase font-medium text-foreground">
+                                                      {protocol}
                                                     </span>
-                                                  ) : (
-                                                    <span className="text-muted-foreground">
-                                                      Yield Only
-                                                    </span>
-                                                  )}
+                                                  </div>
+                                                  <div className="text-sm">
+                                                    {hasPoints ? (
+                                                      <span className="text-primary font-medium">
+                                                        {Number(
+                                                          protocolPoints.points
+                                                        ).toFixed(6)}{" "}
+                                                        Points
+                                                      </span>
+                                                    ) : (
+                                                      <span className="text-muted-foreground">
+                                                        Yield Only
+                                                      </span>
+                                                    )}
+                                                  </div>
                                                 </div>
-                                              </div>
-                                            )
+                                              );
+                                            }
                                           )}
                                         </div>
                                       </div>
