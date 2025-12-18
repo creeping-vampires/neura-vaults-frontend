@@ -337,7 +337,7 @@ const Portfolio = () => {
                                   className="m-0 w-auto"
                                   onClick={() => handlePositionClick(position)}
                                 >
-                                  View Vault Detials
+                                  View Vault Details
                                 </Button>
                                 {isExpanded ? (
                                   <ChevronUp className="w-6 h-6 text-muted-foreground" />
