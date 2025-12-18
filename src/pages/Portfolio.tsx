@@ -181,7 +181,6 @@ const Portfolio = () => {
         </CardContent>
       </Card>
 
-      {/* Portfolio Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="positions" className="mt-4 sm:mt-6">
           <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
