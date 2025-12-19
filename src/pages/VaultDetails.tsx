@@ -36,6 +36,8 @@ import {
   Cell,
   Area,
   AreaChart,
+  ReferenceLine,
+  Legend,
 } from "recharts";
 import ChatBot from "@/components/ChatBot";
 import yieldMonitorService from "@/services/vaultService";
@@ -243,6 +245,12 @@ const VaultDetails = () => {
 
     setChartData(allTransformed);
   }, [ChartData]);
+
+  const averageAPY = useMemo(() => {
+    if (!chartData || chartData.length === 0) return 0;
+    const totalAPY = chartData.reduce((sum, point: any) => sum + point.apy, 0);
+    return totalAPY / chartData.length;
+  }, [chartData]);
 
   const [showAccessCodeModal, setShowAccessCodeModal] = useState(false);
 
@@ -911,6 +919,12 @@ const VaultDetails = () => {
                                         " 1-Day APY",
                                       ];
                                     }
+                                    if (name === "average") {
+                                      return [
+                                        `${Number(value).toFixed(2)}%`,
+                                        " Average APY",
+                                      ];
+                                    }
                                     return [value, name];
                                   }}
                                 />
@@ -931,6 +945,46 @@ const VaultDetails = () => {
                                 strokeWidth: 2,
                                 fill: "#3B82F6",
                               }}
+                              name="1-Day APY"
+                            />
+                            <ReferenceLine
+                              y={averageAPY}
+                              stroke="#F59E0B"
+                              strokeDasharray="3 3"
+                              label={{
+                                value: "Avg",
+                                position: "insideRight",
+                                fill: "#F59E0B",
+                                fontSize: 12,
+                              }}
+                            />
+                            <Legend
+                              verticalAlign="top"
+                              height={36}
+                              content={({ payload }) => (
+                                <div className="flex justify-center gap-6 mb-4 text-xs font-medium">
+                                  {payload?.map((entry, index) => (
+                                    <div
+                                      key={`item-${index}`}
+                                      className="flex items-center gap-2"
+                                    >
+                                      <div
+                                        className="w-2 h-2 rounded-full"
+                                        style={{ backgroundColor: entry.color }}
+                                      />
+                                      <span className="text-muted-foreground">
+                                        {entry.value}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-4 h-0.5 bg-[#F59E0B] border-t border-b border-[#F59E0B] border-dashed" />
+                                    <span className="text-muted-foreground">
+                                      Avg APY ({averageAPY.toFixed(2)}%)
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                             />
                           </AreaChart>
                         </ChartContainer>
