@@ -265,9 +265,9 @@ const Portfolio = () => {
                               <td className="py-4">
                                 <div className="flex items-center gap-3">
                                   <img
-                                    src={`/vaults/${position.symbol}.png`}
+                                    src={`/vaults/${position.symbol}.svg`}
                                     alt={position.name}
-                                    className="w-10 h-10 rounded-full border border-white/50 transform transition-transform duration-200"
+                                    className="w-10 h-10 p-1 rounded-full border border-white/50 transform transition-transform duration-200"
                                   />
                                   <div>
                                     <p className="text-foreground font-semibold text-sm">
