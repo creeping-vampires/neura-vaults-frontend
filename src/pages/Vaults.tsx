@@ -43,7 +43,26 @@ const Vaults = () => {
       symbol,
     }));
 
-    return [...vaultItems];
+    const comingSoonVaults: MarketItem[] = [
+      {
+        address: "0x0000000000000000000000000000000000000001",
+        depositAPY: 0,
+        totalDeposits: 0,
+        name: "aiUSDH",
+        symbol: "USDH",
+        status: "coming_soon",
+      },
+      {
+        address: "0x0000000000000000000000000000000000000002",
+        depositAPY: 0,
+        totalDeposits: 0,
+        name: "aiUSDC",
+        symbol: "USDC",
+        status: "coming_soon",
+      },
+    ];
+
+    return [...vaultItems, ...comingSoonVaults];
   }, [getAllVaults]);
 
   const filteredMarkets = marketData.filter((market) => {
@@ -202,20 +221,38 @@ const Vaults = () => {
                   {filteredMarkets.map((market) => (
                     <tr
                       key={market.address}
-                      className="border-b border-border hover:bg-accent/30 cursor-pointer"
-                      onClick={() => handleVaultClick(market)}
+                      className={`border-b border-border ${
+                        market.status === "coming_soon"
+                          ? "opacity-50 cursor-not-allowed"
+                          : "hover:bg-accent/30 cursor-pointer"
+                      }`}
+                      onClick={() => {
+                        if (market.status !== "coming_soon") {
+                          handleVaultClick(market);
+                        }
+                      }}
+                      aria-disabled={market.status === "coming_soon"}
                     >
                       <td className="py-4">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={`/vaults/${market.symbol}.png`}
-                            alt={market.name}
-                            className="w-10 h-10 rounded-full border border-white/50 transform transition-transform duration-200"
-                          />
+                          <div className="relative">
+                            <img
+                              src={`/vaults/${market.symbol}.svg`}
+                              alt={market.name}
+                              className="w-10 h-10 p-1 rounded-full border border-white/50 transform transition-transform duration-200"
+                            />
+                          </div>
                           <div>
-                            <p className="text-foreground font-semibold text-sm">
-                              {market.name}
-                            </p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-foreground font-semibold text-sm">
+                                {market.name}
+                              </p>
+                              {market.status === "coming_soon" && (
+                                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground">
+                                  Soon
+                                </span>
+                              )}
+                            </div>
                             <p className="text-muted-foreground text-xs">
                               {market.symbol}
                             </p>
@@ -223,75 +260,100 @@ const Vaults = () => {
                         </div>
                       </td>
                       <td className="text-center py-4">
-                        <span>
-                          $
-                          {market.totalDeposits.toLocaleString(undefined, {
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                      </td>
-                      <td className="text-primary font-semibold py-6 flex items-center justify-center gap-1 relative group">
-                        {get7APY().toFixed(2)}%
-                        <div className="absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
-                          <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
-                          <div className="flex items-center gap-1">
-                            <div className="font-medium text-muted-foreground">
-                              1-Day APY
-                            </div>
-                            <div className="font-medium text-foreground ml-auto">
-                              :
-                            </div>
-                            <div className="font-medium text-foreground ml-1">
-                              {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <div className="font-medium text-muted-foreground">
-                              30-Day APY
-                            </div>
-                            <div className="font-medium text-foreground ml-auto">
-                              :
-                            </div>
-                            <div className="font-medium text-foreground ml-1">
-                              {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
-                            </div>
-                          </div>
-                        </div>
+                        {market.status === "coming_soon" ? (
+                          <span className="text-muted-foreground text-sm">
+                            --
+                          </span>
+                        ) : (
+                          <span>
+                            $
+                            {market.totalDeposits.toLocaleString(undefined, {
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                        )}
                       </td>
                       <td className="text-center py-4">
-                        <div className="flex items-center justify-center gap-1">
-                          {(
-                            getVaultDataByAddress(market.address)
-                              ?.allocations || []
-                          )
-                            .map((a) => a.protocol.toLowerCase())
-                            .filter(
-                              (value, index, self) =>
-                                self.indexOf(value) === index
-                            )
-                            .map((reward, idx) => (
-                              <div
-                                key={`${reward}-${idx}`}
-                                className="relative group"
-                              >
-                                <img
-                                  src={`/pools/${reward}.svg`}
-                                  alt={reward}
-                                  className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = "none";
-                                    target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${reward
-                                      .charAt(0)
-                                      .toUpperCase()}</div>`;
-                                  }}
-                                />
-                                <div className="absolute border border-white/30 top-8 uppercase left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                                  {reward}
+                        {market.status === "coming_soon" ? (
+                          <span className="text-muted-foreground text-sm">
+                            --
+                          </span>
+                        ) : (
+                          <div className="text-primary font-semibold flex items-center justify-center gap-1 relative group">
+                            {get7APY().toFixed(2)}%
+                            <div className="absolute top-10 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
+                              <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
+                              <div className="flex items-center gap-1">
+                                <div className="font-medium text-muted-foreground">
+                                  1-Day APY
+                                </div>
+                                <div className="font-medium text-foreground ml-auto">
+                                  :
+                                </div>
+                                <div className="font-medium text-foreground ml-1">
+                                  {get24APY()
+                                    ? `${get24APY().toFixed(2)}%`
+                                    : "-"}
                                 </div>
                               </div>
-                            ))}
-                        </div>
+                              <div className="flex items-center gap-1">
+                                <div className="font-medium text-muted-foreground">
+                                  30-Day APY
+                                </div>
+                                <div className="font-medium text-foreground ml-auto">
+                                  :
+                                </div>
+                                <div className="font-medium text-foreground ml-1">
+                                  {get30APY()
+                                    ? `${get30APY().toFixed(2)}%`
+                                    : "-"}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="text-center py-4">
+                        {market.status === "coming_soon" ? (
+                          <span className="text-muted-foreground text-xs">
+                            Coming Soon
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1">
+                            {(
+                              getVaultDataByAddress(market.address)
+                                ?.allocations || []
+                            )
+                              .map((a) => a.protocol.toLowerCase())
+                              .filter(
+                                (value, index, self) =>
+                                  self.indexOf(value) === index
+                              )
+                              .map((reward, idx) => (
+                                <div
+                                  key={`${reward}-${idx}`}
+                                  className="relative group"
+                                >
+                                  <img
+                                    src={`/pools/${reward}.svg`}
+                                    alt={reward}
+                                    className="w-6 h-6 rounded-full border border-white/50 transform hover:scale-110 transition-transform duration-200 cursor-pointer"
+                                    onError={(e) => {
+                                      const target =
+                                        e.target as HTMLImageElement;
+                                      target.style.display = "none";
+                                      target.parentElement!.innerHTML = `<div class="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center text-primary font-bold text-sm">${reward
+                                        .charAt(0)
+                                        .toUpperCase()}</div>`;
+                                    }}
+                                  />
+                                  <div className="absolute border border-white/30 top-8 uppercase left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                                    {reward}
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
