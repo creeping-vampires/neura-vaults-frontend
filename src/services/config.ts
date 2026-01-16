@@ -257,6 +257,9 @@ export const API_ROUTES = {
 
   // Points API
   GET_POINTS_BY_PROTOCOL: `${POINTS_API_URL}/points`,
+
+  // Audit Logs
+  GET_AUDIT_LOGS: `${API_URL}/audit-logs`,
 } as const;
 
 // Axios instance
@@ -396,6 +399,36 @@ export interface VolumeSummaryVault {
   depositCount: number;
   withdrawalCount: number;
   totalTransactionCount: number;
+}
+
+export interface AuditLog {
+  id: string;
+  runId: string;
+  vaultName: string;
+  taskType: string;
+  status: string;
+  startedAt: string;
+  completedAt: string;
+  txHashes: string[];
+  agentReasoning: string;
+  riskAssessment: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface AuditLogsPagination {
+  limit: number;
+  offset: number;
+  total: number;
+  hasMore: boolean;
+}
+
+export interface AuditLogsResponse {
+  success: boolean;
+  data: {
+    logs: AuditLog[];
+    pagination: AuditLogsPagination;
+  };
 }
 
 export interface VolumeSummaryGrandTotal {
