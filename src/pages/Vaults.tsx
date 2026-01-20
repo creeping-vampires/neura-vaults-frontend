@@ -1,12 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  BarChart3,
-  DollarSign,
-  Percent,
-  Search,
-} from "lucide-react";
+import { BarChart3, DollarSign, Percent, Search, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useVaultContract } from "@/hooks/useVaultContract";
 import { useVaultApi } from "@/hooks/useVaultApi";
@@ -31,7 +26,21 @@ const Vaults = () => {
     isLoading: isVaultsLoading,
     error: vaultsError,
   } = useVaultContract();
-  const { get24APY, get7APY, get30APY, getVaultDataByAddress } = useVaultApi();
+  const {
+    get24APY,
+    get7APY,
+    get30APY,
+    getVaultDataByAddress,
+    allVaultData,
+    totalVolume,
+  } = useVaultApi();
+
+  const bestVault = useMemo(() => {
+    if (!allVaultData || allVaultData.length === 0) return null;
+    return allVaultData.reduce((prev, current) =>
+      (prev.apy?.apy7d || 0) > (current.apy?.apy7d || 0) ? prev : current,
+    );
+  }, [allVaultData]);
 
   const marketData: MarketItem[] = useMemo(() => {
     const allVaults = getAllVaults();
@@ -50,14 +59,6 @@ const Vaults = () => {
         totalDeposits: 0,
         name: "aiUSDH",
         symbol: "USDH",
-        status: "coming_soon",
-      },
-      {
-        address: "0x0000000000000000000000000000000000000002",
-        depositAPY: 0,
-        totalDeposits: 0,
-        name: "aiUSDC",
-        symbol: "USDC",
         status: "coming_soon",
       },
     ];
@@ -123,7 +124,7 @@ const Vaults = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
-              {get7APY().toFixed(2)} %
+              {get7APY(bestVault?.address).toFixed(2)} %
               <div className="absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                 <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                 <div className="flex items-center gap-1">
@@ -132,7 +133,9 @@ const Vaults = () => {
                   </div>
                   <div className="font-medium text-foreground ml-auto">:</div>
                   <div className="font-medium text-foreground ml-1">
-                    {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
+                    {get24APY(bestVault?.address)
+                      ? `${get24APY(bestVault?.address).toFixed(2)}%`
+                      : "-"}
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -141,7 +144,9 @@ const Vaults = () => {
                   </div>
                   <div className="font-medium text-foreground ml-auto">:</div>
                   <div className="font-medium text-foreground ml-1">
-                    {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                    {get30APY(bestVault?.address)
+                      ? `${get30APY(bestVault?.address).toFixed(2)}%`
+                      : "-"}
                   </div>
                 </div>
               </div>
@@ -158,7 +163,7 @@ const Vaults = () => {
               <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <p className="text-xl sm:text-2xl font-bold text-foreground">
-              {marketData.length}
+              {marketData.filter((market) => market.status !== "coming_soon").length}
             </p>
           </CardContent>
         </Card>
@@ -280,7 +285,7 @@ const Vaults = () => {
                           </span>
                         ) : (
                           <div className="text-primary font-semibold flex items-center justify-center gap-1 relative group">
-                            {get7APY().toFixed(2)}%
+                            {get7APY(market.address).toFixed(2)}%
                             <div className="absolute top-10 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                               <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                               <div className="flex items-center gap-1">
@@ -291,8 +296,8 @@ const Vaults = () => {
                                   :
                                 </div>
                                 <div className="font-medium text-foreground ml-1">
-                                  {get24APY()
-                                    ? `${get24APY().toFixed(2)}%`
+                                  {get24APY(market.address)
+                                    ? `${get24APY(market.address).toFixed(2)}%`
                                     : "-"}
                                 </div>
                               </div>
@@ -304,8 +309,8 @@ const Vaults = () => {
                                   :
                                 </div>
                                 <div className="font-medium text-foreground ml-1">
-                                  {get30APY()
-                                    ? `${get30APY().toFixed(2)}%`
+                                  {get30APY(market.address)
+                                    ? `${get30APY(market.address).toFixed(2)}%`
                                     : "-"}
                                 </div>
                               </div>
@@ -327,7 +332,7 @@ const Vaults = () => {
                               .map((a) => a.protocol.toLowerCase())
                               .filter(
                                 (value, index, self) =>
-                                  self.indexOf(value) === index
+                                  self.indexOf(value) === index,
                               )
                               .map((reward, idx) => (
                                 <div

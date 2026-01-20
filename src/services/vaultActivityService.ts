@@ -6,21 +6,27 @@ import {
   LatestVaultActionItem,
 } from "./config";
 
-export const fetchVaultDeposits = async (): Promise<LatestDepositsResponse> => {
-  return apiGet<LatestDepositsResponse>(`${API_ROUTES.GET_VAULT_DEPOSITS_LATEST}`);
+export const fetchVaultDeposits = async (vaultAddress?: string): Promise<LatestDepositsResponse> => {
+  return apiGet<LatestDepositsResponse>(
+    `${API_ROUTES.GET_VAULT_DEPOSITS_LATEST}`,
+    vaultAddress ? { vaultAddress } : undefined
+  );
 };
 
-export const fetchVaultWithdrawals = async (): Promise<LatestWithdrawalsResponse> => {
-  return apiGet<LatestWithdrawalsResponse>(`${API_ROUTES.GET_VAULT_WITHDRAWALS_LATEST}`);
+export const fetchVaultWithdrawals = async (vaultAddress?: string): Promise<LatestWithdrawalsResponse> => {
+  return apiGet<LatestWithdrawalsResponse>(
+    `${API_ROUTES.GET_VAULT_WITHDRAWALS_LATEST}`,
+    vaultAddress ? { vaultAddress } : undefined
+  );
 };
 
 export const fetchVaultActivities = async (
-  _vaultAddress?: string
+  vaultAddress?: string
 ): Promise<LatestVaultActionItem[]> => {
   try {
     const [depositsResponse, withdrawalsResponse] = await Promise.all([
-      fetchVaultDeposits(),
-      fetchVaultWithdrawals(),
+      fetchVaultDeposits(vaultAddress),
+      fetchVaultWithdrawals(vaultAddress),
     ]);
 
     const depositItems = depositsResponse?.success
