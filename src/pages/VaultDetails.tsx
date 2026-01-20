@@ -1025,7 +1025,7 @@ const VaultDetails = () => {
             </TabsList>
 
             <TabsContent value="terminal" className="mt-4 sm:mt-6">
-              <AgentTerminal className="mt-4" symbol={currentAssetSymbol} />
+              <AgentTerminal />
             </TabsContent>
             <TabsContent value="details" className="mt-4 sm:mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[360px]">
@@ -1154,7 +1154,7 @@ const VaultDetails = () => {
                             <div className="flex items-center space-x-3">
                               <div className="text-right">
                                 <p className="text-foreground font-medium">
-                                  {allocation.currentAPY.toFixed(2)}% APY
+                                  {allocation?.currentAPY?.toFixed(2)}% APY
                                 </p>
                                 <p className="text-muted-foreground text-sm">
                                   Current Rate

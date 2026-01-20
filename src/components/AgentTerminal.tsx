@@ -1,60 +1,121 @@
-import React, { useState, useEffect } from "react";
-import { Circle, Terminal as TerminalIcon } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Circle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "./ui/card";
+import { fetchAuditLogs } from "@/services/auditService";
+import { AuditLog } from "@/services/config";
 
 interface LogEntry {
   timestamp: string;
   action: string;
   status: string;
   reason: string;
+  id: string;
 }
 
-const AgentTerminal = ({
-  className,
-  symbol = "USDC",
-}: {
-  className?: string;
-  symbol?: string;
-}) => {
+const AgentTerminal = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  const formatLog = (log: AuditLog): LogEntry => {
+    const date = new Date(log.startedAt);
+    const formattedDate = date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "UTC",
+    });
+
+    return {
+      id: log.id,
+      timestamp: `${formattedDate} UTC`.toUpperCase(),
+      action: log.taskType.toUpperCase(),
+      status: log.status.toUpperCase(),
+      reason: log.agentReasoning || log.message || "No details provided",
+    };
+  };
+
+  const loadLogs = async (isHistory = false) => {
+    if (loading || (!hasMore && isHistory)) return;
+
+    setLoading(true);
+    try {
+      const currentOffset = isHistory ? logs.length : 0;
+      const limit = 15;
+
+      const response = await fetchAuditLogs(limit, currentOffset);
+
+      if (response.success && response.data.logs) {
+        const newLogs = response.data.logs.map(formatLog);
+
+        setHasMore(response.data.pagination.hasMore);
+
+        if (isHistory) {
+          // Reverse new logs to display older ones at top
+          setLogs((prev) => [...newLogs.reverse(), ...prev]);
+
+          // Maintain scroll position
+          if (scrollRef.current) {
+            const container = scrollRef.current;
+            const oldScrollHeight = container.scrollHeight;
+            const oldScrollTop = container.scrollTop;
+
+            requestAnimationFrame(() => {
+              const newScrollHeight = container.scrollHeight;
+              const heightDifference = newScrollHeight - oldScrollHeight;
+              container.scrollTop = heightDifference + oldScrollTop;
+            });
+          }
+        } else {
+          // Initial load
+          setLogs(newLogs.reverse());
+
+          // Scroll to bottom on initial load
+          if (isInitialLoad) {
+            setTimeout(() => {
+              if (scrollRef.current) {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+              }
+            }, 100);
+            setIsInitialLoad(false);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch audit logs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setLogs([
-      {
-        timestamp: "DEC 16, 13:17:28 UTC",
-        action: "DEPOSIT",
-        status: "COMPLETED",
-        reason: `Successfully bridged and deposited 150,000 ${symbol} into Hyperlend Mainnet pool. Transaction verified on-chain (0x7a...9f2). Initial APY locked at 14.2% with auto-compounding enabled.`,
-      },
-      {
-        timestamp: "DEC 16, 14:05:12 UTC",
-        action: "REBALANCE",
-        status: "REJECTED",
-        reason: `Proposed shift of 20% to Hypurrfi/${symbol} (13.1% APY) rejected. Delta APY (+0.42%) insufficient to cover estimated slippage and gas costs (0.6% break-even threshold). Volatility check failed: Target pool TVL fluctuated >15% in last 4h.`,
-      },
-      {
-        timestamp: "DEC 16, 15:17:21 UTC",
-        action: "HARVEST",
-        status: "COMPLETED",
-        reason: `Auto-harvested 450.22 ${symbol} in yield rewards from Hyperlend strategy. Re-invested into base principal to maximize compounding effect. Current effective APY: 14.5%.`,
-      },
-      {
-        timestamp: "DEC 16, 15:45:33 UTC",
-        action: "ENTER",
-        status: "SKIPPED",
-        reason: `Detected new lending pool on Felix/${symbol} with 18% APY. Skipped entry: Pool age (12h) below minimum safety maturity (48h). Audit verification pending. Added to watchlist for next epoch scan.`,
-      },
-    ]);
-  }, [symbol]);
+    loadLogs(false);
+  }, []);
+
+  const handleScroll = () => {
+    if (scrollRef.current) {
+      const { scrollTop } = scrollRef.current;
+      if (scrollTop === 0 && hasMore && !loading) {
+        loadLogs(true);
+      }
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "REJECTED":
+      case "FAILED":
         return "text-destructive";
       case "SKIPPED":
         return "text-yellow-500";
       case "COMPLETED":
+      case "SUCCESS":
       default:
         return "text-primary";
     }
@@ -62,11 +123,6 @@ const AgentTerminal = ({
 
   return (
     <Card className="w-full px-0 rounded-xl border border-border bg-gradient-to-br from-card/50 to-background/50 min-h-[360px] text-xs sm:text-sm shadow-xl relative overflow-hidden">
-      <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/50 backdrop-blur-md">
-        <span className="text-2xl font-bold tracking-wider text-[#e4dfcb]">
-          COMING SOON
-        </span>
-      </div>
       <CardContent className="p-0 text-muted-foreground">
         <div className="grid grid-cols-1 py-4 px-6 border-b border-border sm:grid-cols-3 gap-y-2 gap-x-4 text-xs font-medium">
           <div className="flex flex-wrap gap-2">
@@ -88,10 +144,20 @@ const AgentTerminal = ({
           <span className="text-[#e4dfcb]">Thoughts</span>
         </div>
 
-        <div className="space-y-6 max-h-72 overflow-auto px-6 pt-2 pb-10">
-          {logs.map((log, index) => (
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="space-y-6 max-h-72 overflow-auto px-6 pt-2 pb-10"
+        >
+          {loading && logs.length > 0 && (
+            <div className="flex justify-center py-2">
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            </div>
+          )}
+
+          {logs.map((log) => (
             <div
-              key={index}
+              key={log.id}
               className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500"
             >
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
