@@ -21,7 +21,7 @@ const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const formatLog = (log: AuditLog): LogEntry => {
-    const date = new Date(log.startedAt);
+    const date = new Date(log.createdAt);
     const formattedDate = date.toLocaleString("en-US", {
       month: "short",
       day: "numeric",
@@ -55,13 +55,18 @@ const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
       );
 
       if (response.success && response.data.logs) {
-        const newLogs = response.data.logs.map(formatLog);
+        const newLogs = response.data.logs
+          .sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+          )
+          .map(formatLog);
 
         setHasMore(response.data.pagination.hasMore);
 
         if (isHistory) {
-          // Reverse new logs to display older ones at top
-          setLogs((prev) => [...newLogs.reverse(), ...prev]);
+          // sorted older logs to existing logs
+          setLogs((prev) => [...newLogs, ...prev]);
 
           // Maintain scroll position
           if (scrollRef.current) {
@@ -77,7 +82,7 @@ const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
           }
         } else {
           // Initial load
-          setLogs(newLogs.reverse());
+          setLogs(newLogs);
 
           // Scroll to bottom on initial load
           if (isInitialLoad) {
