@@ -1,0 +1,14 @@
+import{xa as d}from"./chunk-WDVXKZVL.js";import"./chunk-3Q7ZN2UU.js";import"./chunk-CMJYWBFY.js";import"./chunk-DQWLAPQA.js";import"./chunk-JJL2OPIK.js";import"./chunk-WNZGS5LT.js";import"./chunk-QYUUJAZ5.js";import{a as f}from"./chunk-FIV36FCJ.js";import"./chunk-WP7WOITY.js";import"./chunk-XWY35PVV.js";import"./chunk-7CNQZ75Q.js";import"./chunk-JTOX4ZHH.js";import"./chunk-2HQDV73D.js";import"./chunk-B4CNMBFC.js";import"./chunk-ZEEKHJVS.js";import{a as s}from"./chunk-F7UJOH5X.js";import"./chunk-UD6KQFHW.js";import"./chunk-LTFPTLFB.js";import"./chunk-WIQXOFEV.js";import"./chunk-RXXBC6VZ.js";import"./chunk-TMMS6O6S.js";import"./chunk-R4VJOE5O.js";import"./chunk-DZZUCNXT.js";import"./chunk-N4NCIV7V.js";import"./chunk-N3C6FBKY.js";import"./chunk-CTKHELYY.js";import"./chunk-I6BON7SA.js";import"./chunk-YRW45WYY.js";import"./chunk-SNTFI5XR.js";import{c as p}from"./chunk-BMC2QLGD.js";import{db as i,m as o,na as h}from"./chunk-7677FZEB.js";import"./chunk-KETOQW6E.js";import"./chunk-WVRYN4MY.js";import"./chunk-D42QE4ZV.js";import"./chunk-MGLLPATV.js";import"./chunk-Z3O2IHPJ.js";import"./chunk-UZPTJEFV.js";import"./chunk-247XUEKC.js";import"./chunk-SFIUS6XB.js";import"./chunk-SIWEHH3L.js";import"./chunk-UA65TROS.js";import"./chunk-YJCG6GWC.js";import"./chunk-FO7QPK6E.js";import"./chunk-CZNFNFNK.js";import{a as n}from"./chunk-RWWUDPHX.js";import"./chunk-KUSQMIXV.js";import"./chunk-JPCZ2XYS.js";import"./chunk-ZRKH4SQM.js";import{Ca as e,Z as g,a as k,b as m}from"./chunk-TVPT7M2T.js";import"./chunk-FNC6PQ53.js";import"./chunk-5QQLABHI.js";import{g as a,i as l,n as c}from"./chunk-WKJYWAXG.js";l();c();var u=a(k(),1);var t=a(m(),1),x=o(s).attrs({align:"center",justify:"space-between"})`
+  height: 100%;
+`,y=o(s).attrs({align:"center",justify:"center"})`
+  height: 100%;
+`,v=o.div`
+  width: 94px;
+  height: 94px;
+  position: relative;
+  border-radius: 100%;
+  background-color: ${r=>{switch(r.variant){case"warning":return n(e.colors.brand.yellowMoon,.1);case"danger":return n(e.colors.legacy.spotNegative,.1);default:return n(e.colors.brand.yellowMoon,.1)}}};
+`,H=o(f).attrs({align:"center",justify:"center"})`
+  height: 100%;
+`,N=o(i).attrs({size:28,weight:500,margin:"30px 0 10px 0",lineHeight:33})``,M=o(i).attrs({size:16,weight:400,color:e.colors.legacy.textDiminished,margin:"0 30px"})``,T=u.default.memo(r=>{let{t:w}=g(),{handleHideModalVisibility:C}=d();return(0,t.jsxs)(x,{children:[(0,t.jsxs)(y,{children:[(0,t.jsx)(v,{variant:r.variant,children:(0,t.jsx)(H,{children:(0,t.jsx)(h,{fill:r.variant==="danger"?e.colors.legacy.spotNegative:e.colors.brand.yellowMoon})})}),(0,t.jsx)(N,{children:r.title}),(0,t.jsx)(M,{children:r.message})]}),(0,t.jsx)(p,{onClick:()=>C("networkHealth"),children:w("commandClose")})]})}),W=T;export{T as NetworkHealth,W as default};
+//# sourceMappingURL=NetworkHealth-YAX5EEPS.js.map

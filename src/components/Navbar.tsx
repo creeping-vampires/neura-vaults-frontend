@@ -261,6 +261,7 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
                   disabled={isConnecting}
                   variant="wallet"
                   className="space-x-2"
+                  id="connectButton"
                 >
                   <LogIn className="h-4 w-4" />
                   <span className="font-medium font-libertinus">
