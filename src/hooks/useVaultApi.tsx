@@ -28,9 +28,9 @@ export interface VaultApiContextType {
   getAverageAPY: () => number;
   getHighest24APY: () => number;
   getHighest7APY: () => number;
-  get24APY: () => number;
-  get7APY: () => number;
-  get30APY: () => number;
+  get24APY: (address?: string) => number;
+  get7APY: (address?: string) => number;
+  get30APY: (address?: string) => number;
   totalVolume: number;
   userPoints: PointsResponse | null;
   fetchUserPoints: (address: string) => Promise<void>;
@@ -203,23 +203,38 @@ export const VaultApiProvider: React.FC<{ children: React.ReactNode }> = ({
     return apys.length === 0 ? 0 : Math.max(...apys);
   }, [allVaultData]);
 
-  const get24APY = useCallback(() => {
-    const item = allVaultData[0];
-    const apy = item?.apy?.apy1d ?? 0;
-    return Number(apy) || 0;
-  }, [allVaultData]);
+  const get24APY = useCallback(
+    (address?: string) => {
+      const item = address
+        ? allVaultData.find((v) => v.address === address)
+        : allVaultData[0];
+      const apy = item?.apy?.apy1d ?? 0;
+      return Number(apy) || 0;
+    },
+    [allVaultData],
+  );
 
-  const get7APY = useCallback(() => {
-    const item = allVaultData[0];
-    const apy = item?.apy?.apy7d ?? 0;
-    return Number(apy) || 0;
-  }, [allVaultData]);
+  const get7APY = useCallback(
+    (address?: string) => {
+      const item = address
+        ? allVaultData.find((v) => v.address === address)
+        : allVaultData[0];
+      const apy = item?.apy?.apy7d ?? 0;
+      return Number(apy) || 0;
+    },
+    [allVaultData],
+  );
 
-  const get30APY = useCallback(() => {
-    const item = allVaultData[0];
-    const apy = item?.apy?.apy30d ?? 0;
-    return Number(apy) || 0;
-  }, [allVaultData]);
+  const get30APY = useCallback(
+    (address?: string) => {
+      const item = address
+        ? allVaultData.find((v) => v.address === address)
+        : allVaultData[0];
+      const apy = item?.apy?.apy30d ?? 0;
+      return Number(apy) || 0;
+    },
+    [allVaultData],
+  );
 
   const [userPoints, setUserPoints] = useState<PointsResponse | null>(null);
 

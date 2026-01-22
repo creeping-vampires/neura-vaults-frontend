@@ -13,7 +13,7 @@ interface LogEntry {
   id: string;
 }
 
-const AgentTerminal = () => {
+const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -42,14 +42,17 @@ const AgentTerminal = () => {
   };
 
   const loadLogs = async (isHistory = false) => {
-    if (loading || (!hasMore && isHistory)) return;
+    if (loading || (!hasMore && isHistory) || !currentVaultName) return;
 
     setLoading(true);
     try {
       const currentOffset = isHistory ? logs.length : 0;
       const limit = 15;
-
-      const response = await fetchAuditLogs(limit, currentOffset);
+      const response = await fetchAuditLogs(
+        currentVaultName,
+        limit,
+        currentOffset,
+      );
 
       if (response.success && response.data.logs) {
         const newLogs = response.data.logs.map(formatLog);
@@ -96,7 +99,7 @@ const AgentTerminal = () => {
 
   useEffect(() => {
     loadLogs(false);
-  }, []);
+  }, [currentVaultName]);
 
   const handleScroll = () => {
     if (scrollRef.current) {
@@ -149,6 +152,15 @@ const AgentTerminal = () => {
           onScroll={handleScroll}
           className="space-y-6 max-h-72 overflow-auto px-6 pt-2 pb-10"
         >
+          {!loading && logs.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground opacity-60">
+              <div className="text-sm">No agent activities recorded yet</div>
+              <div className="text-xs mt-1">
+                Waiting for the first execution...
+              </div>
+            </div>
+          )}
+
           {loading && logs.length > 0 && (
             <div className="flex justify-center py-2">
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
@@ -168,7 +180,7 @@ const AgentTerminal = () => {
                 <span
                   className={cn(
                     "font-bold tracking-wide uppercase",
-                    getStatusColor(log.status)
+                    getStatusColor(log.status),
                   )}
                 >
                   {log.action}
@@ -177,7 +189,7 @@ const AgentTerminal = () => {
                 <div
                   className={cn(
                     "flex items-center gap-1.5 font-bold tracking-wide uppercase",
-                    getStatusColor(log.status)
+                    getStatusColor(log.status),
                   )}
                 >
                   <Circle className="w-2 h-2 fill-current" />

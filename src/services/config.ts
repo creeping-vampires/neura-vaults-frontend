@@ -249,8 +249,8 @@ export const API_ROUTES = {
   GET_VAULT_PENDING_WITHDRAWALS: `${API_URL}/neura-vault/withdrawals/pendingAmount`,
 
   // invite code & user access
-  CHECK_USER_ACCESS: `${API_URL}/invite-codes/user/check_access`,
-  REDEEM_INVITE_CODE: `${API_URL}/invite-codes/user/redeem`,
+  CHECK_USER_ACCESS: `${API_URL}/invite-codes/check_access`,
+  REDEEM_INVITE_CODE: `${API_URL}/invite-codes/redeem`,
   CREATE_INVITE_CODE: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
   GET_INVITE_CODES: `${API_URL}/invite-codes/admin?apiKey=${API_KEY}`,
   ACCESS_REQUESTS: `${API_URL}/access-requests/`,

@@ -73,8 +73,7 @@ const yieldMonitorService = {
   ): Promise<VaultAllocationsResponse> => {
     try {
       const data = await apiGet<VaultAllocationsResponse>(
-        API_ROUTES.GET_VAULT_ALLOCATIONS,
-        { vaultAddress }
+        `${API_ROUTES.GET_VAULT_ALLOCATIONS}/${vaultAddress}`,
       );
       return data;
     } catch (error) {

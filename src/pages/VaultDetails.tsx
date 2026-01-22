@@ -106,18 +106,12 @@ const VaultDetails = () => {
   const [totalAUM, setTotalAUM] = useState(0);
 
   useEffect(() => {
-    const calculateTotalAUM = async () => {
-      try {
-        const total = await getTotalTVL();
-        setTotalAUM(total);
-      } catch (error) {
-        console.error("Error calculating total AUM:", error);
-        setTotalAUM(0);
-      }
-    };
-
-    calculateTotalAUM();
-  }, [getTotalTVL]);
+    if (vaultData?.tvl) {
+      setTotalAUM(vaultData.tvl);
+    } else {
+      setTotalAUM(0);
+    }
+  }, [vaultData]);
 
   const {
     chartData: ChartData,
@@ -137,6 +131,9 @@ const VaultDetails = () => {
   const [currentVaultSymbol, setCurrentVaultSymbol] = useState("");
   const [currentAssetSymbol, setCurrentAssetSymbol] = useState("");
   const [currentVaultName, setCurrentVaultName] = useState("");
+  const [currentPoolsAllocations, setCurrentPoolsAllocations] = useState<
+    VaultAllocationsResponse["allocations"]
+  >([]);
 
   useEffect(() => {
     if (!vaultId) return;
@@ -144,6 +141,7 @@ const VaultDetails = () => {
     setCurrentVaultSymbol(currentVaultData?.symbol);
     setCurrentAssetSymbol(currentVaultData?.underlyingSymbol);
     setCurrentVaultName(currentVaultData?.name);
+    setCurrentPoolsAllocations(currentVaultData?.allocations || []);
   }, [vaultId, getVaultDataByAddress]);
 
   const { address: userAddress } = useAccount();
@@ -321,7 +319,7 @@ const VaultDetails = () => {
   const timeframes = ["7D", "1M"] as const;
 
   const dynamicPoolData = useMemo(() => {
-    const d = allocationsData?.data[0]?.allocations || [];
+    const d = allocationsData?.data?.allocations || [];
     if (!d || d.length === 0) return [];
     return d.map((a) => {
       const n = a.protocol;
@@ -500,8 +498,10 @@ const VaultDetails = () => {
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
                   <span className="text-primary text-xs sm:text-sm font-medium">
-                    {isVaultLoading ? "Loading..." : get7APY().toFixed(2)}% APY
-                    (7d)
+                    {isVaultLoading
+                      ? "Loading..."
+                      : get7APY(vaultId).toFixed(2)}
+                    % APY (7d)
                   </span>
                   <div className="flex items-center gap-1 relative">
                     <div className="h-6 w-6 group relative flex items-center justify-center rounded-md">
@@ -531,7 +531,9 @@ const VaultDetails = () => {
                             :
                           </div>
                           <div className="font-medium text-foreground ml-1">
-                            {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
+                            {get24APY(vaultId)
+                              ? `${get24APY(vaultId).toFixed(2)}%`
+                              : "-"}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -542,7 +544,9 @@ const VaultDetails = () => {
                             :
                           </div>
                           <div className="font-medium text-foreground ml-1">
-                            {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                            {get30APY(vaultId)
+                              ? `${get30APY(vaultId).toFixed(2)}%`
+                              : "-"}
                           </div>
                         </div>
                       </div>
@@ -1025,7 +1029,7 @@ const VaultDetails = () => {
             </TabsList>
 
             <TabsContent value="terminal" className="mt-4 sm:mt-6">
-              <AgentTerminal />
+              <AgentTerminal currentVaultName={currentVaultName} />
             </TabsContent>
             <TabsContent value="details" className="mt-4 sm:mt-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[360px]">
@@ -1040,39 +1044,31 @@ const VaultDetails = () => {
                       Autonomous Liquidity {currentAssetSymbol} is a tokenized
                       AI yield optimization strategy that maximizes
                       risk-adjusted returns on stablecoin investments across
-                      numerous DeFi protocols. By continuously scanning the
-                      DeFi.
+                      numerous DeFi protocols. By continuously scanning the DeFi
+                      ecosystem, the vault dynamically reallocates assets to the
+                      highest-yielding opportunities while managing risk.
                     </p>
-
-                    {/* <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-xs sm:text-sm">
-                          Total Pending Deposits
-                        </span>
-                        <span className="text-foreground font-medium text-xs sm:text-sm">
-                          {vaultData.pendingDepositAssets?.toFixed(4) || "0.00"}{" "}
-                          {currentAssetSymbol}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground text-xs sm:text-sm">
-                          Total Pending Withdrawals
-                        </span>
-                        <span className="text-foreground font-medium text-xs sm:text-sm">
-                          {vaultData.totalRequestedAssets?.toFixed(4) || "0.00"}{" "}
-                          {currentAssetSymbol}
-                        </span>
-                      </div>
-                    </div> */}
 
                     <div className="pt-3 sm:pt-4">
                       <h4 className="text-foreground font-medium mb-2 sm:mb-3 text-sm">
-                        Allowed Protocols
+                        Active Protocols
                       </h4>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs sm:text-sm">
-                          <span className="text-muted-foreground">
-                            Felix, Hypurrfi & Hyperlend
+                          <span className="text-muted-foreground capitalize">
+                            {(() => {
+                              const allocations = currentPoolsAllocations || [];
+                              const protocols = allocations
+                                .map((a) => a.protocol)
+                                .filter(
+                                  (value, index, self) =>
+                                    self.indexOf(value) === index,
+                                );
+
+                              return protocols.length > 0
+                                ? protocols.join(", ")
+                                : "No active protocols";
+                            })()}
                           </span>
                         </div>
                       </div>
@@ -1116,11 +1112,7 @@ const VaultDetails = () => {
                 <CardContent>
                   <div className="space-y-3">
                     {(() => {
-                      const currentVaultData = vaultId
-                        ? getVaultDataByAddress(vaultId)
-                        : null;
-                      const allocations = currentVaultData?.allocations || [];
-
+                      const allocations = currentPoolsAllocations || [];
                       return allocations.length > 0 ? (
                         allocations.map((allocation, index) => (
                           <div
@@ -1194,8 +1186,8 @@ const VaultDetails = () => {
                         {allocationsError}
                       </p>
                     </div>
-                  ) : allocationsData?.data[0]?.allocations &&
-                    allocationsData.data[0].allocations.length > 0 ? (
+                  ) : allocationsData?.data?.allocations &&
+                    allocationsData.data.allocations.length > 0 ? (
                     <>
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                         <div>
@@ -1264,8 +1256,8 @@ const VaultDetails = () => {
                                       {item.name === "safe"
                                         ? "Safe (Idle)"
                                         : item.name === "hypurrFinance"
-                                        ? "HypurrFi"
-                                        : item.name}
+                                          ? "HypurrFi"
+                                          : item.name}
                                     </span>
                                     <span className="text-xs text-muted-foreground">
                                       Balance: ${item.tvl.toFixed(2)}
@@ -1286,7 +1278,7 @@ const VaultDetails = () => {
                   ) : (
                     <div className="text-center py-8">
                       <p className="text-muted-foreground">
-                        No allocation data available.
+                        No composition data available.
                       </p>
                     </div>
                   )}
