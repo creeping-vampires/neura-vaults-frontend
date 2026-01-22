@@ -82,7 +82,7 @@ const Dashboard = () => {
 
         setDashboardData({
           tvl,
-          currentAPY: get7APY(),
+          currentAPY: get7APY(primaryVault?.address),
           interestEarned: totalInterestEarned,
           totalSupply: totalVolume,
         });
@@ -98,7 +98,7 @@ const Dashboard = () => {
     };
 
     calculateDashboardData();
-  }, [getAllVaults, getTotalTVL, totalVolume]);
+  }, [getAllVaults, getTotalTVL, totalVolume, get7APY, primaryVault]);
 
   useEffect(() => {
     if (shouldRedirectAfterLogin && isConnected) {
@@ -137,7 +137,7 @@ const Dashboard = () => {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
-                Total Agent Volume
+                Total Agents Volume
               </h3>
               <Rocket className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
@@ -171,7 +171,9 @@ const Dashboard = () => {
                     </div>
                     <div className="font-medium text-foreground ml-auto">:</div>
                     <div className="font-medium text-foreground ml-1">
-                      {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
+                      {get24APY(primaryVault?.address)
+                        ? `${get24APY(primaryVault?.address).toFixed(2)}%`
+                        : "-"}
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
@@ -180,7 +182,9 @@ const Dashboard = () => {
                     </div>
                     <div className="font-medium text-foreground ml-auto">:</div>
                     <div className="font-medium text-foreground ml-1">
-                      {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                      {get30APY(primaryVault?.address)
+                        ? `${get30APY(primaryVault?.address).toFixed(2)}%`
+                        : "-"}
                     </div>
                   </div>
                 </div>
@@ -219,23 +223,28 @@ const Dashboard = () => {
           <CardContent className="w-full flex flex-col sm:flex-row gap-4 sm:gap-6 p-4 sm:p-6 pt-0 sm:pt-0">
             {isConnected ? (
               <>
-                <div className="w-full to-primary/10 p-3 sm:p-4 rounded-xl border border-border">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                      {`${primaryVault?.symbol || "Vault"} Balance`}
+                {getAllVaults().map((vault) => (
+                  <div
+                    key={vault.address}
+                    className="w-full to-primary/10 p-3 sm:p-4 rounded-xl border border-border"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                        {`${vault.symbol} Balance`}
+                      </p>
+                      <Badge
+                        variant="secondary"
+                        className="bg-muted text-muted-foreground border-border text-xs"
+                      >
+                        Stablecoin
+                      </Badge>
+                    </div>
+                    <p className="text-foreground font-bold text-xl sm:text-2xl">
+                      {Number(vault.data?.assetBalance || 0).toFixed(4)}{" "}
+                      {vault.symbol}
                     </p>
-                    <Badge
-                      variant="secondary"
-                      className="bg-muted text-muted-foreground border-border text-xs"
-                    >
-                      Stablecoin
-                    </Badge>
                   </div>
-                  <p className="text-foreground font-bold text-xl sm:text-2xl">
-                    {Number(primaryVault?.data?.assetBalance || 0).toFixed(4)}{" "}
-                    {primaryVault?.symbol || ""}
-                  </p>
-                </div>
+                ))}
 
                 {/* <div className="w-full p-3 sm:p-4 rounded-xl border border-border">
                   <div className="flex items-center justify-between mb-2">
