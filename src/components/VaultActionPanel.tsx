@@ -6,7 +6,7 @@ import { CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
 import { getExplorerTxUrl } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { usePublicClient } from "wagmi";
-import { Address, formatUnits, parseAbiItem } from "viem";
+import { Address, formatUnits, parseAbiItem, parseUnits } from "viem";
 import { useAccount } from "wagmi";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { useLocation } from "react-router-dom";
@@ -65,8 +65,8 @@ interface VaultActionPanelProps {
   setDepositEventStatus: (status: string) => void;
   withdrawEventStatus?: string;
   setWithdrawEventStatus: (status: string) => void;
-  pendingDepositAssets?: bigint;
-  pendingRedeemShares?: bigint;
+  pendingDepositAssets?: number;
+  pendingRedeemShares?: number;
   assetDecimals?: number;
   vaultDecimals?: number;
 }
@@ -123,8 +123,8 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   }>({ eligible: true });
 
   // Refs to avoid stale values inside backend monitoring interval
-  const pendingDepositAssetsRef = useRef<bigint>(pendingDepositAssets ?? 0n);
-  const pendingRedeemSharesRef = useRef<bigint>(pendingRedeemShares ?? 0n);
+  const pendingDepositAssetsRef = useRef<number>(pendingDepositAssets ?? 0);
+  const pendingRedeemSharesRef = useRef<number>(pendingRedeemShares ?? 0);
   const claimableWithdrawAssetsRef = useRef<number>(
     claimableWithdrawAssets ?? 0
   );
@@ -135,11 +135,11 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   const depositEventStatusRef = useRef<string | undefined>(depositEventStatus);
 
   useEffect(() => {
-    pendingDepositAssetsRef.current = pendingDepositAssets ?? 0n;
+    pendingDepositAssetsRef.current = pendingDepositAssets ?? 0;
   }, [pendingDepositAssets]);
 
   useEffect(() => {
-    pendingRedeemSharesRef.current = pendingRedeemShares ?? 0n;
+    pendingRedeemSharesRef.current = pendingRedeemShares ?? 0;
   }, [pendingRedeemShares]);
 
   useEffect(() => {
@@ -160,7 +160,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 
   // Evaluate withdraw request-state guards locally in the panel
   useEffect(() => {
-    const hasPendingWithdraw = (pendingRedeemShares ?? 0n) > 0n;
+    const hasPendingWithdraw = (pendingRedeemShares ?? 0) > 0;
     const hasClaimableWithdraw = (claimableWithdrawAssets ?? 0) > 0;
 
     if (hasPendingWithdraw) {
@@ -227,7 +227,9 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       return 0;
     }
     try {
-      const shares = pendingRedeemShares;
+      // Convert formatted shares (number) back to raw bigint
+      // Use string to avoid precision loss if possible, though number input already has limited precision
+      const shares = parseUnits(pendingRedeemShares.toString(), vaultDecimals ?? 18);
 
       if (shares === 0n) {
         setTotalPendingWithdrawals(0n);
@@ -251,7 +253,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
       console.error("Error fetching pending withdrawals:", e);
       return 0;
     }
-  }, [vaultId, pendingRedeemShares, publicClient]);
+  }, [vaultId, pendingRedeemShares, publicClient, vaultDecimals]);
 
   useEffect(() => {
     void fetchTotalPendingDeposits();
@@ -282,7 +284,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     setIsValidatingDeposit(true);
     const amountNum = inputAmount ? parseFloat(inputAmount) : 0;
-    const hasPendingDeposit = (pendingDepositAssets ?? 0n) > 0n;
+    const hasPendingDeposit = (pendingDepositAssets ?? 0) > 0;
     const hasClaimableDeposit = (claimableDepositAssets ?? 0) > 0;
 
     if (hasPendingDeposit) {
@@ -777,7 +779,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 
         try {
           if (type === "deposit") {
-            if (pendingDepositAssetsRef.current > 0n) {
+            if (pendingDepositAssetsRef.current > 0) {
               updateTransactionStatus(id, "settling");
             } else if ((claimableDepositAssetsRef.current ?? 0) > 0) {
               updateTransactionStatus(id, "settling");
@@ -787,7 +789,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               transactionMonitors.current.delete(id);
             }
           } else {
-            if (pendingRedeemSharesRef.current > 0n) {
+            if (pendingRedeemSharesRef.current > 0) {
               updateTransactionStatus(id, "settling");
             } else if ((claimableWithdrawAssetsRef.current ?? 0) > 0) {
               updateTransactionStatus(id, "settling");
@@ -821,7 +823,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     const addDepositPendingTransactions = () => {
       if (
-        (pendingDepositAssets ?? 0n) > 0n ||
+        (pendingDepositAssets ?? 0) > 0 ||
         (claimableDepositAssets ?? 0) > 0
       ) {
         const existingDepositTx = latestTransactions.find(
@@ -835,7 +837,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             amount:
               (claimableDepositAssets ?? 0) > 0
                 ? (claimableDepositAssets ?? 0).toString()
-                : formatUnits(pendingDepositAssets ?? 0n, assetDecimals ?? 18),
+                : (pendingDepositAssets ?? 0).toString(),
             status: "settling",
             origin: "backend",
             timestamp: Date.now(),
@@ -859,7 +861,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     const addWithdrawPendingTransactions = () => {
       if (
-        (pendingRedeemShares ?? 0n) > 0n ||
+        (pendingRedeemShares ?? 0) > 0 ||
         (claimableWithdrawAssets ?? 0) > 0
       ) {
         const existingWithdrawTx = latestTransactions.find(
@@ -873,7 +875,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
             amount:
               (claimableWithdrawAssets ?? 0) > 0
                 ? (claimableWithdrawAssets ?? 0).toString()
-                : formatUnits(pendingRedeemShares ?? 0n, vaultDecimals ?? 18),
+                : (pendingRedeemShares ?? 0).toString(),
             status: "settling",
             origin: "backend",
             timestamp: Date.now(),
@@ -898,9 +900,9 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
   useEffect(() => {
     const removeBackendPendingTransactions = () => {
       if (
-        (pendingDepositAssets ?? 0n) === 0n &&
+        (pendingDepositAssets ?? 0) === 0 &&
         claimableDepositAssets === 0 &&
-        (pendingRedeemShares ?? 0n) === 0n &&
+        (pendingRedeemShares ?? 0) === 0 &&
         claimableWithdrawAssets === 0
       ) {
         const timer = setTimeout(() => {

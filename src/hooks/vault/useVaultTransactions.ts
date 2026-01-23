@@ -459,6 +459,50 @@ export const useVaultTransactions = ({
     [userAddress, vaultData]
   );
 
+  const getPendingDepositAmount = useCallback(
+    async (vaultAddress: string) => {
+      if (!userAddress || !publicClient) return 0;
+      try {
+        const pendingAssets = (await publicClient.readContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "pendingDepositRequest",
+          args: [0n, userAddress],
+        })) as bigint;
+
+        const decimals =
+          (vaultData[vaultAddress]?.assetDecimals as number) ?? 6;
+        return Number(formatUnits(pendingAssets, decimals));
+      } catch (e) {
+        console.error("Failed to fetch pending deposit amount:", e);
+        return 0;
+      }
+    },
+    [userAddress, vaultData, publicClient],
+  );
+
+  const getPendingRedeemShares = useCallback(
+    async (vaultAddress: string) => {
+      if (!userAddress || !publicClient) return 0;
+      try {
+        const pendingShares = (await publicClient.readContract({
+          address: vaultAddress as `0x${string}`,
+          abi: YieldAllocatorVaultABI,
+          functionName: "pendingRedeemRequest",
+          args: [0n, userAddress],
+        })) as bigint;
+
+        const vaultDecimals =
+          (vaultData[vaultAddress]?.vaultDecimals as number) ?? 18;
+        return Number(formatUnits(pendingShares, vaultDecimals));
+      } catch (e) {
+        console.error("Failed to fetch pending redeem shares:", e);
+        return 0;
+      }
+    },
+    [userAddress, vaultData, publicClient],
+  );
+
   return {
     deposit,
     withdraw,
@@ -466,6 +510,8 @@ export const useVaultTransactions = ({
     claimRedeem,
     getClaimableDepositAmount,
     getClaimableRedeemAmount,
+    getPendingDepositAmount,
+    getPendingRedeemShares,
     isTransacting,
     isDepositTransacting,
     isWithdrawTransacting,

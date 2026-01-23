@@ -90,9 +90,9 @@ const VaultDetails = () => {
     claimRedeem,
     getClaimableDepositAmount,
     getClaimableRedeemAmount,
-    pendingDepositAssets,
-    pendingRedeemShares,
-  } = useVaultContract();
+    getPendingDepositAmount,
+    getPendingRedeemShares,
+  } = useVaultContract(vaultId);
 
   const vaultData = useMemo(
     () => getVaultByAddress(vaultId),
@@ -256,6 +256,8 @@ const VaultDetails = () => {
     useState<number>(0);
   const [claimableWithdrawAssets, setClaimableWithdrawAssets] =
     useState<number>(0);
+  const [pendingDepositAssets, setPendingDepositAssets] = useState<number>(0);
+  const [pendingRedeemShares, setPendingRedeemShares] = useState<number>(0);
 
   const refreshClaimableDeposit = useCallback(async () => {
     try {
@@ -276,45 +278,78 @@ const VaultDetails = () => {
     }
   }, [getClaimableRedeemAmount, vaultId]);
 
+  const refreshPendingDeposit = useCallback(async () => {
+    try {
+      const amount = await getPendingDepositAmount?.(vaultId);
+      setPendingDepositAssets(amount || 0);
+    } catch {
+      // console.log("error refreshing pending deposit", e);
+    }
+  }, [getPendingDepositAmount, vaultId]);
+
+  const refreshPendingRedeem = useCallback(async () => {
+    try {
+      const amount = await getPendingRedeemShares?.(vaultId);
+      setPendingRedeemShares(amount || 0);
+    } catch {
+      // console.log("error refreshing pending redeem", e);
+    }
+  }, [getPendingRedeemShares, vaultId]);
+
   const isLocalAuth = localStorage.getItem("auth") === "true";
   const isConnected = isLocalAuth || Boolean(userAddress);
 
   useEffect(() => {
     refreshClaimableDeposit();
     refreshClaimableWithdraw();
-  }, [vaultId, isConnected, refreshClaimableDeposit, refreshClaimableWithdraw]);
+    refreshPendingDeposit();
+    refreshPendingRedeem();
+  }, [
+    vaultId,
+    isConnected,
+    refreshClaimableDeposit,
+    refreshClaimableWithdraw,
+    refreshPendingDeposit,
+    refreshPendingRedeem,
+  ]);
 
   useEffect(() => {
     if (depositEventStatus === "settled") {
       setClaimableDepositAssets(0);
+      refreshPendingDeposit();
     }
-  }, [depositEventStatus, refreshClaimableDeposit]);
+  }, [depositEventStatus, refreshClaimableDeposit, refreshPendingDeposit]);
 
   useEffect(() => {
     if (withdrawEventStatus === "settled") {
       setClaimableWithdrawAssets(0);
+      refreshPendingRedeem();
     }
-  }, [withdrawEventStatus, refreshClaimableWithdraw]);
+  }, [withdrawEventStatus, refreshClaimableWithdraw, refreshPendingRedeem]);
 
   useEffect(() => {
-    if (pendingRedeemShares > 0n) {
+    if (pendingRedeemShares > 0) {
       refreshClaimableWithdraw();
+      refreshPendingRedeem();
       const t = setInterval(() => {
         refreshClaimableWithdraw();
+        refreshPendingRedeem();
       }, 30000);
       return () => clearInterval(t);
     }
-  }, [pendingRedeemShares, refreshClaimableWithdraw]);
+  }, [pendingRedeemShares, refreshClaimableWithdraw, refreshPendingRedeem]);
 
   useEffect(() => {
-    if (pendingDepositAssets > 0n) {
+    if (pendingDepositAssets > 0) {
       refreshClaimableDeposit();
+      refreshPendingDeposit();
       const t = setInterval(() => {
         refreshClaimableDeposit();
+        refreshPendingDeposit();
       }, 30000);
       return () => clearInterval(t);
     }
-  }, [pendingDepositAssets, refreshClaimableDeposit]);
+  }, [pendingDepositAssets, refreshClaimableDeposit, refreshPendingDeposit]);
 
   const timeframes = ["7D", "1M"] as const;
 
@@ -370,7 +405,7 @@ const VaultDetails = () => {
         </div>
         <div className="flex gap-3">
           {/* Pending Deposits Section */}
-          {(pendingDepositAssets > 0n || claimableDepositAssets > 0) && (
+          {(pendingDepositAssets > 0 || claimableDepositAssets > 0) && (
             <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
                 <div className="h-full bg-primary/60 animate-progress" />
@@ -384,7 +419,7 @@ const VaultDetails = () => {
                 </p>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                {pendingDepositAssets > 0n && (
+                {pendingDepositAssets > 0 && (
                   <Button
                     size="sm"
                     variant="wallet"
@@ -413,7 +448,7 @@ const VaultDetails = () => {
           )}
 
           {/* Pending Withdrawals Section */}
-          {pendingRedeemShares > 0n && claimableWithdrawAssets === 0 && (
+          {pendingRedeemShares > 0 && claimableWithdrawAssets === 0 && (
             <Card className="bg-gradient-to-br from-card/50 to-background/50 mt-3 px-3 pt-1 pb-1.5 border border-primary/20 rounded-md flex items-center gap-3 relative overflow-hidden">
               <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary/20 overflow-hidden">
                 <div className="h-full bg-primary/60 animate-progress" />

@@ -8,16 +8,12 @@ import { LatestVaultItem } from "@/services/config";
 
 interface UseVaultEventsProps {
   refreshAllData: (silentRefresh?: boolean) => Promise<void>;
-  setPendingDepositAssets: (amount: bigint) => void;
-  setPendingRedeemShares: (amount: bigint) => void;
   setDepositEventStatus: (status: string) => void;
   setWithdrawEventStatus: (status: string) => void;
 }
 
 export const useVaultEvents = ({
   refreshAllData,
-  setPendingDepositAssets,
-  setPendingRedeemShares,
   setDepositEventStatus,
   setWithdrawEventStatus,
 }: UseVaultEventsProps) => {
@@ -63,11 +59,10 @@ export const useVaultEvents = ({
             // Normalize addresses for comparison
             const normalizedUserAddress = userAddress.toLowerCase();
             const hasMatchingOwner = owners.some(
-              (owner) => owner.toLowerCase() === normalizedUserAddress
+              (owner) => owner.toLowerCase() === normalizedUserAddress,
             );
 
             if (hasMatchingOwner) {
-              setPendingDepositAssets(0n);
               toast({
                 title: "Settlement complete",
                 description: `Your Deposit request has settled on-chain.`,
@@ -100,13 +95,11 @@ export const useVaultEvents = ({
             // Normalize addresses for comparison
             const normalizedUserAddress = userAddress.toLowerCase();
             const hasMatchingOwner = owners.some(
-              (owner) => owner.toLowerCase() === normalizedUserAddress
+              (owner) => owner.toLowerCase() === normalizedUserAddress,
             );
 
             if (hasMatchingOwner) {
-              // console.log(`[MultiVault] Withdraw event detected for ${address}`);
               refreshAllData(true).then(() => {
-                setPendingRedeemShares(0n);
                 setWithdrawEventStatus("settled");
               });
             }
@@ -140,9 +133,7 @@ export const useVaultEvents = ({
     userAddress,
     refreshAllData,
     allVaultData,
-    setPendingDepositAssets,
     setDepositEventStatus,
-    setPendingRedeemShares,
     setWithdrawEventStatus,
     toast,
   ]);

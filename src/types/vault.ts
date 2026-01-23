@@ -29,10 +29,6 @@ export interface VaultData {
   poolNetAPRs: number[];
   poolTVLs: number[];
 
-  // Pending transaction tracking
-  pendingDepositAssets?: bigint;
-  pendingRedeemShares?: bigint;
-
   // Claimable limits
   maxDeposit?: bigint;
   maxRedeem?: bigint;

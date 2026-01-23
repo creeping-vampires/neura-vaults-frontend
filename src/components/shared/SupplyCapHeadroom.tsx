@@ -13,9 +13,9 @@ interface SupplyCapHeadroomProps {
   show: boolean;
   vaultId?: string;
   inputAmount?: string;
-  pendingDepositAssets: bigint;
+  pendingDepositAssets: number;
   claimableDepositAssets: number;
-  pendingRedeemShares: bigint;
+  pendingRedeemShares: number;
   totalPendingDeposits?: bigint;
   totalPendingWithdrawals?: bigint;
   className?: string;
@@ -105,9 +105,13 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
           vaultData.assetDecimals
         );
 
+        const pendingDepositAssetsUnits = pendingDepositAssets
+          ? parseUnits(pendingDepositAssets.toString(), vaultData.assetDecimals)
+          : 0n;
+
         const pendingAmount =
-          pendingDepositAssets > 0n
-            ? pendingDepositAssets
+          pendingDepositAssets > 0
+            ? pendingDepositAssetsUnits
             : claimableDepositAssetsUnits;
         const userEffective = userSupplied + pendingAmount;
 
@@ -183,7 +187,7 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
 
         const vaultHeadroomFormatted = formatUnits(
           vaultHeadroomUnitsFinal,
-          vaultData.assetDecimals
+          vaultData.assetDecimals,
         );
 
         if (!cancelled) {
@@ -201,11 +205,17 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
         }
       }
     };
-    evaluateVaultHeadroom();
+
+    if (show) {
+      evaluateVaultHeadroom();
+    } else {
+      setValidatingVault(false);
+    }
     return () => {
       cancelled = true;
     };
   }, [
+    show,
     vaultId,
     caps,
     vaultData?.totalAssets,
@@ -217,6 +227,8 @@ const SupplyCapHeadroom: React.FC<SupplyCapHeadroomProps> = ({
   useEffect(() => {
     onHeadroomComputed?.(headroom);
   }, [headroom, onHeadroomComputed]);
+
+  if (!show || !caps) return null;
 
   return (
     show && (
