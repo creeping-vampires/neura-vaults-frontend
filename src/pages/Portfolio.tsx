@@ -84,6 +84,15 @@ const Portfolio = () => {
       }));
   }, [getAllVaults]);
 
+  const bestVault = useMemo(() => {
+    if (positions.length === 0) return null;
+    return positions.reduce((prev, current) => {
+      const prevApy = get7APY(prev.vaultAddress);
+      const currentApy = get7APY(current.vaultAddress);
+      return prevApy > currentApy ? prev : current;
+    });
+  }, [positions, get7APY]);
+
   const handlePositionClick = (position: any) => {
     navigate(`/vaults/${position.vaultAddress}`);
   };
@@ -148,7 +157,10 @@ const Portfolio = () => {
                   Current APY (7d)
                 </div>
                 <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
-                  {get7APY().toFixed(2)}%
+                  {bestVault
+                    ? get7APY(bestVault.vaultAddress).toFixed(2)
+                    : "0.00"}
+                  %
                   <div className="absolute top-8 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                     <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                     <div className="flex items-center gap-1">
@@ -159,7 +171,11 @@ const Portfolio = () => {
                         :
                       </div>
                       <div className="font-medium text-foreground ml-1">
-                        {get24APY() ? `${get24APY().toFixed(2)}%` : "-"}
+                        {bestVault && get24APY(bestVault.vaultAddress)
+                          ? `${get24APY(bestVault.vaultAddress).toFixed(
+                              2,
+                            )}%`
+                          : "-"}
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -170,7 +186,11 @@ const Portfolio = () => {
                         :
                       </div>
                       <div className="font-medium text-foreground ml-1">
-                        {get30APY() ? `${get30APY().toFixed(2)}%` : "-"}
+                        {bestVault && get30APY(bestVault.vaultAddress)
+                          ? `${get30APY(bestVault.vaultAddress).toFixed(
+                              2,
+                            )}%`
+                          : "-"}
                       </div>
                     </div>
                   </div>
@@ -250,8 +270,8 @@ const Portfolio = () => {
                             ?.allocations || [];
                         const uniqueProtocols = Array.from(
                           new Set(
-                            allocations.map((a) => a.protocol.toLowerCase())
-                          )
+                            allocations.map((a) => a.protocol.toLowerCase()),
+                          ),
                         );
 
                         return (
@@ -285,7 +305,7 @@ const Portfolio = () => {
                                 </span>
                               </td>
                               <td className="text-primary font-semibold py-6 flex items-center justify-center gap-1 relative group">
-                                {get7APY().toFixed(2)}%
+                                {get7APY(position.vaultAddress).toFixed(2)}%
                                 <div className="absolute top-14 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                                   <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
                                   <div className="flex items-center gap-1">
@@ -296,8 +316,8 @@ const Portfolio = () => {
                                       :
                                     </div>
                                     <div className="font-medium text-foreground ml-1">
-                                      {get24APY()
-                                        ? `${get24APY().toFixed(2)}%`
+                                      {get24APY(position.vaultAddress)
+                                        ? `${get24APY(position.vaultAddress).toFixed(2)}%`
                                         : "-"}
                                     </div>
                                   </div>
@@ -309,8 +329,8 @@ const Portfolio = () => {
                                       :
                                     </div>
                                     <div className="font-medium text-foreground ml-1">
-                                      {get30APY()
-                                        ? `${get30APY().toFixed(2)}%`
+                                      {get30APY(position.vaultAddress)
+                                        ? `${get30APY(position.vaultAddress).toFixed(2)}%`
                                         : "-"}
                                     </div>
                                   </div>
@@ -348,14 +368,15 @@ const Portfolio = () => {
                                 >
                                   View Details
                                 </Button>
-                                {isExpanded ? (
-                                  <ChevronUp className="w-6 h-6 mx-auto text-muted-foreground" />
-                                ) : (
-                                  <ChevronDown className="w-6 h-6 mx-auto text-muted-foreground" />
-                                )}
+                                {position.name === "AI USDT" &&
+                                  (isExpanded ? (
+                                    <ChevronUp className="w-6 h-6 mx-auto text-muted-foreground" />
+                                  ) : (
+                                    <ChevronDown className="w-6 h-6 mx-auto text-muted-foreground" />
+                                  ))}
                               </td>
                             </tr>
-                            {isExpanded && (
+                            {position.name === "AI USDT" && isExpanded && (
                               <tr className="bg-accent/10 border-b border-border select-none">
                                 <td colSpan={5} className="p-0">
                                   <div className="w-[60%] mx-auto p-6 space-y-4 animate-in slide-in-from-top-2 duration-200">
@@ -406,7 +427,7 @@ const Portfolio = () => {
                                                     {hasPoints ? (
                                                       <span className="text-primary font-medium">
                                                         {Number(
-                                                          protocolPoints.points
+                                                          protocolPoints.points,
                                                         ).toFixed(6)}{" "}
                                                         Points
                                                       </span>
@@ -418,7 +439,7 @@ const Portfolio = () => {
                                                   </div>
                                                 </div>
                                               );
-                                            }
+                                            },
                                           )}
                                         </div>
                                       </div>

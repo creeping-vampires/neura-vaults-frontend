@@ -23,14 +23,17 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const isConnected = Boolean(userAddress);
 
-  const primaryVault = useMemo(() => {
-    const vaults = getAllVaults();
-    const usdt0 = vaults.find((v) => v.symbol === "USD₮0");
-    return usdt0 || vaults[0];
-  }, [getAllVaults]);
+  const { get24APY, get7APY, get30APY, totalVolume, allVaultData } =
+    useVaultApi();
 
-  const { get24APY, get7APY, get30APY, totalVolume } = useVaultApi();
 
+  const bestVault = useMemo(() => {
+    if (!allVaultData || allVaultData.length === 0) return null;
+    return allVaultData.reduce((prev, current) =>
+      (prev.apy?.apy7d || 0) > (current.apy?.apy7d || 0) ? prev : current,
+    );
+  }, [allVaultData]);
+  
   const [hypeBalance, setHypeBalance] = useState<number>(0);
 
   const fetchBalances = useCallback(async () => {
@@ -82,7 +85,7 @@ const Dashboard = () => {
 
         setDashboardData({
           tvl,
-          currentAPY: get7APY(primaryVault?.address),
+          currentAPY: get7APY(bestVault?.address),
           interestEarned: totalInterestEarned,
           totalSupply: totalVolume,
         });
@@ -98,7 +101,7 @@ const Dashboard = () => {
     };
 
     calculateDashboardData();
-  }, [getAllVaults, getTotalTVL, totalVolume, get7APY, primaryVault]);
+  }, [getAllVaults, getTotalTVL, totalVolume, get7APY, bestVault]);
 
   useEffect(() => {
     if (shouldRedirectAfterLogin && isConnected) {
@@ -171,8 +174,8 @@ const Dashboard = () => {
                     </div>
                     <div className="font-medium text-foreground ml-auto">:</div>
                     <div className="font-medium text-foreground ml-1">
-                      {get24APY(primaryVault?.address)
-                        ? `${get24APY(primaryVault?.address).toFixed(2)}%`
+                      {get24APY(bestVault?.address)
+                        ? `${get24APY(bestVault?.address).toFixed(2)}%`
                         : "-"}
                     </div>
                   </div>
@@ -182,8 +185,8 @@ const Dashboard = () => {
                     </div>
                     <div className="font-medium text-foreground ml-auto">:</div>
                     <div className="font-medium text-foreground ml-1">
-                      {get30APY(primaryVault?.address)
-                        ? `${get30APY(primaryVault?.address).toFixed(2)}%`
+                      {get30APY(bestVault?.address)
+                        ? `${get30APY(bestVault?.address).toFixed(2)}%`
                         : "-"}
                     </div>
                   </div>

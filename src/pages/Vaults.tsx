@@ -57,7 +57,7 @@ const Vaults = () => {
         address: "0x0000000000000000000000000000000000000001",
         depositAPY: 0,
         totalDeposits: 0,
-        name: "aiUSDH",
+        name: "AI USDH",
         symbol: "USDH",
         status: "coming_soon",
       },
@@ -70,6 +70,7 @@ const Vaults = () => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       market.address.toLowerCase().includes(searchLower) ||
+      market.name.toLowerCase().includes(searchLower) ||
       market.symbol.toLowerCase().includes(searchLower);
     return matchesSearch;
   });
