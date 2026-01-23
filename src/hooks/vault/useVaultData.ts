@@ -12,18 +12,12 @@ interface UseVaultDataReturn {
   isLoading: boolean;
   error: string | null;
   refreshAllData: (silentRefresh?: boolean) => Promise<void>;
-  pendingDepositAssets: bigint;
-  pendingRedeemShares: bigint;
-  setPendingDepositAssets: React.Dispatch<React.SetStateAction<bigint>>;
-  setPendingRedeemShares: React.Dispatch<React.SetStateAction<bigint>>;
 }
 
 export const useVaultData = (): UseVaultDataReturn => {
   const { allVaultData } = useVaultApi();
   const { address: userAddress } = useAccount();
 
-  const [pendingDepositAssets, setPendingDepositAssets] = useState<bigint>(0n);
-  const [pendingRedeemShares, setPendingRedeemShares] = useState<bigint>(0n);
   const [vaultData, setVaultData] = useState<Record<string, VaultData>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error] = useState<string | null>(null);
@@ -117,18 +111,6 @@ export const useVaultData = (): UseVaultDataReturn => {
           {
             address: v.address as `0x${string}`,
             abi: YieldAllocatorVaultABI,
-            functionName: "pendingDepositRequest",
-            args: [0n, userAddress],
-          },
-          {
-            address: v.address as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
-            functionName: "pendingRedeemRequest",
-            args: [0n, userAddress],
-          },
-          {
-            address: v.address as `0x${string}`,
-            abi: YieldAllocatorVaultABI,
             functionName: "maxDeposit",
             args: [userAddress],
           },
@@ -137,7 +119,7 @@ export const useVaultData = (): UseVaultDataReturn => {
             abi: YieldAllocatorVaultABI,
             functionName: "maxRedeem",
             args: [userAddress],
-          }
+          },
         );
       }
     });
@@ -163,15 +145,11 @@ export const useVaultData = (): UseVaultDataReturn => {
   useEffect(() => {
     if (!allVaultData || allVaultData.length === 0) {
       setVaultData({});
-      setPendingDepositAssets(0n);
-      setPendingRedeemShares(0n);
       setIsLoading(isVaultsLoading);
       return;
     }
 
     const finalVaultData: Record<string, VaultData> = {};
-    let totalPendingDeposit = 0n;
-    let totalPendingRedeem = 0n;
 
     allVaultData.forEach((v: LatestVaultItem, index: number) => {
       const address = v.address as string;
@@ -180,21 +158,15 @@ export const useVaultData = (): UseVaultDataReturn => {
 
       let userData = undefined;
       if (userResults && userResults.length > 0) {
-        const base = index * 7;
+        const base = index * 5;
         if (userResults[base]) {
           userData = {
             userShares: (userResults[base]?.result as bigint) ?? 0n,
             userAssetBalance: (userResults[base + 1]?.result as bigint) ?? 0n,
             assetAllowance: (userResults[base + 2]?.result as bigint) ?? 0n,
-            pendingDepositAssets:
-              (userResults[base + 3]?.result as bigint) ?? 0n,
-            pendingRedeemShares:
-              (userResults[base + 4]?.result as bigint) ?? 0n,
-            maxDeposit: (userResults[base + 5]?.result as bigint) ?? 0n,
-            maxRedeem: (userResults[base + 6]?.result as bigint) ?? 0n,
+            maxDeposit: (userResults[base + 3]?.result as bigint) ?? 0n,
+            maxRedeem: (userResults[base + 4]?.result as bigint) ?? 0n,
           };
-          totalPendingDeposit += userData.pendingDepositAssets || 0n;
-          totalPendingRedeem += userData.pendingRedeemShares || 0n;
         }
       }
 
@@ -216,7 +188,6 @@ export const useVaultData = (): UseVaultDataReturn => {
         assetSymbol: v.underlyingSymbol,
         vaultDecimals: vaultRaw.vaultDecimals,
         totalRequestedAssets: metrics.totalRequestedAssets,
-        pendingDepositAssets: userData?.pendingDepositAssets || 0n,
         isLoading: false,
         error: null,
         poolNetAPRs: [],
@@ -227,8 +198,6 @@ export const useVaultData = (): UseVaultDataReturn => {
     });
 
     setVaultData(finalVaultData);
-    setPendingDepositAssets(totalPendingDeposit);
-    setPendingRedeemShares(totalPendingRedeem);
     setIsLoading(isVaultsLoading);
   }, [
     allVaultData,
@@ -252,9 +221,5 @@ export const useVaultData = (): UseVaultDataReturn => {
     isLoading,
     error,
     refreshAllData,
-    pendingDepositAssets,
-    pendingRedeemShares,
-    setPendingDepositAssets,
-    setPendingRedeemShares,
   };
 };

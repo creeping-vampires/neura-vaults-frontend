@@ -26,12 +26,12 @@ export interface VaultContractContextType {
   claimRedeem: (vaultAddress: string) => Promise<`0x${string}` | null>;
   getClaimableDepositAmount: (vaultAddress: string) => Promise<number>;
   getClaimableRedeemAmount: (vaultAddress: string) => Promise<number>;
+  getPendingDepositAmount: (vaultAddress: string) => Promise<number>;
+  getPendingRedeemShares: (vaultAddress: string) => Promise<number>;
   isTransacting: boolean;
   isDepositTransacting: boolean;
   isWithdrawTransacting: boolean;
   transactionHash: string | null;
-  pendingDepositAssets: bigint;
-  pendingRedeemShares: bigint;
   depositEventStatus: string;
   setDepositEventStatus: (status: string) => void;
   withdrawEventStatus: string;
@@ -48,16 +48,7 @@ export const VaultContractProvider: React.FC<{ children: React.ReactNode }> = ({
   const { allVaultData } = useVaultApi();
 
   // 1. Fetch and process data
-  const {
-    vaultData,
-    isLoading,
-    error,
-    refreshAllData,
-    pendingDepositAssets,
-    pendingRedeemShares,
-    setPendingDepositAssets,
-    setPendingRedeemShares,
-  } = useVaultData();
+  const { vaultData, isLoading, error, refreshAllData } = useVaultData();
 
   // 2. Handle transactions
   const {
@@ -67,6 +58,8 @@ export const VaultContractProvider: React.FC<{ children: React.ReactNode }> = ({
     claimRedeem,
     getClaimableDepositAmount,
     getClaimableRedeemAmount,
+    getPendingDepositAmount,
+    getPendingRedeemShares,
     isTransacting,
     isDepositTransacting,
     isWithdrawTransacting,
@@ -80,8 +73,6 @@ export const VaultContractProvider: React.FC<{ children: React.ReactNode }> = ({
   // 3. Watch events
   useVaultEvents({
     refreshAllData,
-    setPendingDepositAssets,
-    setPendingRedeemShares,
     setDepositEventStatus,
     setWithdrawEventStatus,
   });
@@ -128,12 +119,12 @@ export const VaultContractProvider: React.FC<{ children: React.ReactNode }> = ({
       claimRedeem,
       getClaimableDepositAmount,
       getClaimableRedeemAmount,
+      getPendingDepositAmount,
+      getPendingRedeemShares,
       isTransacting,
       isDepositTransacting,
       isWithdrawTransacting,
       transactionHash,
-      pendingDepositAssets,
-      pendingRedeemShares,
       depositEventStatus,
       setDepositEventStatus,
       withdrawEventStatus,
@@ -153,14 +144,12 @@ export const VaultContractProvider: React.FC<{ children: React.ReactNode }> = ({
       isDepositTransacting,
       isWithdrawTransacting,
       transactionHash,
-      pendingDepositAssets,
-      pendingRedeemShares,
       depositEventStatus,
       setDepositEventStatus,
       withdrawEventStatus,
       setWithdrawEventStatus,
-      allVaultData
-    ]
+      allVaultData,
+    ],
   );
 
   return (
@@ -170,11 +159,11 @@ export const VaultContractProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
-export const useVaultContract = () => {
+export const useVaultContract = (vaultId?: string) => {
   const context = useContext(VaultContractContext);
   if (context === undefined) {
     throw new Error(
-      "useVaultContractContext must be used within a VaultContractProvider"
+      "useVaultContractContext must be used within a VaultContractProvider",
     );
   }
   return context;

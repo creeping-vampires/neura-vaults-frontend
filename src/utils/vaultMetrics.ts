@@ -90,7 +90,6 @@ export const calculateVaultMetrics = (data: MultiVaultData, userData?: any) => {
     currentNetAPR,
     tvl: totalAssetsFormatted,
     totalRequestedAssets: totalRequestedAssetsFormatted,
-    pendingDepositAssets: pendingDepositAssetsFormatted,
     ...userMetrics,
   };
 };
