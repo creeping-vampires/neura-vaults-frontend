@@ -130,12 +130,12 @@ const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
   };
 
   return (
-    <Card className="w-full px-0 rounded-xl border border-border bg-gradient-to-br from-card/50 to-background/50 min-h-[360px] text-xs sm:text-sm shadow-xl relative overflow-hidden">
+    <Card data-testid="agent-terminal" className="w-full px-0 rounded-xl border border-border bg-gradient-to-br from-card/50 to-background/50 min-h-[360px] text-xs sm:text-sm shadow-xl relative overflow-hidden">
       <CardContent className="p-0 text-muted-foreground">
         <div className="grid grid-cols-1 py-4 px-6 border-b border-border sm:grid-cols-3 gap-y-2 gap-x-4 text-xs font-medium">
           <div className="flex flex-wrap gap-2">
             <span className="text-[#e4dfcb]">Agent:</span>
-            <span className="text-foreground">Neura AI Yield Optimizer</span>
+            <span data-testid="agent-terminal-name" className="text-foreground">Neura AI Yield Optimizer</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="text-[#e4dfcb]">Path:</span>
@@ -145,7 +145,7 @@ const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
           </div>
           <div className="flex flex-wrap gap-2">
             <span className="text-[#e4dfcb]">Status:</span>
-            <span className="text-foreground uppercase">Active</span>
+            <span data-testid="agent-terminal-status" className="text-foreground uppercase">Active</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 px-6 text-xs mb-2 mt-1">
@@ -155,17 +155,9 @@ const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
         <div
           ref={scrollRef}
           onScroll={handleScroll}
+          data-testid="agent-terminal-logs"
           className="space-y-6 max-h-72 overflow-auto px-6 pt-2 pb-10"
         >
-          {!loading && logs.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground opacity-60">
-              <div className="text-sm">No agent activities recorded yet</div>
-              <div className="text-xs mt-1">
-                Waiting for the first execution...
-              </div>
-            </div>
-          )}
-
           {loading && logs.length > 0 && (
             <div className="flex justify-center py-2">
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
@@ -175,6 +167,7 @@ const AgentTerminal = ({ currentVaultName }: { currentVaultName: string }) => {
           {logs.map((log) => (
             <div
               key={log.id}
+              data-testid="agent-terminal-log-entry"
               className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-500"
             >
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">

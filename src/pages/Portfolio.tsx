@@ -111,7 +111,7 @@ const Portfolio = () => {
   if (!isConnected) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-4">
-        <div className="bg-gradient-to-br from-card/50 to-background/50 border border-border rounded-2xl p-8 max-w-sm w-full text-center shadow-lg">
+        <div data-testid="portfolio-connect-prompt" className="bg-gradient-to-br from-card/50 to-background/50 border border-border rounded-2xl p-8 max-w-sm w-full text-center shadow-lg">
           <h3 className="text-muted-foreground text-md font-medium mb-5">
             Connect your wallet to view your portfolio balance
           </h3>
@@ -132,7 +132,7 @@ const Portfolio = () => {
   return (
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Portfolio Overview Card */}
-      <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl select-none relative z-10">
+      <Card data-testid="portfolio-deposits" className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl select-none relative z-10">
         <CardContent className="p-4 sm:p-6 relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 w-full">
@@ -143,7 +143,7 @@ const Portfolio = () => {
           </div>
           <div className="flex justify-between">
             <div className="mt-4">
-              <p className="text-3xl font-bold text-foreground">
+              <p data-testid="portfolio-deposits-value" className="text-3xl font-bold text-foreground">
                 $
                 {portfolioData.totalDeposits.toLocaleString(undefined, {
                   maximumFractionDigits: 2,
@@ -156,7 +156,7 @@ const Portfolio = () => {
                 <div className="text-muted-foreground text-xs">
                   Current APY (7d)
                 </div>
-                <div className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
+                <div data-testid="portfolio-apy" className="text-foreground font-semibold mt-1 w-fit gap-1 relative group">
                   {bestVault
                     ? get7APY(bestVault.vaultAddress).toFixed(2)
                     : "0.00"}
@@ -203,13 +203,14 @@ const Portfolio = () => {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsContent value="positions" className="mt-4 sm:mt-6">
-          <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+          <Card data-testid="portfolio-positions-card" className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
             <CardHeader className="px-4 pb-0 pt-4 sm:p-6 sm:pb-0">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
                   Your Positions
                 </CardTitle>
                 <Badge
+                  data-testid="portfolio-positions-count"
                   variant="secondary"
                   className="bg-muted text-muted-foreground border-border"
                 >
@@ -219,7 +220,7 @@ const Portfolio = () => {
             </CardHeader>
             <CardContent className="p-2 pt-0 sm:p-6">
               {positions.length === 0 ? (
-                <div className="text-center py-12">
+                <div data-testid="portfolio-empty-state" className="text-center py-12">
                   <div className="w-16 h-16 bg-muted rounded-full mx-auto mb-4 flex items-center justify-center">
                     <DollarSign className="h-8 w-8 text-muted-foreground" />
                   </div>
@@ -277,6 +278,7 @@ const Portfolio = () => {
                         return (
                           <React.Fragment key={position.vaultAddress}>
                             <tr
+                              data-testid={`portfolio-position-row-${position.vaultAddress}`}
                               className={`border-b border-border hover:bg-accent/30 cursor-pointer transition-colors select-none ${
                                 isExpanded ? "bg-accent/30" : ""
                               }`}

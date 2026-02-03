@@ -18,7 +18,19 @@ import { useUserAccess } from "@/hooks/useUserAccess";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useDisconnect } from "wagmi";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
-import { usePrivy } from "@privy-io/react-auth";
+import { isE2EMode } from "@/lib/e2eWagmiConfig";
+
+// Conditionally import usePrivy only in non-E2E mode
+let usePrivy: any = () => ({ logout: async () => {} });
+if (!isE2EMode()) {
+  // Dynamic import doesn't work for hooks, so we use a try-catch
+  try {
+    const privy = require('@privy-io/react-auth');
+    usePrivy = privy.usePrivy;
+  } catch {
+    // In E2E mode, Privy won't be available
+  }
+}
 
 interface NavbarProps {
   isMobile?: boolean;
@@ -29,7 +41,8 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { disconnect } = useDisconnect();
-  const { logout } = usePrivy();
+  const privyHook = usePrivy();
+  const logout = privyHook?.logout || (async () => {});
 
   const { address: userAddress } = useAccount();
 
@@ -56,9 +69,11 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
     }
   };
 
+  // Check connection status
   const isConnected = Boolean(userAddress);
+  const displayAddress = userAddress;
+  // In E2E mode, skip wrong network check since Anvil chain ID may differ
   const isWrongNetwork = isConnected && currentChainId !== "0x3e7";
-
   // Get chain label from chain ID
   const getChainLabel = (chainId: string | null) => {
     if (!chainId) return "Unknown";
@@ -240,29 +255,32 @@ const Navbar = ({ onToggleSidebar }: NavbarProps) => {
                     onClick={() => setShowWalletModal(!showWalletModal)}
                     variant="wallet"
                     className="space-x-2"
+                    data-testid="wallet-address-btn"
                   >
                     {/* <Wallet className="h-4 w-4" /> */}
                     <AddressDisplay
-                      address={userAddress}
+                      address={displayAddress}
                       className="font-medium font-libertinus"
                       variant="prominent"
+                      data-testid="wallet-address"
                     />
                   </Button>
                 </>
               ) : (
-                <Button
-                  onClick={async () => {
-                    const desiredPath = location.pathname.startsWith("/vaults/")
-                      ? location.pathname
-                      : "/vaults";
-                    setShouldRedirectAfterLogin(true);
-                    await connectWithFallback(desiredPath);
-                  }}
-                  disabled={isConnecting}
-                  variant="wallet"
-                  className="space-x-2"
-                >
-                  <LogIn className="h-4 w-4" />
+                  <Button
+                    onClick={async () => {
+                      const desiredPath = location.pathname.startsWith("/vaults/")
+                        ? location.pathname
+                        : "/vaults";
+                      setShouldRedirectAfterLogin(true);
+                      await connectWithFallback(desiredPath);
+                    }}
+                    disabled={isConnecting}
+                    variant="wallet"
+                    className="space-x-2"
+                    data-testid="connect-wallet-btn"
+                  >
+                    <LogIn className="h-4 w-4" />
                   <span className="font-medium font-libertinus">
                     {isConnecting ? "Connecting..." : "Connect Wallet"}
                   </span>

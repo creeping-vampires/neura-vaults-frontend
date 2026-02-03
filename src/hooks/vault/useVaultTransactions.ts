@@ -48,9 +48,9 @@ export const useVaultTransactions = ({
 
         const assetAddress = vaultData[vaultAddress]?.assetAddress;
         const assetDecimals = vaultData[vaultAddress]?.assetDecimals;
-        
+
         if (!assetAddress || assetDecimals === undefined) {
-            throw new Error("Vault data not loaded");
+          throw new Error("Vault data not loaded");
         }
 
         const amountBigInt = parseUnits(amount, Number(assetDecimals));
@@ -98,7 +98,7 @@ export const useVaultTransactions = ({
 
           if ((verifiedAllowance as bigint) < amountBigInt) {
             throw new Error(
-              "Approval verification failed: Insufficient allowance after approval"
+              "Approval verification failed: Insufficient allowance after approval",
             );
           }
         }
@@ -107,11 +107,7 @@ export const useVaultTransactions = ({
           address: vaultAddress as `0x${string}`,
           abi: YieldAllocatorVaultABI,
           functionName: "requestDeposit",
-          args: [
-            amountBigInt,
-            userAddress,
-            userAddress,
-          ],
+          args: [amountBigInt, userAddress, userAddress],
           account: userAddress,
         });
 
@@ -119,11 +115,7 @@ export const useVaultTransactions = ({
           address: vaultAddress as `0x${string}`,
           abi: YieldAllocatorVaultABI,
           functionName: "requestDeposit",
-          args: [
-            amountBigInt,
-            userAddress,
-            userAddress,
-          ],
+          args: [amountBigInt, userAddress, userAddress],
           chain: hyperliquid,
           account: userAddress,
           gas: (depositGas * 200n) / 100n,
@@ -468,6 +460,7 @@ export const useVaultTransactions = ({
           abi: YieldAllocatorVaultABI,
           functionName: "pendingDepositRequest",
           args: [0n, userAddress],
+          authorizationList: undefined
         })) as bigint;
 
         const decimals =
@@ -490,6 +483,7 @@ export const useVaultTransactions = ({
           abi: YieldAllocatorVaultABI,
           functionName: "pendingRedeemRequest",
           args: [0n, userAddress],
+          authorizationList: undefined
         })) as bigint;
 
         const vaultDecimals =

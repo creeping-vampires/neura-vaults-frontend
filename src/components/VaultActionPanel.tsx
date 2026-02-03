@@ -1091,6 +1091,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 
   return (
     <Card
+      data-testid="vault-action-panel"
       className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl sm:min-h-[500px]"
       style={{ height: "calc(100vh - 196px)" }}
     >
@@ -1103,6 +1104,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
+            data-testid="deposit-tab"
           >
             Deposit
             {activeTab === "deposit" && (
@@ -1116,6 +1118,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
+            data-testid="withdraw-tab"
           >
             Withdraw
             {activeTab === "withdraw" && (
@@ -1124,16 +1127,16 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           </button>
         </div>
 
-        <div className="mt-4 mb-4">
+        <div className="mt-4 mb-4" data-testid="available-balance-container">
           <div className="flex items-center justify-between mb-2">
             <span className="text-muted-foreground text-sm">Available</span>
-            <span className="text-foreground font-medium">
+            <span data-testid="available-balance" className="text-foreground font-medium">
               {activeTab === "deposit"
                 ? `${(availableAssetBalance ?? 0).toFixed(
-                    2
+                    2,
                   )} ${currentAssetSymbol}`
                 : `${(availableUserDeposits ?? 0).toFixed(
-                    2
+                    2,
                   )} ${currentAssetSymbol}`}
             </span>
           </div>
@@ -1165,6 +1168,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
               }}
               placeholder="Enter amount"
               className="w-full h-12 px-4 py-3 bg-gradient-to-br from-card to-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              data-testid="amount-input"
             />
             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground text-sm">
               {currentAssetSymbol}
@@ -1188,13 +1192,14 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
           }
           className="w-full mt-4"
           variant="wallet"
+          data-testid={activeTab === "deposit" ? "deposit-btn" : "withdraw-btn"}
         >
           {activeTab === "deposit"
             ? isDepositTransacting
               ? "Depositing..."
               : isValidatingDeposit
-              ? "Validating..."
-              : "Deposit"
+                ? "Validating..."
+                : "Deposit"
             : activeTab === "withdraw" &&
               (isWithdrawTransacting ? "Withdrawing..." : "Withdraw")}
         </Button>
@@ -1215,10 +1220,14 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
 
         {latestTransactions.length > 0 && (
           <div className="mt-2 space-y-1">
-            <h4 className="text-sm font-medium text-muted-foreground mb-2">
+            <h4
+              className="text-sm font-medium text-muted-foreground mb-2"
+              data-testid="transactions-list"
+            >
               Latest Transactions
             </h4>
             <div
+              data-testid="transaction-list"
               className="space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
               style={{
                 height:
@@ -1266,6 +1275,8 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                   return (
                     <div
                       key={tx.id}
+                      data-testid={`transaction-item-${tx.type}`}
+                      data-status={tx.status}
                       className="flex items-center justify-between p-2 py-1 bg-card/50 rounded-md border border-border/50"
                     >
                       <div className="flex items-center space-x-2">
@@ -1275,10 +1286,13 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                             {tx.type}{" "}
                             {tx.amount &&
                               `${parseFloat(tx.amount).toFixed(
-                                4
+                                4,
                               )} ${currentAssetSymbol}`}
                           </span>
-                          <span className={`text-xs ${getStatusColor()}`}>
+                          <span
+                            className={`text-xs ${getStatusColor()}`}
+                            data-testid="transaction-status"
+                          >
                             {getStatusText()}
                           </span>
                         </div>
@@ -1289,6 +1303,7 @@ const VaultActionPanel: React.FC<VaultActionPanelProps> = ({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          data-testid="transaction-hash-link"
                         >
                           <ExternalLink className="h-3 w-3" />
                         </a>

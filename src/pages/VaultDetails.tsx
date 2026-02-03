@@ -44,7 +44,7 @@ import yieldMonitorService from "@/services/vaultService";
 import {
   VaultAllocationsResponse,
   TokenPriceData,
-  LatestChartPoint,
+  LatestVaultAllocation,
 } from "@/services/config";
 import AccessCodeModal from "@/components/AccessCodeModal";
 import { useAccount } from "wagmi";
@@ -132,7 +132,7 @@ const VaultDetails = () => {
   const [currentAssetSymbol, setCurrentAssetSymbol] = useState("");
   const [currentVaultName, setCurrentVaultName] = useState("");
   const [currentPoolsAllocations, setCurrentPoolsAllocations] = useState<
-    VaultAllocationsResponse["allocations"]
+    LatestVaultAllocation[]
   >([]);
 
   useEffect(() => {
@@ -390,7 +390,10 @@ const VaultDetails = () => {
             <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
           <div>
-            <h1 className="text-lg sm:text-2xl font-medium text-[#e4dfcb] font-libertinus whitespace-nowrap">
+            <h1
+              className="text-lg sm:text-2xl font-medium text-[#e4dfcb] font-libertinus whitespace-nowrap"
+              data-testid="vault-details-name"
+            >
               {currentVaultName} Vault
             </h1>
             <div className="flex items-center space-x-2 mt-0.5">
@@ -524,7 +527,10 @@ const VaultDetails = () => {
                   </h3>
                   <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
                 </div>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">
+                <p
+                  className="text-xl sm:text-2xl font-bold text-foreground"
+                  data-testid="total-aum"
+                >
                   $
                   {totalAUM.toLocaleString(undefined, {
                     maximumFractionDigits: 4,
@@ -532,7 +538,10 @@ const VaultDetails = () => {
                 </p>
                 <div className="flex items-center mt-1">
                   <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-primary mr-1" />
-                  <span className="text-primary text-xs sm:text-sm font-medium">
+                  <span
+                    className="text-primary text-xs sm:text-sm font-medium"
+                    data-testid="current-apy"
+                  >
                     {isVaultLoading
                       ? "Loading..."
                       : get7APY(vaultId).toFixed(2)}
@@ -591,7 +600,10 @@ const VaultDetails = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl min-h-[140px] sm:h-[170px]">
+            <Card
+              className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl min-h-[140px] sm:h-[170px]"
+              data-testid="user-position-card"
+            >
               <CardContent className="p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
@@ -601,7 +613,10 @@ const VaultDetails = () => {
                 </div>
                 {vaultData?.userDeposits && vaultData.userDeposits > 0 ? (
                   <>
-                    <p className="text-xl sm:text-2xl font-bold text-foreground">
+                    <p
+                      className="text-xl sm:text-2xl font-bold text-foreground"
+                      data-testid="user-position-value"
+                    >
                       {vaultData.userDeposits.toFixed(4)} {currentVaultSymbol}
                     </p>
                     {/* <div className="flex items-center mt-1">
@@ -621,7 +636,10 @@ const VaultDetails = () => {
                   </>
                 ) : (
                   <>
-                    <p className="text-base sm:text-lg font-bold text-foreground">
+                    <p
+                      className="text-base sm:text-lg font-bold text-foreground"
+                      data-testid="user-position-empty"
+                    >
                       No position available yet
                     </p>
                     <p className="text-muted-foreground text-xs sm:text-sm mt-2">
@@ -637,21 +655,26 @@ const VaultDetails = () => {
             <Tabs defaultValue="tvl" className="w-full">
               <CardHeader className="pb-2 sm:pb-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <TabsList className="bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/80 rounded-lg">
+                  <TabsList
+                    className="bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/80 rounded-lg"
+                  >
                     <TabsTrigger
                       value="tvl"
+                      data-testid="chart-tab-tvl"
                       className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
                     >
                       TVL
                     </TabsTrigger>
                     <TabsTrigger
                       value="sharePrice"
+                      data-testid="chart-tab-sharePrice"
                       className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
                     >
                       Share Price
                     </TabsTrigger>
                     <TabsTrigger
                       value="apy"
+                      data-testid="chart-tab-apy"
                       className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
                     >
                       APY
@@ -696,7 +719,7 @@ const VaultDetails = () => {
                     </div>
                   ) : (
                     <>
-                      <TabsContent value="tvl" className="mt-4">
+                      <TabsContent value="tvl" className="mt-4" data-testid="chart-content-tvl">
                         <ChartContainer config={chartConfig}>
                           <AreaChart
                             data={chartData}
@@ -797,7 +820,7 @@ const VaultDetails = () => {
                         </ChartContainer>
                       </TabsContent>
 
-                      <TabsContent value="sharePrice" className="mt-4">
+                      <TabsContent value="sharePrice" className="mt-4" data-testid="chart-content-sharePrice">
                         <ChartContainer config={chartConfig}>
                           <AreaChart
                             data={chartData}
@@ -890,7 +913,11 @@ const VaultDetails = () => {
                         </ChartContainer>
                       </TabsContent>
 
-                      <TabsContent value="apy" className="mt-4">
+                      <TabsContent
+                        value="apy"
+                        className="mt-4"
+                        data-testid="chart-content-apy"
+                      >
                         <ChartContainer config={chartConfig}>
                           <AreaChart
                             data={chartData}
@@ -1039,34 +1066,38 @@ const VaultDetails = () => {
             <TabsList className="h-10 sm:h-12 bg-gradient-to-br from-card to-background backdrop-blur-sm border border-border/50 rounded-lg">
               <TabsTrigger
                 value="terminal"
+                data-testid="info-tab-terminal"
                 className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
               >
                 AI Terminal
               </TabsTrigger>
               <TabsTrigger
                 value="details"
+                data-testid="info-tab-details"
                 className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
               >
                 Details
               </TabsTrigger>
               <TabsTrigger
                 value="pools"
+                data-testid="info-tab-pools"
                 className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
               >
                 Whitelisted Pools
               </TabsTrigger>
               <TabsTrigger
                 value="composition"
+                data-testid="info-tab-composition"
                 className="data-[state=active]:bg-[#262626] data-[state=active]:text-foreground data-[state=active]:shadow-none rounded-md px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors text-muted-foreground hover:text-foreground"
               >
                 Composition
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="terminal" className="mt-4 sm:mt-6">
+            <TabsContent value="terminal" className="mt-4 sm:mt-6" data-testid="info-content-terminal">
               <AgentTerminal currentVaultName={currentVaultName} />
             </TabsContent>
-            <TabsContent value="details" className="mt-4 sm:mt-6">
+            <TabsContent value="details" className="mt-4 sm:mt-6" data-testid="info-content-details">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-[360px]">
                 <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                   <CardHeader className="pb-3 sm:pb-6">
@@ -1137,7 +1168,7 @@ const VaultDetails = () => {
               </div>
             </TabsContent>
 
-            <TabsContent value="pools" className="mt-4 sm:mt-6">
+            <TabsContent value="pools" className="mt-4 sm:mt-6" data-testid="info-content-pools">
               <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                 <CardHeader>
                   <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
@@ -1152,6 +1183,7 @@ const VaultDetails = () => {
                         allocations.map((allocation, index) => (
                           <div
                             key={index}
+                            data-testid="pool-allocation-item"
                             className="flex items-center justify-between  p-3 bg-muted/50 rounded-lg border border-border/50"
                           >
                             <div className="flex items-center space-x-3">
@@ -1191,7 +1223,7 @@ const VaultDetails = () => {
                           </div>
                         ))
                       ) : (
-                        <div className="text-center py-8">
+                        <div data-testid="pools-empty" className="text-center py-8">
                           <p className="text-muted-foreground">
                             No protocol allocations found for this vault.
                           </p>
@@ -1203,7 +1235,7 @@ const VaultDetails = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="composition" className="mt-4 sm:mt-6">
+            <TabsContent value="composition" className="mt-4 sm:mt-6" data-testid="info-content-composition">
               <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
                 <CardHeader>
                   <CardTitle className="text-[#e4dfcb] font-bold sm:text-lg">
@@ -1212,11 +1244,11 @@ const VaultDetails = () => {
                 </CardHeader>
                 <CardContent>
                   {allocationsLoading ? (
-                    <div className="flex items-center justify-center h-[300px]">
+                    <div data-testid="composition-loading" className="flex items-center justify-center h-[300px]">
                       <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
                   ) : allocationsError ? (
-                    <div className="text-center py-8">
+                    <div data-testid="composition-error" className="text-center py-8">
                       <p className="text-muted-foreground">
                         {allocationsError}
                       </p>
@@ -1224,8 +1256,8 @@ const VaultDetails = () => {
                   ) : allocationsData?.data?.allocations &&
                     allocationsData.data.allocations.length > 0 ? (
                     <>
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-                        <div>
+                      <div data-testid="composition-data" className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
+                        <div data-testid="composition-chart">
                           <h3 className="text-foreground font-medium mb-4">
                             By Protocol
                           </h3>
@@ -1311,7 +1343,7 @@ const VaultDetails = () => {
                       </div>
                     </>
                   ) : (
-                    <div className="text-center py-8">
+                    <div data-testid="composition-empty" className="text-center py-8">
                       <p className="text-muted-foreground">
                         No composition data available.
                       </p>

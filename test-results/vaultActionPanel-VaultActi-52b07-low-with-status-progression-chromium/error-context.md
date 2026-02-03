@@ -1,0 +1,316 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - button [ref=e5] [cursor=pointer]:
+          - img [ref=e6]
+        - generic [ref=e9]:
+          - img [ref=e11]
+          - generic [ref=e12]:
+            - heading [level=1] [ref=e13]: Neura
+            - paragraph [ref=e14]: Vaults
+        - navigation [ref=e15]:
+          - generic [ref=e16]:
+            - link [ref=e18] [cursor=pointer]:
+              - /url: /
+              - img [ref=e20]
+              - generic [ref=e23]: Dashboard
+            - link [ref=e26] [cursor=pointer]:
+              - /url: /vaults
+              - img [ref=e29]
+              - generic [ref=e31]: Vaults
+            - link [ref=e34] [cursor=pointer]:
+              - /url: /portfolio
+              - img [ref=e36]
+              - generic [ref=e40]: Portfolio
+        - generic [ref=e43]:
+          - link [ref=e44] [cursor=pointer]:
+            - /url: https://x.com/Neuravaults
+            - img [ref=e46]
+          - link [ref=e47] [cursor=pointer]:
+            - /url: https://discord.gg/officialneuravaults
+            - img [ref=e49]
+          - link [ref=e50] [cursor=pointer]:
+            - /url: https://neura-vaults.gitbook.io/neura-vaults/
+            - img [ref=e52]
+      - generic [ref=e53]:
+        - navigation [ref=e54]:
+          - button "0x87F3...7A08" [ref=e58] [cursor=pointer]:
+            - generic [ref=e59]:
+              - img [ref=e60]
+              - generic "0x87F31AF606C06f64FC780e01d9562D4CaCf87A08" [ref=e63]: 0x87F3...7A08
+        - main [ref=e64]:
+          - generic [ref=e65]:
+            - generic [ref=e66]:
+              - generic [ref=e67]:
+                - button [ref=e68] [cursor=pointer]:
+                  - img [ref=e69]
+                - generic [ref=e71]:
+                  - heading "AI USDT Vault" [level=1] [ref=e72]
+                  - generic [ref=e74]: USD₮0
+              - generic [ref=e76]:
+                - generic [ref=e79]:
+                  - text: Pending Deposit
+                  - paragraph [ref=e80]: Settlement in progress—your shares will arrive shortly.
+                - button "Cancel" [ref=e82] [cursor=pointer]: Cancel
+            - generic [ref=e83]:
+              - generic [ref=e84]:
+                - generic [ref=e85]:
+                  - generic [ref=e87]:
+                    - generic [ref=e88]:
+                      - heading "Total Value Locked" [level=3] [ref=e89]
+                      - img [ref=e90]
+                    - paragraph [ref=e92]: $73,157.2996
+                    - generic [ref=e93]:
+                      - img [ref=e94]
+                      - generic [ref=e97]: 4.39% APY (7d)
+                      - img [ref=e100]
+                  - generic [ref=e103]:
+                    - generic [ref=e104]:
+                      - heading "Your Position" [level=3] [ref=e105]
+                      - img [ref=e106]
+                    - paragraph [ref=e110]: No position available yet
+                    - paragraph [ref=e111]: Make a deposit to start building your position.
+                - generic [ref=e113]:
+                  - generic [ref=e115]:
+                    - tablist [ref=e116]:
+                      - tab "TVL" [selected] [ref=e117] [cursor=pointer]
+                      - tab "Share Price" [ref=e118] [cursor=pointer]
+                      - tab "APY" [ref=e119] [cursor=pointer]
+                    - generic [ref=e120]:
+                      - button "7D" [ref=e121] [cursor=pointer]: 7D
+                      - button "1M" [ref=e122] [cursor=pointer]: 1M
+                  - tabpanel "TVL" [ref=e125]:
+                    - img [ref=e129] [cursor=pointer]:
+                      - generic [ref=e134]:
+                        - generic [ref=e136]: Jan 28
+                        - generic [ref=e138]: Jan 29
+                        - generic [ref=e140]: Jan 30
+                        - generic [ref=e142]: Jan 31
+                        - generic [ref=e144]: Feb 1
+                      - generic [ref=e146]:
+                        - generic [ref=e148]: 73.00K
+                        - generic [ref=e150]: 74.00K
+                        - generic [ref=e152]: 75.00K
+                        - generic [ref=e154]: 76.00K
+                        - generic [ref=e156]: 77.00K
+                        - generic [ref=e158]: 78.00K
+                - generic [ref=e163]:
+                  - tablist [ref=e164]:
+                    - tab "AI Terminal" [selected] [ref=e165] [cursor=pointer]
+                    - tab "Details" [ref=e166] [cursor=pointer]
+                    - tab "Whitelisted Pools" [ref=e167] [cursor=pointer]
+                    - tab "Composition" [ref=e168] [cursor=pointer]
+                  - tabpanel "AI Terminal" [ref=e169]:
+                    - generic [ref=e171]:
+                      - generic [ref=e172]:
+                        - generic [ref=e173]:
+                          - generic [ref=e174]: "Agent:"
+                          - generic [ref=e175]: Neura AI Yield Optimizer
+                        - generic [ref=e176]:
+                          - generic [ref=e177]: "Path:"
+                          - generic [ref=e178]: ~/agents/neura-v2-yield-optimizer
+                        - generic [ref=e179]:
+                          - generic [ref=e180]: "Status:"
+                          - generic [ref=e181]: Active
+                      - generic [ref=e183]: Thoughts
+                      - generic [ref=e184]:
+                        - generic [ref=e185]:
+                          - generic [ref=e186]:
+                            - generic [ref=e187]: "[FEB 2, 16:42:01 UTC]"
+                            - generic [ref=e188]: •
+                            - generic [ref=e189]: VAULT-OPERATIONS
+                            - generic [ref=e190]: •
+                            - generic [ref=e191]:
+                              - img [ref=e192]
+                              - text: SKIPPED
+                          - paragraph [ref=e196]: ↳ reasonThe vault has no pending requests to settle, no unclaimed deposits to claim, and the proposed rebalance would result in a slight APY decrease rather than improvement. Therefore, the best action is to do nothing this cycle to avoid unnecessary gas costs and maintain current positions.
+                        - generic [ref=e197]:
+                          - generic [ref=e198]:
+                            - generic [ref=e199]: "[FEB 2, 16:47:39 UTC]"
+                            - generic [ref=e200]: •
+                            - generic [ref=e201]: VAULT-OPERATIONS
+                            - generic [ref=e202]: •
+                            - generic [ref=e203]:
+                              - img [ref=e204]
+                              - text: SKIPPED
+                          - paragraph [ref=e208]: ↳ reasonThe vault has no pending requests to process, and the proposed rebalance would result in a slight APY decrease, not improvement. Therefore, skipping this cycle is appropriate to avoid unnecessary actions and gas costs.
+                        - generic [ref=e209]:
+                          - generic [ref=e210]:
+                            - generic [ref=e211]: "[FEB 2, 16:52:27 UTC]"
+                            - generic [ref=e212]: •
+                            - generic [ref=e213]: VAULT-OPERATIONS
+                            - generic [ref=e214]: •
+                            - generic [ref=e215]:
+                              - img [ref=e216]
+                              - text: SKIPPED
+                          - paragraph [ref=e220]: ↳ reasonThe vault has no immediate actions required as there are no pending requests or unclaimed deposits. The optimal allocation suggests a slight APY decrease, so rebalancing is not beneficial. Skipping this cycle to avoid unnecessary gas costs.
+                        - generic [ref=e221]:
+                          - generic [ref=e222]:
+                            - generic [ref=e223]: "[FEB 2, 16:57:40 UTC]"
+                            - generic [ref=e224]: •
+                            - generic [ref=e225]: VAULT-OPERATIONS
+                            - generic [ref=e226]: •
+                            - generic [ref=e227]:
+                              - img [ref=e228]
+                              - text: SKIPPED
+                          - paragraph [ref=e232]: ↳ reasonThe vault is stable with no urgent actions needed. The slight negative APY change from rebalancing does not justify the action, and there are no pending user requests to handle.
+                        - generic [ref=e233]:
+                          - generic [ref=e234]:
+                            - generic [ref=e235]: "[FEB 2, 17:03:34 UTC]"
+                            - generic [ref=e236]: •
+                            - generic [ref=e237]: VAULT-OPERATIONS
+                            - generic [ref=e238]: •
+                            - generic [ref=e239]:
+                              - img [ref=e240]
+                              - text: SKIPPED
+                          - paragraph [ref=e244]: ↳ reasonThe vault has no immediate actions required as there are no pending requests and rebalancing would not improve APY. Maintaining the current allocation is optimal.
+                        - generic [ref=e245]:
+                          - generic [ref=e246]:
+                            - generic [ref=e247]: "[FEB 2, 17:07:14 UTC]"
+                            - generic [ref=e248]: •
+                            - generic [ref=e249]: VAULT-OPERATIONS
+                            - generic [ref=e250]: •
+                            - generic [ref=e251]:
+                              - img [ref=e252]
+                              - text: SKIPPED
+                          - paragraph [ref=e256]: ↳ reasonThe vault is in a stable state with no immediate actions required. The slight negative APY improvement suggests no benefit from rebalancing, and there are no user requests to process. Skipping this cycle conserves gas and maintains the current optimal position.
+                        - generic [ref=e257]:
+                          - generic [ref=e258]:
+                            - generic [ref=e259]: "[FEB 2, 17:12:57 UTC]"
+                            - generic [ref=e260]: •
+                            - generic [ref=e261]: VAULT-OPERATIONS
+                            - generic [ref=e262]: •
+                            - generic [ref=e263]:
+                              - img [ref=e264]
+                              - text: SKIPPED
+                          - paragraph [ref=e268]: ↳ reasonThe vault is in a stable state with no immediate actions required. The slight negative APY improvement from rebalancing does not justify the action, and there are no user requests pending that need processing.
+                        - generic [ref=e269]:
+                          - generic [ref=e270]:
+                            - generic [ref=e271]: "[FEB 2, 17:17:24 UTC]"
+                            - generic [ref=e272]: •
+                            - generic [ref=e273]: VAULT-OPERATIONS
+                            - generic [ref=e274]: •
+                            - generic [ref=e275]:
+                              - img [ref=e276]
+                              - text: SKIPPED
+                          - paragraph [ref=e280]: ↳ reasonThe vault is in a stable state with no pending actions required. The current allocation is already optimal, and there are no user requests waiting. Skipping this cycle to avoid unnecessary gas costs.
+                        - generic [ref=e281]:
+                          - generic [ref=e282]:
+                            - generic [ref=e283]: "[FEB 2, 17:22:51 UTC]"
+                            - generic [ref=e284]: •
+                            - generic [ref=e285]: VAULT-OPERATIONS
+                            - generic [ref=e286]: •
+                            - generic [ref=e287]:
+                              - img [ref=e288]
+                              - text: SKIPPED
+                          - paragraph [ref=e292]: ↳ reasonThe vault is stable with no pending actions and no significant APY improvement opportunity. Best to skip this cycle to avoid unnecessary gas costs.
+                        - generic [ref=e293]:
+                          - generic [ref=e294]:
+                            - generic [ref=e295]: "[FEB 2, 17:27:12 UTC]"
+                            - generic [ref=e296]: •
+                            - generic [ref=e297]: VAULT-OPERATIONS
+                            - generic [ref=e298]: •
+                            - generic [ref=e299]:
+                              - img [ref=e300]
+                              - text: SKIPPED
+                          - paragraph [ref=e304]: ↳ reasonThe vault is in a stable state with no immediate actions required. The current allocation is nearly optimal, with only a negligible APY decrease that doesn't justify rebalancing. Idle funds are minimal and not worth moving. This cycle should be skipped to avoid unnecessary gas costs.
+                        - generic [ref=e305]:
+                          - generic [ref=e306]:
+                            - generic [ref=e307]: "[FEB 2, 17:32:50 UTC]"
+                            - generic [ref=e308]: •
+                            - generic [ref=e309]: VAULT-OPERATIONS
+                            - generic [ref=e310]: •
+                            - generic [ref=e311]:
+                              - img [ref=e312]
+                              - text: SKIPPED
+                          - paragraph [ref=e316]: ↳ reasonThe vault has no pending requests or unclaimed deposits, and the optimal allocation offers no meaningful APY improvement. Therefore, no actions are needed this cycle to avoid unnecessary gas costs.
+                        - generic [ref=e317]:
+                          - generic [ref=e318]:
+                            - generic [ref=e319]: "[FEB 2, 17:38:11 UTC]"
+                            - generic [ref=e320]: •
+                            - generic [ref=e321]: VAULT-OPERATIONS
+                            - generic [ref=e322]: •
+                            - generic [ref=e323]:
+                              - img [ref=e324]
+                              - text: SKIPPED
+                          - paragraph [ref=e328]: ↳ reasonThe vault is in a stable state with no immediate actions required. The slight APY decrease in the optimal allocation does not justify a rebalance, and there are no user requests pending.
+                        - generic [ref=e329]:
+                          - generic [ref=e330]:
+                            - generic [ref=e331]: "[FEB 2, 17:42:34 UTC]"
+                            - generic [ref=e332]: •
+                            - generic [ref=e333]: VAULT-OPERATIONS
+                            - generic [ref=e334]: •
+                            - generic [ref=e335]:
+                              - img [ref=e336]
+                              - text: SKIPPED
+                          - paragraph [ref=e340]: ↳ reasonThe vault is in a stable state with no immediate actions required. The current allocation is already optimal, and there are no pending user requests to process. Skipping this cycle avoids unnecessary gas costs.
+                        - generic [ref=e341]:
+                          - generic [ref=e342]:
+                            - generic [ref=e343]: "[FEB 2, 17:47:50 UTC]"
+                            - generic [ref=e344]: •
+                            - generic [ref=e345]: VAULT-OPERATIONS
+                            - generic [ref=e346]: •
+                            - generic [ref=e347]:
+                              - img [ref=e348]
+                              - text: SKIPPED
+                          - paragraph [ref=e352]: ↳ reasonThe vault is already well-allocated with 99% in the highest APY protocol (3.34%), and the optimal allocation suggests no meaningful improvement. There are no pending actions or unclaimed deposits, so no actions are needed this cycle to avoid unnecessary gas costs.
+                        - generic [ref=e353]:
+                          - generic [ref=e354]:
+                            - generic [ref=e355]: "[FEB 2, 17:52:19 UTC]"
+                            - generic [ref=e356]: •
+                            - generic [ref=e357]: VAULT-OPERATIONS
+                            - generic [ref=e358]: •
+                            - generic [ref=e359]:
+                              - img [ref=e360]
+                              - text: SKIPPED
+                          - paragraph [ref=e364]: ↳ reasonThe vault is in a stable state with no immediate actions required. The slight negative APY change suggests no benefit from rebalancing, and there are no user requests pending.
+                        - generic [ref=e365]:
+                          - generic [ref=e366]: "|"
+                          - generic [ref=e367]: Thoughts Running
+                          - generic [ref=e368]: _ _ _
+              - generic [ref=e370]:
+                - generic [ref=e372]:
+                  - generic [ref=e373]:
+                    - button "Deposit" [ref=e374] [cursor=pointer]
+                    - button "Withdraw" [ref=e375] [cursor=pointer]: Withdraw
+                  - generic [ref=e378]:
+                    - generic [ref=e379]: Available
+                    - generic [ref=e380]: 0.00 USD₮0
+                  - generic [ref=e381]:
+                    - button "25%" [ref=e382] [cursor=pointer]
+                    - button "50%" [ref=e383] [cursor=pointer]
+                    - button "75%" [ref=e384] [cursor=pointer]
+                    - button "100%" [ref=e385] [cursor=pointer]
+                  - generic [ref=e387]:
+                    - spinbutton [active] [ref=e388]: "1.01"
+                    - generic [ref=e389]: USD₮0
+                  - button "Withdraw" [disabled]: Withdraw
+                  - generic [ref=e390]:
+                    - heading "Latest Transactions" [level=4] [ref=e391]
+                    - generic [ref=e394]:
+                      - img [ref=e395]
+                      - generic [ref=e397]:
+                        - generic [ref=e398]: deposit 1.0100 USD₮0
+                        - generic [ref=e399]: Awaiting settlement
+                - generic [ref=e402]:
+                  - img [ref=e403]
+                  - heading "Settles Every 30–60 Minutes" [level=3] [ref=e406]
+            - generic:
+              - button "Neura Vault" [ref=e408] [cursor=pointer]:
+                - img "Neura Vault" [ref=e410]
+              - generic:
+                - generic [ref=e411]:
+                  - generic [ref=e412]:
+                    - img "Neura Vault" [ref=e414]
+                    - heading "Neura AI" [level=3] [ref=e416]
+                  - button [ref=e417] [cursor=pointer]:
+                    - img [ref=e418]
+                - iframe
+    - region "Notifications (F8)":
+      - list
+  - generic [ref=e421]: 73.00K
+```

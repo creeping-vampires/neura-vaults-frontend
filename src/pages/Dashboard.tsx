@@ -114,7 +114,7 @@ const Dashboard = () => {
     <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 relative">
       {/* Portfolio Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+        <Card data-testid="dashboard-tvl" className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
@@ -124,7 +124,7 @@ const Dashboard = () => {
             </div>
             <div className="w-full flex items-end">
               <div className="space-y-1 sm:space-y-2">
-                <p className="text-xl sm:text-2xl font-bold text-foreground">
+                <p data-testid="dashboard-tvl-value" className="text-xl sm:text-2xl font-bold text-foreground">
                   $
                   {dashboardData.tvl.toLocaleString(undefined, {
                     maximumFractionDigits: 4,
@@ -136,7 +136,7 @@ const Dashboard = () => {
         </Card>
 
         {/* need to add total volume */}
-        <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+        <Card data-testid="dashboard-volume" className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
@@ -145,7 +145,7 @@ const Dashboard = () => {
               <Rocket className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="space-y-1 sm:space-y-2">
-              <p className="text-xl sm:text-2xl font-bold text-foreground">
+              <p data-testid="dashboard-volume-value" className="text-xl sm:text-2xl font-bold text-foreground">
                 ${" "}
                 {dashboardData.totalSupply.toLocaleString(undefined, {
                   maximumFractionDigits: 4,
@@ -155,7 +155,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+        <Card data-testid="dashboard-apy" className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-muted-foreground text-xs sm:text-sm font-medium">
@@ -164,7 +164,7 @@ const Dashboard = () => {
               <Percent className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <div className="space-y-1 sm:space-y-2">
-              <div className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
+              <div data-testid="dashboard-apy-value" className="w-fit text-xl sm:text-2xl font-bold text-foreground gap-1 relative group">
                 {dashboardData.currentAPY.toFixed(2)} %
                 <div className="absolute top-9 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
                   <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>
@@ -215,7 +215,7 @@ const Dashboard = () => {
 
       {/* Main Content */}
       <div className="space-y-4 sm:space-y-6">
-        <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+        <Card data-testid="dashboard-token-balances" className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
           <CardHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-3 sm:pb-4">
             <div className="flex items-center space-x-2">
               <CardTitle className="text-[#e4dfcb] font-bold text-base sm:text-lg">
@@ -229,6 +229,7 @@ const Dashboard = () => {
                 {getAllVaults().map((vault) => (
                   <div
                     key={vault.address}
+                    data-testid={`dashboard-balance-${vault.symbol}`}
                     className="w-full to-primary/10 p-3 sm:p-4 rounded-xl border border-border"
                   >
                     <div className="flex items-center justify-between mb-2">
@@ -266,7 +267,7 @@ const Dashboard = () => {
                   </p>
                 </div> */}
 
-                <div className="w-full p-3 sm:p-4 rounded-xl border border-border">
+                <div data-testid="dashboard-hype-balance" className="w-full p-3 sm:p-4 rounded-xl border border-border">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
                       HYPE Balance
@@ -284,7 +285,7 @@ const Dashboard = () => {
                 </div>
               </>
             ) : (
-              <div className="w-full flex flex-col items-center justify-center py-8 space-y-4">
+              <div data-testid="dashboard-connect-prompt" className="w-full flex flex-col items-center justify-center py-8 space-y-4">
                 <div className="text-center">
                   <p className="text-muted-foreground text-sm mb-2">
                     Connect your wallet to view your token balances

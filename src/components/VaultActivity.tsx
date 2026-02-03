@@ -64,19 +64,19 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
   };
 
   return (
-    <Card className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
+    <Card data-testid="vault-activity" className="bg-gradient-to-br from-card/50 to-background/50 border-border shadow-xl">
       <div className="pt-0">
         <div className="space-y-3 max-h-[360px] overflow-y-auto scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent px-6 py-6">
           {activitiesLoading ? (
-            <div className="text-muted-foreground text-sm text-center py-4">
+            <div data-testid="vault-activity-loading" className="text-muted-foreground text-sm text-center py-4">
               Loading activities...
             </div>
           ) : activitiesError ? (
-            <div className="text-red-500 text-sm text-center py-4">
+            <div data-testid="vault-activity-error" className="text-red-500 text-sm text-center py-4">
               {activitiesError}
             </div>
           ) : vaultActivities.length === 0 ? (
-            <div className="text-muted-foreground text-sm text-center py-4">
+            <div data-testid="vault-activity-empty" className="text-muted-foreground text-sm text-center py-4">
               No activities found.
             </div>
           ) : (
@@ -102,6 +102,7 @@ const VaultActivity: React.FC<VaultActivityProps> = ({
                 return (
                   <div
                     key={`${i}-${activity.blockNumber}-${activity.txHash}`}
+                    data-testid="vault-activity-item"
                     className="flex items-center justify-between p-3 rounded-xl bg-muted/50 border border-border"
                   >
                     <div className="flex-1">

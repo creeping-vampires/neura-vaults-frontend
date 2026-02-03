@@ -164,7 +164,10 @@ const Vaults = () => {
               <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
             </div>
             <p className="text-xl sm:text-2xl font-bold text-foreground">
-              {marketData.filter((market) => market.status !== "coming_soon").length}
+              {
+                marketData.filter((market) => market.status !== "coming_soon")
+                  .length
+              }
             </p>
           </CardContent>
         </Card>
@@ -227,6 +230,7 @@ const Vaults = () => {
                   {filteredMarkets.map((market) => (
                     <tr
                       key={market.address}
+                      data-testid={`vault-row-${market.address}`}
                       className={`border-b border-border ${
                         market.status === "coming_soon"
                           ? "opacity-50 cursor-not-allowed"
@@ -250,7 +254,10 @@ const Vaults = () => {
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="text-foreground font-semibold text-sm">
+                              <p
+                                className="text-foreground font-semibold text-sm"
+                                data-testid={`vault-name-${market.address}`}
+                              >
                                 {market.name}
                               </p>
                               {market.status === "coming_soon" && (
@@ -271,7 +278,7 @@ const Vaults = () => {
                             --
                           </span>
                         ) : (
-                          <span>
+                          <span data-testid={`vault-tvl-${market.address}`}>
                             $
                             {market.totalDeposits.toLocaleString(undefined, {
                               maximumFractionDigits: 2,
@@ -285,7 +292,10 @@ const Vaults = () => {
                             --
                           </span>
                         ) : (
-                          <div className="text-primary font-semibold flex items-center justify-center gap-1 relative group">
+                          <div
+                            className="text-primary font-semibold flex items-center justify-center gap-1 relative group"
+                            data-testid={`vault-apy-${market.address}`}
+                          >
                             {get7APY(market.address).toFixed(2)}%
                             <div className="absolute top-10 left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-[#262626] rounded-md shadow-lg text-sm invisible opacity-0 group-hover:visible group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-50">
                               <div className="absolute top-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#262626] rotate-45"></div>

@@ -4,6 +4,7 @@ import { publicClient } from "./privyConfig";
 import { erc20Abi, formatUnits, parseAbi } from "viem";
 import { explorerUrl } from "@/utils/constant";
 import { hyperliquid } from "./privyConfig";
+import { isE2EMode } from "./e2eWagmiConfig";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,6 +35,9 @@ export function getExplorerAddressUrl(address: string) {
 }
 
 export const switchToChain = async (): Promise<boolean> => {
+  if (isE2EMode()) {
+    return true;
+  }
   if (!window.ethereum) {
     console.warn("No ethereum provider found");
     return false;
@@ -73,8 +77,7 @@ export const switchToChain = async (): Promise<boolean> => {
       } catch (addError: any) {
         console.error("Failed to add Hyper EVM chain:", addError);
         throw new Error(
-          `Failed to add Hyper EVM chain: ${
-            addError.message || "Unknown error"
+          `Failed to add Hyper EVM chain: ${addError.message || "Unknown error"
           }`
         );
       }
@@ -83,12 +86,10 @@ export const switchToChain = async (): Promise<boolean> => {
     } else {
       console.error("Failed to switch to Hyper EVM chain:", error);
       throw new Error(
-        `Failed to switch to Hyper EVM chain: ${
-          error.message || "Unknown error"
+        `Failed to switch to Hyper EVM chain: ${error.message || "Unknown error"
         }`
       );
     }
   }
 };
 
-  
